@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { StyleSheet, View, Text, FlatList, TouchableOpacity, PermissionsAndroid, Platform, Linking, ScrollView, SafeAreaView } from 'react-native';
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons'; // Import Icon
 import { FTMSManager, LogEntry } from './FtmsManager'; // Import LogEntry type from FtmsManager
 import { BleError, Device, BleErrorCode, State } from 'react-native-ble-plx';
 import TestScreen from './TestScreen'; // Import the new TestScreen component
@@ -262,18 +263,19 @@ export default function App() {
   const renderListHeader = () => (
     // This View acts like the original styles.container for padding and alignment
     // when FlatList is the main scroller.
-    <View style={{ paddingHorizontal: styles.container.paddingHorizontal, paddingTop: styles.container.paddingTop }}>
+    <View style={{ paddingHorizontal: styles.container.paddingHorizontal, paddingTop: styles.container.paddingTop, paddingBottom: styles.container.paddingBottom }}>
       <View style={styles.headerContainer}>
-        <Text style={styles.title}>IsYafit</Text>
-        <Text style={styles.version}>{APP_VERSION}</Text>
+        <View style={styles.titleVersionContainer}>
+          <Text style={styles.title}>IsYafit</Text>
+          <Text style={styles.version}>{APP_VERSION}</Text>
+        </View>
+        <TouchableOpacity style={styles.bluetoothIconContainer} onPress={checkAndEnableBluetooth}>
+          <Icon name="bluetooth" size={24} color="#00c663" />
+        </TouchableOpacity>
       </View>
       <Text style={styles.status}>{statusMessage}</Text>
       
-      <View style={styles.buttonsContainer}>
-        <TouchableOpacity style={styles.button} onPress={checkAndEnableBluetooth}>
-          <Text style={styles.buttonText}>블루투스 상태 확인</Text>
-        </TouchableOpacity>
-      </View>
+      {/* Removed Bluetooth status check button from here as it's moved to header */}
       <TouchableOpacity
         style={[styles.buttonPrimary, (isScanning || !managerInitialized) && styles.buttonDisabled]}
         onPress={handleScan}
@@ -288,7 +290,7 @@ export default function App() {
   const renderListFooter = () => (
     selectedDevice && (
       // This View also considers container's horizontal padding for alignment
-      <View style={{ alignItems: 'center', paddingHorizontal: styles.container.paddingHorizontal, paddingTop: 10, paddingBottom: 20 }}>
+      <View style={{ alignItems: 'center', paddingHorizontal: styles.container.paddingHorizontal, paddingTop: 10, paddingBottom: styles.container.paddingBottom || 20 }}>
         <TouchableOpacity
           style={styles.buttonConnect}
           onPress={handleConnectAndTest}
@@ -340,21 +342,19 @@ export default function App() {
             <ScrollView contentContainerStyle={styles.scrollViewContent}>
               <View style={styles.container}>
                 <View style={styles.headerContainer}>
-                  <Text style={styles.title}>IsYafit</Text>
-                  <Text style={styles.version}>{APP_VERSION}</Text>
+                  <View style={styles.titleVersionContainer}>
+                    <Text style={styles.title}>IsYafit</Text>
+                    <Text style={styles.version}>{APP_VERSION}</Text>
+                  </View>
+                  <TouchableOpacity style={styles.bluetoothIconContainer} onPress={checkAndEnableBluetooth}>
+                    <Icon name="bluetooth" size={24} color="#00c663" />
+                  </TouchableOpacity>
                 </View>
                 <Text style={styles.status}>{statusMessage}</Text>
 
                 {!connectedDevice ? (
                   <>
-                    <View style={styles.buttonsContainer}>
-                      <TouchableOpacity 
-                        style={styles.button}
-                        onPress={checkAndEnableBluetooth}
-                      >
-                        <Text style={styles.buttonText}>블루투스 상태 확인</Text>
-                      </TouchableOpacity>
-                    </View>
+                    {/* Removed Bluetooth status check button from here as it's moved to header */}
                     <TouchableOpacity 
                       style={[styles.buttonPrimary, (isScanning || !managerInitialized) && styles.buttonDisabled]}
                       onPress={handleScan}
@@ -462,7 +462,8 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-start',
     alignItems: 'center',
     backgroundColor: '#1a2029',
-    paddingTop: Platform.OS === 'android' ? 20 : 70, // Adjusted top padding for SafeAreaView
+    paddingTop: Platform.OS === 'android' ? 40 : 80, // Increased top padding
+    paddingBottom: 40, // Added bottom padding
     paddingHorizontal: 20,
     width: '100%', // Ensure container takes full width within ScrollView
   },
@@ -470,15 +471,20 @@ const styles = StyleSheet.create({
     width: '100%',
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 15,
+    alignItems: 'flex-start', // Align items to the start for better control over version text
+    marginBottom: 25, // Increased margin
+  },
+  titleVersionContainer: {
+    flexDirection: 'row', // Changed to row
+    alignItems: 'center', // Align items vertically in the center
   },
   title: {
-    fontSize: 32,
+    fontSize: 36, // Slightly increased font size
     fontWeight: 'bold',
     color: '#00c663',
     textTransform: 'uppercase',
     letterSpacing: 1,
+    marginRight: 10, // Add some margin to the right of the title
   },
   version: {
     fontSize: 12,
@@ -487,6 +493,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 12,
+    // Removed marginLeft and marginTop, alignment handled by flexDirection: 'row' and alignItems: 'center' in titleVersionContainer
+  },
+  bluetoothIconContainer: {
+    padding: 10,
+    borderRadius: 20, // Make it circular
+    backgroundColor: '#242c3b', // Same as other buttons for consistency
+    // Positioned by headerContainer's justifyContent: 'space-between'
+  },
+  bluetoothIconText: {
+    color: '#00c663', // Icon color
+    fontSize: 16,
+    fontWeight: 'bold',
   },
   status: {
     fontSize: 14,
@@ -576,11 +594,11 @@ const styles = StyleSheet.create({
   },
   buttonPrimary: {
     backgroundColor: '#00c663',
-    paddingVertical: 14,
+    paddingVertical: 16, // Increased padding
     paddingHorizontal: 30,
     borderRadius: 10,
-    width: '90%',
-    marginVertical: 10,
+    width: '100%', // Changed from 90% to 100% to fill container (respecting parent padding)
+    marginVertical: 15, // Increased margin
     alignItems: 'center',
     justifyContent: 'center',
     elevation: 3,
@@ -590,7 +608,7 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
   },
   buttonPrimaryText: {
-    color: '#fff',
+    color: '#ffffff',
     fontSize: 16,
     fontWeight: 'bold',
   },
@@ -605,15 +623,15 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
     marginLeft: 10,
     marginTop: 10,
-    marginBottom: 5,
+    marginBottom: 0, // Reduced marginBottom to bring the list closer
   },
   buttonConnect: {
     backgroundColor: '#00c663',
     paddingVertical: 14,
     paddingHorizontal: 25,
     borderRadius: 10,
-    width: '90%',
-    marginTop: 5,
+    width: '100%', // Changed from 90% to 100%
+    marginTop: 10, // Adjusted margin
     marginBottom: 20,
     alignItems: 'center',
     justifyContent: 'center',
