@@ -2,9 +2,10 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { StyleSheet, View, Text, FlatList, TouchableOpacity, PermissionsAndroid, Platform, Linking, ScrollView, SafeAreaView } from 'react-native';
 import { FTMSManager, LogEntry } from './FtmsManager'; // Import LogEntry type from FtmsManager
 import { BleError, Device, BleErrorCode, State } from 'react-native-ble-plx';
+import TestScreen from './TestScreen'; // Import the new TestScreen component
 
 // 앱 버전 관리
-const APP_VERSION = 'v0.0.4';
+const APP_VERSION = 'v0.0.5';
 
 export default function App() {
   const ftmsManagerRef = useRef<FTMSManager | null>(null);
@@ -17,6 +18,7 @@ export default function App() {
   const [bikeData, setBikeData] = useState<any>(null); // 실제 IndoorBikeData 타입으로 변경 가능
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [showLogs, setShowLogs] = useState(false);
+  const [showTestScreen, setShowTestScreen] = useState(false); // For showing test screen
 
   const requestPermissions = useCallback(async () => {
     if (Platform.OS === 'android') {
@@ -242,6 +244,21 @@ export default function App() {
     }
   };
 
+  // FTMS 호환성 테스트 화면으로 이동
+  const handleStartTest = () => {
+    if (!connectedDevice) {
+      setStatusMessage('테스트할 장치가 연결되어 있어야 합니다.');
+      return;
+    }
+    
+    setShowTestScreen(true);
+  };
+
+  // 테스트 화면 닫기
+  const handleCloseTestScreen = () => {
+    setShowTestScreen(false);
+  };
+
   const renderListHeader = () => (
     // This View acts like the original styles.container for padding and alignment
     // when FlatList is the main scroller.
@@ -299,113 +316,132 @@ export default function App() {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      {!connectedDevice && scannedDevices.length > 0 ? (
-        <FlatList
-          style={{ flex: 1 }}
-          data={scannedDevices}
-          renderItem={renderDeviceItem}
-          keyExtractor={(item) => item.id}
-          ListHeaderComponent={renderListHeader}
-          ListFooterComponent={renderListFooter}
-          showsVerticalScrollIndicator={false}
-          // Removed direct contentContainerStyle for FlatList, padding handled in header/footer/items
+      {/* Show the test screen when a device is connected and test is requested */}
+      {showTestScreen && connectedDevice && ftmsManagerRef.current ? (
+        <TestScreen
+          device={connectedDevice}
+          ftmsManager={ftmsManagerRef.current}
+          onClose={handleCloseTestScreen}
         />
       ) : (
-        <ScrollView contentContainerStyle={styles.scrollViewContent}>
-          <View style={styles.container}>
-            <View style={styles.headerContainer}>
-              <Text style={styles.title}>IsYafit</Text>
-              <Text style={styles.version}>{APP_VERSION}</Text>
-            </View>
-            <Text style={styles.status}>{statusMessage}</Text>
+        <>
+          {!connectedDevice && scannedDevices.length > 0 ? (
+            <FlatList
+              style={{ flex: 1 }}
+              data={scannedDevices}
+              renderItem={renderDeviceItem}
+              keyExtractor={(item) => item.id}
+              ListHeaderComponent={renderListHeader}
+              ListFooterComponent={renderListFooter}
+              showsVerticalScrollIndicator={false}
+              // Removed direct contentContainerStyle for FlatList, padding handled in header/footer/items
+            />
+          ) : (
+            <ScrollView contentContainerStyle={styles.scrollViewContent}>
+              <View style={styles.container}>
+                <View style={styles.headerContainer}>
+                  <Text style={styles.title}>IsYafit</Text>
+                  <Text style={styles.version}>{APP_VERSION}</Text>
+                </View>
+                <Text style={styles.status}>{statusMessage}</Text>
 
-            {!connectedDevice ? (
-              <>
-                <View style={styles.buttonsContainer}>
-                  <TouchableOpacity 
-                    style={styles.button}
-                    onPress={checkAndEnableBluetooth}
-                  >
-                    <Text style={styles.buttonText}>블루투스 상태 확인</Text>
-                  </TouchableOpacity>
-                </View>
-                <TouchableOpacity 
-                  style={[styles.buttonPrimary, (isScanning || !managerInitialized) && styles.buttonDisabled]}
-                  onPress={handleScan}
-                  disabled={isScanning || !managerInitialized}
-                >
-                  <Text style={styles.buttonPrimaryText}>{isScanning ? "스캔 중..." : "FTMS 장치 스캔"}</Text>
-                </TouchableOpacity>
-                {/* Message when no devices are found after a scan, and not currently scanning */}
-                {scannedDevices.length === 0 && !isScanning && statusMessage.includes("스캔 완료") && (
-                    <Text style={{color: 'white', marginTop: 20, textAlign: 'center'}}>발견된 장치가 없습니다.</Text>
-                )}
-                {selectedDevice && ( // This button appears if a device was selected, even if scannedDevices is now empty
-                  <TouchableOpacity 
-                    style={styles.buttonConnect} 
-                    onPress={handleConnectAndTest}
-                  >
-                    <Text style={styles.buttonConnectText}>{`'${selectedDevice.name || selectedDevice.id}' 테스트 시작`}</Text>
-                  </TouchableOpacity>
-                )}
-              </>
-            ) : (
-              <>
-                <Text style={styles.connectedDeviceText}>연결된 장치: {connectedDevice.name || connectedDevice.id}</Text>
-                {bikeData && (
-                  <View style={styles.bikeDataContainer}>
-                    <Text style={styles.bikeDataTitle}>실시간 데이터:</Text>
-                    <View style={styles.dataRow}>
-                      <View style={styles.dataItem}>
-                        <Text style={styles.dataValue}>{bikeData.instantaneousSpeed?.toFixed(2)}</Text>
-                        <Text style={styles.dataUnit}>km/h</Text>
-                        <Text style={styles.dataLabel}>속도</Text>
-                      </View>
-                      <View style={styles.dataItem}>
-                        <Text style={styles.dataValue}>{bikeData.instantaneousCadence?.toFixed(1)}</Text>
-                        <Text style={styles.dataUnit}>rpm</Text>
-                        <Text style={styles.dataLabel}>케이던스</Text>
-                      </View>
+                {!connectedDevice ? (
+                  <>
+                    <View style={styles.buttonsContainer}>
+                      <TouchableOpacity 
+                        style={styles.button}
+                        onPress={checkAndEnableBluetooth}
+                      >
+                        <Text style={styles.buttonText}>블루투스 상태 확인</Text>
+                      </TouchableOpacity>
                     </View>
-                    <View style={styles.dataRow}>
-                      <View style={styles.dataItem}>
-                        <Text style={styles.dataValue}>{bikeData.instantaneousPower}</Text>
-                        <Text style={styles.dataUnit}>W</Text>
-                        <Text style={styles.dataLabel}>파워</Text>
+                    <TouchableOpacity 
+                      style={[styles.buttonPrimary, (isScanning || !managerInitialized) && styles.buttonDisabled]}
+                      onPress={handleScan}
+                      disabled={isScanning || !managerInitialized}
+                    >
+                      <Text style={styles.buttonPrimaryText}>{isScanning ? "스캔 중..." : "FTMS 장치 스캔"}</Text>
+                    </TouchableOpacity>
+                    {/* Message when no devices are found after a scan, and not currently scanning */}
+                    {scannedDevices.length === 0 && !isScanning && statusMessage.includes("스캔 완료") && (
+                        <Text style={{color: 'white', marginTop: 20, textAlign: 'center'}}>발견된 장치가 없습니다.</Text>
+                    )}
+                    {selectedDevice && ( // This button appears if a device was selected, even if scannedDevices is now empty
+                      <TouchableOpacity 
+                        style={styles.buttonConnect} 
+                        onPress={handleConnectAndTest}
+                      >
+                        <Text style={styles.buttonConnectText}>{`'${selectedDevice.name || selectedDevice.id}' 테스트 시작`}</Text>
+                      </TouchableOpacity>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    <Text style={styles.connectedDeviceText}>연결된 장치: {connectedDevice.name || connectedDevice.id}</Text>
+                    {bikeData && (
+                      <View style={styles.bikeDataContainer}>
+                        <Text style={styles.bikeDataTitle}>실시간 데이터:</Text>
+                        <View style={styles.dataRow}>
+                          <View style={styles.dataItem}>
+                            <Text style={styles.dataValue}>{bikeData.instantaneousSpeed?.toFixed(2)}</Text>
+                            <Text style={styles.dataUnit}>km/h</Text>
+                            <Text style={styles.dataLabel}>속도</Text>
+                          </View>
+                          <View style={styles.dataItem}>
+                            <Text style={styles.dataValue}>{bikeData.instantaneousCadence?.toFixed(1)}</Text>
+                            <Text style={styles.dataUnit}>rpm</Text>
+                            <Text style={styles.dataLabel}>케이던스</Text>
+                          </View>
+                        </View>
+                        <View style={styles.dataRow}>
+                          <View style={styles.dataItem}>
+                            <Text style={styles.dataValue}>{bikeData.instantaneousPower}</Text>
+                            <Text style={styles.dataUnit}>W</Text>
+                            <Text style={styles.dataLabel}>파워</Text>
+                          </View>
+                          <View style={styles.dataItem}>
+                            <Text style={styles.dataValue}>{bikeData.resistanceLevel}</Text>
+                            <Text style={styles.dataUnit}></Text>
+                            <Text style={styles.dataLabel}>저항</Text>
+                          </View>
+                        </View>
                       </View>
-                      <View style={styles.dataItem}>
-                        <Text style={styles.dataValue}>{bikeData.resistanceLevel}</Text>
-                        <Text style={styles.dataUnit}></Text>
-                        <Text style={styles.dataLabel}>저항</Text>
-                      </View>
+                    )}
+                    <View style={styles.buttonGroup}>
+                      <TouchableOpacity 
+                        style={styles.buttonSecondary}
+                        onPress={() => {
+                          if (ftmsManagerRef.current) {
+                            setStatusMessage('테스트 시퀀스 실행 중...');
+                            ftmsManagerRef.current.runTestSequence()
+                              .then(() => setStatusMessage('테스트 시퀀스 완료. 데이터 수신 중...'))
+                              .catch(err => setStatusMessage(`테스트 중 오류 발생: ${err.message}`));
+                          }
+                        }}
+                      >
+                        <Text style={styles.buttonSecondaryText}>테스트 시작</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity 
+                        style={styles.buttonDanger}
+                        onPress={handleDisconnect}
+                      >
+                        <Text style={styles.buttonDangerText}>연결 해제</Text>
+                      </TouchableOpacity>
                     </View>
-                  </View>
+
+                    {/* FTMS 호환성 테스트 버튼 */}
+                    <TouchableOpacity 
+                      style={styles.buttonTestCompatibility}
+                      onPress={handleStartTest}
+                    >
+                      <Text style={styles.buttonTestCompatibilityText}>FTMS 호환성 테스트</Text>
+                    </TouchableOpacity>
+                  </>
                 )}
-                <View style={styles.buttonGroup}>
-                  <TouchableOpacity 
-                    style={styles.buttonSecondary}
-                    onPress={() => {
-                      if (ftmsManagerRef.current) {
-                        setStatusMessage('테스트 시퀀스 실행 중...');
-                        ftmsManagerRef.current.runTestSequence()
-                          .then(() => setStatusMessage('테스트 시퀀스 완료. 데이터 수신 중...'))
-                          .catch(err => setStatusMessage(`테스트 중 오류 발생: ${err.message}`));
-                      }
-                    }}
-                  >
-                    <Text style={styles.buttonSecondaryText}>테스트 시작</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity 
-                    style={styles.buttonDanger}
-                    onPress={handleDisconnect}
-                  >
-                    <Text style={styles.buttonDangerText}>연결 해제</Text>
-                  </TouchableOpacity>
-                </View>
-              </>
-            )}
-          </View>
-        </ScrollView>
+              </View>
+            </ScrollView>
+          )}
+        </>
       )}
     </SafeAreaView>
   );
@@ -659,5 +695,25 @@ const styles = StyleSheet.create({
     color: '#ef4444',
     fontSize: 14,
     fontWeight: '600',
+  },
+  buttonTestCompatibility: {
+    backgroundColor: '#4a5568',
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    width: '90%',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 15,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
+  },
+  buttonTestCompatibilityText: {
+    color: '#edf2f4',
+    fontSize: 16,
+    fontWeight: '500',
   }
 });
