@@ -495,10 +495,16 @@ export class FTMSManager {
         try {
             console.log("\n\nStarting FTMS Test Sequence...\n");
 
+            // 1. 현재 세션 종료
+            await this.stopMachine();
+            await delay(1000); // 장치가 상태 변경을 처리할 시간
+
+            // 2. 새 세션 시작
             await this.requestControl();
             await this.resetMachine();
             await this.startMachine();
 
+            // 3. 테스트 작업 실행
             await this.setResistance(100); // Example resistance
             await delay(3000); // Keep it for a while
 
@@ -516,7 +522,30 @@ export class FTMSManager {
         } catch (error) {
             console.error("Error during test sequence:", error);
         }
-    }    getConnectedDevice(): Device | null {
+    }
+    
+    // Initial connection sequence without running tests
+    async connectSequence(): Promise<boolean> {
+        if (!this.connectedDevice) {
+            console.error("No device connected to run connection sequence.");
+            return false;
+        }
+        try {
+            console.log("\n\nStarting FTMS Connection Sequence...\n");
+
+            await this.requestControl();
+            await this.resetMachine();
+            await this.startMachine();
+
+            console.log("\nFTMS Connection Sequence Completed.\n");
+            return true;
+        } catch (error) {
+            console.error("Error during connection sequence:", error);
+            return false;
+        }
+    }
+    
+    getConnectedDevice(): Device | null {
         return this.connectedDevice;
     }
     

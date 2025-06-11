@@ -3,6 +3,9 @@ import { StyleSheet, View, Text, FlatList, TouchableOpacity, PermissionsAndroid,
 import { FTMSManager } from './FtmsManager'; // 경로가 정확한지 확인해주세요.
 import { BleError, Device, BleErrorCode, State } from 'react-native-ble-plx';
 
+// 앱 버전 관리
+const APP_VERSION = 'v0.0.3';
+
 export default function App() {
   const ftmsManagerRef = useRef<FTMSManager | null>(null);
   const [managerInitialized, setManagerInitialized] = useState<boolean>(false);
@@ -161,7 +164,7 @@ export default function App() {
       await ftmsManagerRef.current.disconnectDevice(); // 이전 연결 해제
       const device = await ftmsManagerRef.current.connectToDevice(selectedDevice.id);
       setConnectedDevice(device);
-      setStatusMessage(`'${device.name}'에 연결됨. 알림 구독 및 테스트 시작...`);
+      setStatusMessage(`'${device.name}'에 연결됨. 알림 구독 중...`);
 
       await ftmsManagerRef.current.subscribeToNotifications(
         (cpResponse) => {
@@ -173,11 +176,18 @@ export default function App() {
           setBikeData(newBikeData); // UI 업데이트를 위해 상태에 저장
         }
       );
-      setStatusMessage('알림 구독 완료. 테스트 시퀀스 실행 중...');
-      await ftmsManagerRef.current.runTestSequence(); // 테스트 시퀀스 실행
-      setStatusMessage('테스트 시퀀스 완료. 데이터 수신 중...');
+      
+      setStatusMessage('알림 구독 완료. 초기 연결 시퀀스 실행 중...');
+      
+      // connectSequence 실행 - 기본 요청, 리셋, 시작만 수행
+      const success = await ftmsManagerRef.current.connectSequence();
+      if(success) {
+        setStatusMessage('초기 연결 시퀀스 완료. 데이터 수신 중...');
+      } else {
+        setStatusMessage('초기 연결 시퀀스 중 오류 발생. 다시 시도하세요.');
+      }
     } catch (error) {
-      console.error("Connection or test error:", error);
+      console.error("Connection error:", error);
       const bleError = error as BleError;
       setStatusMessage(`오류: ${bleError.message}`);
       setConnectedDevice(null);
@@ -237,10 +247,12 @@ export default function App() {
       <Text style={styles.deviceText}>{item.name || 'Unknown Device'}</Text>
       <Text style={styles.deviceTextSmall}>{item.id}</Text>
     </TouchableOpacity>
-  );
-  return (
+  );  return (
     <View style={styles.container}>
-      <Text style={styles.title}>IsYafit</Text>
+      <View style={styles.headerContainer}>
+        <Text style={styles.title}>IsYafit</Text>
+        <Text style={styles.version}>{APP_VERSION}</Text>
+      </View>
       <Text style={styles.status}>{statusMessage}</Text>      {!connectedDevice ? (
         <>
           <View style={styles.buttonsContainer}>
@@ -314,9 +326,16 @@ export default function App() {
           <View style={styles.buttonGroup}>
             <TouchableOpacity 
               style={styles.buttonSecondary}
-              onPress={() => ftmsManagerRef.current?.runTestSequence()}
+              onPress={() => {
+                if (ftmsManagerRef.current) {
+                  setStatusMessage('테스트 시퀀스 실행 중...');
+                  ftmsManagerRef.current.runTestSequence()
+                    .then(() => setStatusMessage('테스트 시퀀스 완료. 데이터 수신 중...'))
+                    .catch(err => setStatusMessage(`테스트 중 오류 발생: ${err.message}`));
+                }
+              }}
             >
-              <Text style={styles.buttonSecondaryText}>테스트 시퀀스 재실행</Text>
+              <Text style={styles.buttonSecondaryText}>테스트 시작</Text>
             </TouchableOpacity>
             <TouchableOpacity 
               style={styles.buttonDanger}
@@ -340,13 +359,27 @@ const styles = StyleSheet.create({
     paddingTop: 70, // Increased top padding as requested
     paddingHorizontal: 20,
   },
+  headerContainer: {
+    width: '100%',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 15,
+  },
   title: {
     fontSize: 32,
     fontWeight: 'bold',
     color: '#00c663',
-    marginBottom: 15,
     textTransform: 'uppercase',
     letterSpacing: 1,
+  },
+  version: {
+    fontSize: 12,
+    color: '#aaa',
+    backgroundColor: 'rgba(0,0,0,0.2)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
   },
   status: {
     fontSize: 14,
@@ -363,7 +396,7 @@ const styles = StyleSheet.create({
   },
   list: {
     width: '100%',
-    maxHeight: 220,
+    maxHeight: 350,  // 최대 높이를 220dp에서 350dp로 증가
     marginBottom: 25,
     borderWidth: 0,
     borderRadius: 10,
