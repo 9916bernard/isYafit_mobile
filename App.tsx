@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { StyleSheet, View, Text, FlatList, TouchableOpacity, PermissionsAndroid, Platform, Linking } from 'react-native';
-import { FTMSManager } from './FtmsManager'; // 경로가 정확한지 확인해주세요.
+import { StyleSheet, View, Text, FlatList, TouchableOpacity, PermissionsAndroid, Platform, Linking, ScrollView, SafeAreaView } from 'react-native';
+import { FTMSManager, LogEntry } from './FtmsManager'; // Import LogEntry type from FtmsManager
 import { BleError, Device, BleErrorCode, State } from 'react-native-ble-plx';
 
 // 앱 버전 관리
-const APP_VERSION = 'v0.0.3';
+const APP_VERSION = 'v0.0.4';
 
 export default function App() {
   const ftmsManagerRef = useRef<FTMSManager | null>(null);
@@ -15,6 +15,8 @@ export default function App() {
   const [isScanning, setIsScanning] = useState(false);
   const [statusMessage, setStatusMessage] = useState('앱 테스트 중입니다.');
   const [bikeData, setBikeData] = useState<any>(null); // 실제 IndoorBikeData 타입으로 변경 가능
+  const [logs, setLogs] = useState<LogEntry[]>([]);
+  const [showLogs, setShowLogs] = useState(false);
 
   const requestPermissions = useCallback(async () => {
     if (Platform.OS === 'android') {
@@ -54,8 +56,7 @@ export default function App() {
     }
     return true;
   }, []);
-    useEffect(() => {
-    // FTMSManager 초기화를 한 번만 수행
+    useEffect(() => {    // FTMSManager 초기화를 한 번만 수행
     const initializeFtmsManager = async () => {
       // 이미 초기화되었으면 건너뛰기
       if (ftmsManagerRef.current) {
@@ -65,6 +66,11 @@ export default function App() {
       try {
         const manager = new FTMSManager();
         ftmsManagerRef.current = manager;
+        
+        // Set up log callback to capture logs
+        manager.setLogCallback((newLogs) => {
+          setLogs(newLogs);
+        });
         
         // 블루투스 상태 확인
         const isBluetoothOn = await manager.checkBluetoothState();
@@ -236,10 +242,52 @@ export default function App() {
     }
   };
 
+  const renderListHeader = () => (
+    // This View acts like the original styles.container for padding and alignment
+    // when FlatList is the main scroller.
+    <View style={{ paddingHorizontal: styles.container.paddingHorizontal, paddingTop: styles.container.paddingTop }}>
+      <View style={styles.headerContainer}>
+        <Text style={styles.title}>IsYafit</Text>
+        <Text style={styles.version}>{APP_VERSION}</Text>
+      </View>
+      <Text style={styles.status}>{statusMessage}</Text>
+      
+      <View style={styles.buttonsContainer}>
+        <TouchableOpacity style={styles.button} onPress={checkAndEnableBluetooth}>
+          <Text style={styles.buttonText}>블루투스 상태 확인</Text>
+        </TouchableOpacity>
+      </View>
+      <TouchableOpacity
+        style={[styles.buttonPrimary, (isScanning || !managerInitialized) && styles.buttonDisabled]}
+        onPress={handleScan}
+        disabled={isScanning || !managerInitialized}
+      >
+        <Text style={styles.buttonPrimaryText}>{isScanning ? "스캔 중..." : "FTMS 장치 스캔"}</Text>
+      </TouchableOpacity>
+      <Text style={styles.sectionTitle}>발견된 장치</Text>
+    </View>
+  );
+
+  const renderListFooter = () => (
+    selectedDevice && (
+      // This View also considers container's horizontal padding for alignment
+      <View style={{ alignItems: 'center', paddingHorizontal: styles.container.paddingHorizontal, paddingTop: 10, paddingBottom: 20 }}>
+        <TouchableOpacity
+          style={styles.buttonConnect}
+          onPress={handleConnectAndTest}
+        >
+          <Text style={styles.buttonConnectText}>{`'${selectedDevice.name || selectedDevice.id}' 테스트 시작`}</Text>
+        </TouchableOpacity>
+      </View>
+    )
+  );
+
   const renderDeviceItem = ({ item }: { item: Device }) => (
     <TouchableOpacity
       style={[
         styles.deviceItem,
+        // Apply horizontal padding to device items to align with header/footer content
+        { marginHorizontal: styles.container.paddingHorizontal }, 
         selectedDevice?.id === item.id && styles.selectedDeviceItem
       ]}
       onPress={() => handleSelectDevice(item)}
@@ -247,117 +295,140 @@ export default function App() {
       <Text style={styles.deviceText}>{item.name || 'Unknown Device'}</Text>
       <Text style={styles.deviceTextSmall}>{item.id}</Text>
     </TouchableOpacity>
-  );  return (
-    <View style={styles.container}>
-      <View style={styles.headerContainer}>
-        <Text style={styles.title}>IsYafit</Text>
-        <Text style={styles.version}>{APP_VERSION}</Text>
-      </View>
-      <Text style={styles.status}>{statusMessage}</Text>      {!connectedDevice ? (
-        <>
-          <View style={styles.buttonsContainer}>
-            <TouchableOpacity 
-              style={styles.button}
-              onPress={checkAndEnableBluetooth}
-            >
-              <Text style={styles.buttonText}>블루투스 상태 확인</Text>
-            </TouchableOpacity>
-          </View>
-          <TouchableOpacity 
-            style={[styles.buttonPrimary, (isScanning || !managerInitialized) && styles.buttonDisabled]}
-            onPress={handleScan}
-            disabled={isScanning || !managerInitialized}
-          >
-            <Text style={styles.buttonPrimaryText}>{isScanning ? "스캔 중..." : "FTMS 장치 스캔"}</Text>
-          </TouchableOpacity>
-          {scannedDevices.length > 0 && (
-            <>
-              <Text style={styles.sectionTitle}>발견된 장치</Text>
-              <FlatList
-                data={scannedDevices}
-                renderItem={renderDeviceItem}
-                keyExtractor={(item) => item.id}
-                style={styles.list}
-                showsVerticalScrollIndicator={false}
-              />
-            </>
-          )}
-          {selectedDevice && (
-            <TouchableOpacity 
-              style={styles.buttonConnect} 
-              onPress={handleConnectAndTest}
-            >
-              <Text style={styles.buttonConnectText}>{`'${selectedDevice.name || selectedDevice.id}' 테스트 시작`}</Text>
-            </TouchableOpacity>
-          )}
-        </>
+  );
+
+  return (
+    <SafeAreaView style={styles.safeArea}>
+      {!connectedDevice && scannedDevices.length > 0 ? (
+        <FlatList
+          style={{ flex: 1 }}
+          data={scannedDevices}
+          renderItem={renderDeviceItem}
+          keyExtractor={(item) => item.id}
+          ListHeaderComponent={renderListHeader}
+          ListFooterComponent={renderListFooter}
+          showsVerticalScrollIndicator={false}
+          // Removed direct contentContainerStyle for FlatList, padding handled in header/footer/items
+        />
       ) : (
-        <>
-          <Text style={styles.connectedDeviceText}>연결된 장치: {connectedDevice.name || connectedDevice.id}</Text>
-          {bikeData && (
-            <View style={styles.bikeDataContainer}>
-              <Text style={styles.bikeDataTitle}>실시간 데이터:</Text>
-              <View style={styles.dataRow}>
-                <View style={styles.dataItem}>
-                  <Text style={styles.dataValue}>{bikeData.instantaneousSpeed?.toFixed(2)}</Text>
-                  <Text style={styles.dataUnit}>km/h</Text>
-                  <Text style={styles.dataLabel}>속도</Text>
-                </View>
-                <View style={styles.dataItem}>
-                  <Text style={styles.dataValue}>{bikeData.instantaneousCadence?.toFixed(1)}</Text>
-                  <Text style={styles.dataUnit}>rpm</Text>
-                  <Text style={styles.dataLabel}>케이던스</Text>
-                </View>
-              </View>
-              <View style={styles.dataRow}>
-                <View style={styles.dataItem}>
-                  <Text style={styles.dataValue}>{bikeData.instantaneousPower}</Text>
-                  <Text style={styles.dataUnit}>W</Text>
-                  <Text style={styles.dataLabel}>파워</Text>
-                </View>
-                <View style={styles.dataItem}>
-                  <Text style={styles.dataValue}>{bikeData.resistanceLevel}</Text>
-                  <Text style={styles.dataUnit}></Text>
-                  <Text style={styles.dataLabel}>저항</Text>
-                </View>
-              </View>
+        <ScrollView contentContainerStyle={styles.scrollViewContent}>
+          <View style={styles.container}>
+            <View style={styles.headerContainer}>
+              <Text style={styles.title}>IsYafit</Text>
+              <Text style={styles.version}>{APP_VERSION}</Text>
             </View>
-          )}
-          <View style={styles.buttonGroup}>
-            <TouchableOpacity 
-              style={styles.buttonSecondary}
-              onPress={() => {
-                if (ftmsManagerRef.current) {
-                  setStatusMessage('테스트 시퀀스 실행 중...');
-                  ftmsManagerRef.current.runTestSequence()
-                    .then(() => setStatusMessage('테스트 시퀀스 완료. 데이터 수신 중...'))
-                    .catch(err => setStatusMessage(`테스트 중 오류 발생: ${err.message}`));
-                }
-              }}
-            >
-              <Text style={styles.buttonSecondaryText}>테스트 시작</Text>
-            </TouchableOpacity>
-            <TouchableOpacity 
-              style={styles.buttonDanger}
-              onPress={handleDisconnect}
-            >
-              <Text style={styles.buttonDangerText}>연결 해제</Text>
-            </TouchableOpacity>
+            <Text style={styles.status}>{statusMessage}</Text>
+
+            {!connectedDevice ? (
+              <>
+                <View style={styles.buttonsContainer}>
+                  <TouchableOpacity 
+                    style={styles.button}
+                    onPress={checkAndEnableBluetooth}
+                  >
+                    <Text style={styles.buttonText}>블루투스 상태 확인</Text>
+                  </TouchableOpacity>
+                </View>
+                <TouchableOpacity 
+                  style={[styles.buttonPrimary, (isScanning || !managerInitialized) && styles.buttonDisabled]}
+                  onPress={handleScan}
+                  disabled={isScanning || !managerInitialized}
+                >
+                  <Text style={styles.buttonPrimaryText}>{isScanning ? "스캔 중..." : "FTMS 장치 스캔"}</Text>
+                </TouchableOpacity>
+                {/* Message when no devices are found after a scan, and not currently scanning */}
+                {scannedDevices.length === 0 && !isScanning && statusMessage.includes("스캔 완료") && (
+                    <Text style={{color: 'white', marginTop: 20, textAlign: 'center'}}>발견된 장치가 없습니다.</Text>
+                )}
+                {selectedDevice && ( // This button appears if a device was selected, even if scannedDevices is now empty
+                  <TouchableOpacity 
+                    style={styles.buttonConnect} 
+                    onPress={handleConnectAndTest}
+                  >
+                    <Text style={styles.buttonConnectText}>{`'${selectedDevice.name || selectedDevice.id}' 테스트 시작`}</Text>
+                  </TouchableOpacity>
+                )}
+              </>
+            ) : (
+              <>
+                <Text style={styles.connectedDeviceText}>연결된 장치: {connectedDevice.name || connectedDevice.id}</Text>
+                {bikeData && (
+                  <View style={styles.bikeDataContainer}>
+                    <Text style={styles.bikeDataTitle}>실시간 데이터:</Text>
+                    <View style={styles.dataRow}>
+                      <View style={styles.dataItem}>
+                        <Text style={styles.dataValue}>{bikeData.instantaneousSpeed?.toFixed(2)}</Text>
+                        <Text style={styles.dataUnit}>km/h</Text>
+                        <Text style={styles.dataLabel}>속도</Text>
+                      </View>
+                      <View style={styles.dataItem}>
+                        <Text style={styles.dataValue}>{bikeData.instantaneousCadence?.toFixed(1)}</Text>
+                        <Text style={styles.dataUnit}>rpm</Text>
+                        <Text style={styles.dataLabel}>케이던스</Text>
+                      </View>
+                    </View>
+                    <View style={styles.dataRow}>
+                      <View style={styles.dataItem}>
+                        <Text style={styles.dataValue}>{bikeData.instantaneousPower}</Text>
+                        <Text style={styles.dataUnit}>W</Text>
+                        <Text style={styles.dataLabel}>파워</Text>
+                      </View>
+                      <View style={styles.dataItem}>
+                        <Text style={styles.dataValue}>{bikeData.resistanceLevel}</Text>
+                        <Text style={styles.dataUnit}></Text>
+                        <Text style={styles.dataLabel}>저항</Text>
+                      </View>
+                    </View>
+                  </View>
+                )}
+                <View style={styles.buttonGroup}>
+                  <TouchableOpacity 
+                    style={styles.buttonSecondary}
+                    onPress={() => {
+                      if (ftmsManagerRef.current) {
+                        setStatusMessage('테스트 시퀀스 실행 중...');
+                        ftmsManagerRef.current.runTestSequence()
+                          .then(() => setStatusMessage('테스트 시퀀스 완료. 데이터 수신 중...'))
+                          .catch(err => setStatusMessage(`테스트 중 오류 발생: ${err.message}`));
+                      }
+                    }}
+                  >
+                    <Text style={styles.buttonSecondaryText}>테스트 시작</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity 
+                    style={styles.buttonDanger}
+                    onPress={handleDisconnect}
+                  >
+                    <Text style={styles.buttonDangerText}>연결 해제</Text>
+                  </TouchableOpacity>
+                </View>
+              </>
+            )}
           </View>
-        </>
+        </ScrollView>
       )}
-    </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  safeArea: {
     flex: 1,
+    backgroundColor: '#1a2029',
+  },
+  scrollViewContent: {
+    flexGrow: 1,
+    // justifyContent: 'flex-start', // Content within ScrollView will determine its own alignment
+    // alignItems: 'center', // Content within ScrollView will determine its own alignment
+  },
+  container: {
+    flex: 1, // Allow container to fill ScrollView or be part of FlatList header/footer
     justifyContent: 'flex-start',
     alignItems: 'center',
     backgroundColor: '#1a2029',
-    paddingTop: 70, // Increased top padding as requested
+    paddingTop: Platform.OS === 'android' ? 20 : 70, // Adjusted top padding for SafeAreaView
     paddingHorizontal: 20,
+    width: '100%', // Ensure container takes full width within ScrollView
   },
   headerContainer: {
     width: '100%',
@@ -396,8 +467,8 @@ const styles = StyleSheet.create({
   },
   list: {
     width: '100%',
-    maxHeight: 350,  // 최대 높이를 220dp에서 350dp로 증가
-    marginBottom: 25,
+    // maxHeight: 350, // No longer needed here if FlatList is primary scroller or items are rendered in ScrollView
+    marginBottom: 25, // This might still be useful if list is shown within ScrollView context
     borderWidth: 0,
     borderRadius: 10,
     overflow: 'hidden',
@@ -407,6 +478,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#2a3142',
     backgroundColor: '#242c3b',
+    // marginHorizontal will be added dynamically in renderDeviceItem for alignment
   },
   selectedDeviceItem: {
     backgroundColor: '#2d3748',

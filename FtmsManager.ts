@@ -69,6 +69,13 @@ interface IndoorBikeData {
 
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
+// Type definition for log entries
+export interface LogEntry {
+    timestamp: string;
+    message: string;
+    type: 'info' | 'error' | 'success' | 'warning';
+}
+
 export class FTMSManager {
     private bleManager: BleManager;
     private connectedDevice: Device | null = null;
@@ -78,11 +85,18 @@ export class FTMSManager {
     private currentState: State = State.Unknown;
 
     private ftmsFeatureBits: number = 0;
-
-    constructor() {
+    private isDeviceActive: boolean = false; // Track if device is active (started)
+    
+    // Logging system
+    private logs: LogEntry[] = [];
+    private logCallback: ((logs: LogEntry[]) => void) | null = null;    constructor() {
         this.bleManager = new BleManager();
         this.monitorBluetoothState();
-    }    private monitorBluetoothState(): void {
+        this.clearLogs();
+        this.logInfo("FTMS Manager initialized");
+    }
+    
+    private monitorBluetoothState(): void {
         this.bluetoothStateSubscription = this.bleManager.onStateChange((state) => {
             console.log(`Bluetooth state changed to: ${state}`);
             this.currentState = state;
@@ -134,68 +148,65 @@ export class FTMSManager {
                 reject(e);
             }
         });
-    }
-
-    async connectToDevice(deviceId: string): Promise<Device> {
-        console.log(`Connecting to ${deviceId}...`);
+    }    async connectToDevice(deviceId: string): Promise<Device> {
+        this.logInfo(`Connecting to device ${deviceId}...`);
         try {
             await this.disconnectDevice(); // Ensure any previous connection is closed
 
             const device = await this.bleManager.connectToDevice(deviceId, { timeout: 20000 });
-            console.log(`Connected to ${device.name}`);
+            this.logSuccess(`Connected to ${device.name}`);
             this.connectedDevice = device;
+            this.isDeviceActive = false; // Reset active state
 
             await device.discoverAllServicesAndCharacteristics();
-            console.log("Services and characteristics discovered.");
+            this.logInfo("Services and characteristics discovered");
 
             // Read FTMS Features
             await this.readFTMSFeatures();
 
             return device;
         } catch (error) {
-            console.error("Connection error:", error);
+            this.logError(`Connection error: ${error instanceof Error ? error.message : String(error)}`);
             this.connectedDevice = null;
+            this.isDeviceActive = false;
             throw error;
         }
-    }
-
-    async disconnectDevice(): Promise<void> {
+    }    async disconnectDevice(): Promise<void> {
         if (this.connectedDevice) {
             try {
-                console.log(`Disconnecting from ${this.connectedDevice.name}...`);
+                this.logInfo(`Disconnecting from ${this.connectedDevice.name}...`);
                 this.controlPointSubscription?.remove();
                 this.indoorBikeDataSubscription?.remove();
                 this.controlPointSubscription = null;
                 this.indoorBikeDataSubscription = null;
                 await this.bleManager.cancelDeviceConnection(this.connectedDevice.id);
-                console.log("Disconnected.");
+                this.logSuccess("Disconnected successfully");
             } catch (error) {
                 // Ignore cancellation errors if device is already disconnected
                 if ((error as BleError).errorCode !== BleErrorCode.DeviceDisconnected) {
-                    console.error("Disconnection error:", error);
+                    this.logError(`Disconnection error: ${error instanceof Error ? error.message : String(error)}`);
                 }
             } finally {
                 this.connectedDevice = null;
+                this.isDeviceActive = false; // Reset active state
             }
         }
-    }
-
-    private async writeControlPoint(data: Buffer): Promise<Characteristic | null> {
+    }    private async writeControlPoint(data: Buffer): Promise<Characteristic | null> {
         if (!this.connectedDevice) {
-            console.error("Device not connected.");
+            this.logError("Device not connected");
             return null;
         }
         try {
-            console.log(`Writing to Control Point: ${data.toString('hex')}`);
+            this.logInfo(`Writing to Control Point: ${data.toString('hex')}`);
             const char = await this.connectedDevice.writeCharacteristicWithResponseForService(
                 FTMS_SERVICE_UUID,
                 FTMS_CONTROL_POINT_CHAR_UUID,
                 data.toString('base64')
             );
-            console.log("Write successful.");
+            this.logSuccess("Write successful");
             return char;
         } catch (error) {
-            console.error("Write Control Point error:", error);
+            this.logError(`Write Control Point error: ${error instanceof Error ? error.message : String(error)}`);
             throw error;
         }
     }
@@ -271,9 +282,7 @@ export class FTMSManager {
             }
         );
         console.log("Subscribed to Indoor Bike Data notifications");
-    }
-
-    parseControlPointResponse(data: Buffer): void {
+    }    parseControlPointResponse(data: Buffer): void {
         if (data.length >= 3) {
             const responseOpCode = data[0]; // Should be 0x80 for response
             const requestOpCode = data[1];
@@ -281,19 +290,31 @@ export class FTMSManager {
 
             if (responseOpCode === 0x80) {
                 if (resultCode === 0x01) { // Success
-                    console.log(`✅ Control point operation successful for opcode: 0x${requestOpCode.toString(16)}`);
+                    this.logSuccess(`Control point operation successful for opcode: 0x${requestOpCode.toString(16)}`);
                     if (requestOpCode === 0x04) { // SET_RESISTANCE_LEVEL
-                        console.log("🔧 Resistance level set successfully");
+                        this.logSuccess("Resistance level set successfully");
+                    } else if (requestOpCode === 0x00) { // REQUEST_CONTROL
+                        this.logSuccess("Control request accepted");
+                    } else if (requestOpCode === 0x01) { // RESET
+                        this.logSuccess("Machine reset successful");
+                    } else if (requestOpCode === 0x07) { // START
+                        this.logSuccess("Machine started successfully");
+                    } else if (requestOpCode === 0x08) { // STOP
+                        this.logSuccess("Machine stopped successfully");
+                    } else if (requestOpCode === 0x05) { // SET_TARGET_POWER
+                        this.logSuccess("Target power set successfully");
+                    } else if (requestOpCode === 0x11) { // SET_SIM_PARAMS
+                        this.logSuccess("Simulation parameters set successfully");
                     }
                     // Add more specific success messages based on requestOpCode
                 } else {
-                    console.warn(`❌ Control point operation failed - Opcode: 0x${requestOpCode.toString(16)}, Result: 0x${resultCode.toString(16)}`);
+                    this.logWarning(`Control point operation failed - Opcode: 0x${requestOpCode.toString(16)}, Result: 0x${resultCode.toString(16)}`);
                 }
             } else {
-                console.warn(`Received unexpected Control Point data format: ${data.toString('hex')}`);
+                this.logWarning(`Received unexpected Control Point data format: ${data.toString('hex')}`);
             }
         } else {
-            console.warn(`Received short Control Point data: ${data.toString('hex')}`);
+            this.logWarning(`Received short Control Point data: ${data.toString('hex')}`);
         }
     }
 
@@ -446,17 +467,17 @@ export class FTMSManager {
         console.log("Sending Reset command...");
         await this.writeControlPoint(RESET);
         await delay(1000);
-    }
-
-    async startMachine(): Promise<void> {
+    }    async startMachine(): Promise<void> {
         console.log("Sending Start command...");
         await this.writeControlPoint(START);
+        this.isDeviceActive = true; // Set device as active
         await delay(1000);
     }
 
     async stopMachine(): Promise<void> {
         console.log("Sending Stop command...");
         await this.writeControlPoint(STOP); // Stop command might have parameters for pause etc.
+        this.isDeviceActive = false; // Set device as inactive
         await delay(1000);
     }
 
@@ -484,63 +505,65 @@ export class FTMSManager {
         // await this.writeControlPoint(DEFAULT_SIM_PARAMS);
         await this.writeControlPoint(SET_SIM_PARAMS(windSpeed, grade, crr, cw));
         await delay(500);
-    }
-
-    // Example test sequence
+    }    // Example test sequence
     async runTestSequence(): Promise<void> {
         if (!this.connectedDevice) {
-            console.error("No device connected to run test sequence.");
+            this.logError("No device connected to run test sequence");
             return;
         }
         try {
-            console.log("\n\nStarting FTMS Test Sequence...\n");
+            this.logInfo("Starting FTMS Test Sequence");
+            
+            // Machine should already be started from connectSequence()
+            // If it's not, we'll start it
+            if (!this.isDeviceActive) {
+                this.logWarning("Device not active, starting connection sequence first");
+                await this.requestControl();
+                await this.resetMachine();
+                await this.startMachine();
+            }
 
-            // 1. 현재 세션 종료
-            await this.stopMachine();
-            await delay(1000); // 장치가 상태 변경을 처리할 시간
-
-            // 2. 새 세션 시작
-            await this.requestControl();
-            await this.resetMachine();
-            await this.startMachine();
-
-            // 3. 테스트 작업 실행
+            // Execute test actions directly without stopping/restarting
+            this.logInfo("Setting resistance level to 100");
             await this.setResistance(100); // Example resistance
             await delay(3000); // Keep it for a while
 
             // Example: Set target power if supported
+            // this.logInfo("Setting target power to 100 watts");
             // await this.setTargetPower(100); // 100 Watts
             // await delay(3000);
 
             // Example: Set simulation parameters
+            // this.logInfo("Setting simulation parameters: 0 wind speed, 20% grade");
             // await this.setSimulationParameters(0, 20, 0, 0); // 20% grade
             // await delay(3000);
 
-            await this.stopMachine();
+            // We don't stop the machine at the end of tests anymore
+            // await this.stopMachine();
 
-            console.log("\nFTMS Test Sequence Completed.\n");
+            this.logSuccess("FTMS Test Sequence Completed - Device remains active");
         } catch (error) {
-            console.error("Error during test sequence:", error);
+            this.logError(`Error during test sequence: ${error instanceof Error ? error.message : String(error)}`);
         }
-    }
-    
-    // Initial connection sequence without running tests
+    }// Initial connection sequence without running tests
     async connectSequence(): Promise<boolean> {
         if (!this.connectedDevice) {
-            console.error("No device connected to run connection sequence.");
+            this.logError("No device connected to run connection sequence");
             return false;
         }
         try {
-            console.log("\n\nStarting FTMS Connection Sequence...\n");
+            this.logInfo("Starting FTMS Connection Sequence");
 
             await this.requestControl();
             await this.resetMachine();
             await this.startMachine();
-
-            console.log("\nFTMS Connection Sequence Completed.\n");
+            // Note: isDeviceActive is set to true in startMachine()
+            
+            this.logSuccess("FTMS Connection Sequence Completed - Device is now active and ready for commands");
             return true;
         } catch (error) {
-            console.error("Error during connection sequence:", error);
+            this.logError(`Error during connection sequence: ${error instanceof Error ? error.message : String(error)}`);
+            this.isDeviceActive = false;
             return false;
         }
     }
@@ -549,6 +572,49 @@ export class FTMSManager {
         return this.connectedDevice;
     }
     
+    // Logging methods
+    setLogCallback(callback: (logs: LogEntry[]) => void): void {
+        this.logCallback = callback;
+    }
+
+    getLogs(): LogEntry[] {
+        return [...this.logs];
+    }
+
+    clearLogs(): void {
+        this.logs = [];
+        if (this.logCallback) {
+            this.logCallback([]);
+        }
+    }
+
+    private addLog(message: string, type: 'info' | 'error' | 'success' | 'warning'): void {
+        const timestamp = new Date().toISOString();
+        const log: LogEntry = { timestamp, message, type };
+        this.logs.push(log);
+        console.log(`[${type.toUpperCase()}] ${message}`);
+        
+        if (this.logCallback) {
+            this.logCallback([...this.logs]);
+        }
+    }
+
+    logInfo(message: string): void {
+        this.addLog(message, 'info');
+    }
+
+    logError(message: string): void {
+        this.addLog(message, 'error');
+    }
+
+    logSuccess(message: string): void {
+        this.addLog(message, 'success');
+    }
+
+    logWarning(message: string): void {
+        this.addLog(message, 'warning');
+    }
+
     destroy() {
         if (this.connectedDevice) {
             this.disconnectDevice();
@@ -570,58 +636,4 @@ export class FTMSManager {
     }
 }
 
-// --- Example Usage (Conceptual - to be used within a React Native component) ---
-/*
-const ftmsManager = new FTMSManager();
 
-async function main() {
-    try {
-        // 1. Scan for devices
-        let targetDevice: Device | null = null;
-        console.log("Scanning...");
-        await ftmsManager.scanForFTMSDevices(5000, (device) => {
-            console.log(`Device found: ${device.name} - ${device.id}`);
-            // Implement logic to select a device, e.g., based on name or show a list to user
-            if (device.name?.includes("YourBikeName")) { // Replace with actual bike name or selection logic
-                targetDevice = device;
-                ftmsManager.bleManager.stopDeviceScan(); // Stop scan once target is found
-            }
-        });
-
-        if (!targetDevice) {
-            console.log("No target FTMS device found.");
-            return;
-        }
-
-        // 2. Connect to the selected device
-        await ftmsManager.connectToDevice(targetDevice.id);
-
-        // 3. Subscribe to notifications
-        await ftmsManager.subscribeToNotifications(
-            (cpResponse) => {
-                console.log("App: CP Response:", cpResponse.toString('hex'));
-            },
-            (bikeData) => {
-                console.log("App: Bike Data:", JSON.stringify(bikeData, null, 2));
-            }
-        );
-
-        // 4. Run test sequence or send commands as needed
-        await ftmsManager.runTestSequence();
-
-        // Keep alive for a bit to receive data
-        await delay(10000);
-
-
-    } catch (error) {
-        console.error("Main error:", error);
-    } finally {
-        await ftmsManager.disconnectDevice();
-        ftmsManager.destroy();
-    }
-}
-
-// To run this example, you'd typically call main() from a React Native component's useEffect or a button press.
-// Ensure BLE permissions are handled in your React Native app.
-// main(); // Do not call directly here, integrate into RN app lifecycle.
-*/
