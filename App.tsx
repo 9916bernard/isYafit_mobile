@@ -1,10 +1,11 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { StyleSheet, View, Text, Button, FlatList, TouchableOpacity, PermissionsAndroid, Platform } from 'react-native';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { StyleSheet, View, Text, FlatList, TouchableOpacity, PermissionsAndroid, Platform, Linking } from 'react-native';
 import { FTMSManager } from './FtmsManager'; // 경로가 정확한지 확인해주세요.
-import { BleError, Device } from 'react-native-ble-plx';
+import { BleError, Device, BleErrorCode, State } from 'react-native-ble-plx';
 
 export default function App() {
-  const [ftmsManager, setFtmsManager] = useState<FTMSManager | null>(null);
+  const ftmsManagerRef = useRef<FTMSManager | null>(null);
+  const [managerInitialized, setManagerInitialized] = useState<boolean>(false);
   const [scannedDevices, setScannedDevices] = useState<Device[]>([]);
   const [selectedDevice, setSelectedDevice] = useState<Device | null>(null);
   const [connectedDevice, setConnectedDevice] = useState<Device | null>(null);
@@ -50,13 +51,26 @@ export default function App() {
     }
     return true;
   }, []);
-  useEffect(() => {
-    // FTMSManager 초기화를 컴포넌트 마운트 후에 수행
+    useEffect(() => {
+    // FTMSManager 초기화를 한 번만 수행
     const initializeFtmsManager = async () => {
+      // 이미 초기화되었으면 건너뛰기
+      if (ftmsManagerRef.current) {
+        return;
+      }
+      
       try {
         const manager = new FTMSManager();
-        setFtmsManager(manager);
-        setStatusMessage('FTMS Manager 초기화 완료. 스캔을 시작할 수 있습니다.');
+        ftmsManagerRef.current = manager;
+        
+        // 블루투스 상태 확인
+        const isBluetoothOn = await manager.checkBluetoothState();
+        if (!isBluetoothOn) {
+          setStatusMessage('블루투스가 꺼져있습니다. 블루투스를 켜고 다시 시도하세요.');
+        } else {
+          setManagerInitialized(true);
+          setStatusMessage('FTMS Manager 초기화 완료. 스캔을 시작할 수 있습니다.');
+        }
       } catch (error) {
         console.error('FTMSManager 초기화 오류:', error);
         setStatusMessage('FTMS Manager 초기화 실패. BLE가 지원되지 않을 수 있습니다.');
@@ -66,14 +80,16 @@ export default function App() {
     initializeFtmsManager();
     requestPermissions();
 
+    // 컴포넌트 언마운트 시 한 번만 정리
     return () => {
-      if (ftmsManager) {
-        ftmsManager.destroy();
+      if (ftmsManagerRef.current) {
+        ftmsManagerRef.current.destroy();
+        ftmsManagerRef.current = null;
       }
     };
   }, [requestPermissions]);
-  const handleScan = async () => {
-    if (!ftmsManager) {
+    const handleScan = async () => {
+    if (!ftmsManagerRef.current) {
       setStatusMessage('FTMS Manager가 아직 초기화되지 않았습니다.');
       return;
     }
@@ -84,13 +100,26 @@ export default function App() {
       return;
     }
 
+    // Check Bluetooth state before scanning
+    try {
+      const isBluetoothOn = await ftmsManagerRef.current.checkBluetoothState();
+      if (!isBluetoothOn) {
+        setStatusMessage('블루투스가 꺼져있습니다. 블루투스를 켜고 다시 시도하세요.');
+        return;
+      }
+    } catch (error) {
+      console.error("Bluetooth state check error:", error);
+      setStatusMessage('블루투스 상태 확인 중 오류가 발생했습니다.');
+      return;
+    }
+
     setIsScanning(true);
     setScannedDevices([]);
     setSelectedDevice(null);
     setConnectedDevice(null);
     setStatusMessage('FTMS 장치를 스캔 중...');
     try {
-      await ftmsManager.scanForFTMSDevices(10000, (device) => {
+      await ftmsManagerRef.current.scanForFTMSDevices(10000, (device) => {
         setScannedDevices((prevDevices) => {
           if (!prevDevices.find(d => d.id === device.id)) {
             return [...prevDevices, device];
@@ -101,7 +130,12 @@ export default function App() {
       setStatusMessage('스캔 완료. 장치를 선택하세요.');
     } catch (error) {
       console.error("Scan error:", error);
-      setStatusMessage('스캔 중 오류 발생.');
+      const bleError = error as BleError;
+      if (bleError.errorCode === BleErrorCode.BluetoothPoweredOff) {
+        setStatusMessage('블루투스가 꺼져있습니다. 블루투스를 켜고 다시 시도하세요.');
+      } else {
+        setStatusMessage(`스캔 중 오류 발생: ${bleError.message || '알 수 없는 오류'}`);
+      }
     } finally {
       setIsScanning(false);
     }
@@ -111,8 +145,9 @@ export default function App() {
     setSelectedDevice(device);
     setStatusMessage(`${device.name || device.id} 선택됨. 연결 및 테스트 준비 완료.`);
   };
+  
   const handleConnectAndTest = async () => {
-    if (!ftmsManager) {
+    if (!ftmsManagerRef.current) {
       setStatusMessage('FTMS Manager가 아직 초기화되지 않았습니다.');
       return;
     }
@@ -123,12 +158,12 @@ export default function App() {
     }
     setStatusMessage(`'${selectedDevice.name || selectedDevice.id}'에 연결 중...`);
     try {
-      await ftmsManager.disconnectDevice(); // 이전 연결 해제
-      const device = await ftmsManager.connectToDevice(selectedDevice.id);
+      await ftmsManagerRef.current.disconnectDevice(); // 이전 연결 해제
+      const device = await ftmsManagerRef.current.connectToDevice(selectedDevice.id);
       setConnectedDevice(device);
       setStatusMessage(`'${device.name}'에 연결됨. 알림 구독 및 테스트 시작...`);
 
-      await ftmsManager.subscribeToNotifications(
+      await ftmsManagerRef.current.subscribeToNotifications(
         (cpResponse) => {
           console.log("App: CP Response:", cpResponse.toString('hex'));
           // UI에 CP 응답 표시 로직 추가 가능
@@ -139,7 +174,7 @@ export default function App() {
         }
       );
       setStatusMessage('알림 구독 완료. 테스트 시퀀스 실행 중...');
-      await ftmsManager.runTestSequence(); // 테스트 시퀀스 실행
+      await ftmsManagerRef.current.runTestSequence(); // 테스트 시퀀스 실행
       setStatusMessage('테스트 시퀀스 완료. 데이터 수신 중...');
     } catch (error) {
       console.error("Connection or test error:", error);
@@ -148,15 +183,16 @@ export default function App() {
       setConnectedDevice(null);
     }
   };
+  
   const handleDisconnect = async () => {
-    if (!ftmsManager) {
+    if (!ftmsManagerRef.current) {
       setStatusMessage('FTMS Manager가 초기화되지 않았습니다.');
       return;
     }
 
     setStatusMessage('연결 해제 중...');
     try {
-      await ftmsManager.disconnectDevice();
+      await ftmsManagerRef.current.disconnectDevice();
       setConnectedDevice(null);
       setSelectedDevice(null);
       setBikeData(null);
@@ -164,6 +200,29 @@ export default function App() {
     } catch (error) {
       console.error("Disconnect error:", error);
       setStatusMessage('연결 해제 중 오류 발생.');
+    }
+  };
+
+  const checkAndEnableBluetooth = async () => {
+    if (!ftmsManagerRef.current) {
+      setStatusMessage('FTMS Manager가 아직 초기화되지 않았습니다.');
+      return;
+    }
+
+    try {
+      const isBluetoothOn = await ftmsManagerRef.current.checkBluetoothState();
+      if (isBluetoothOn) {
+        setStatusMessage('블루투스가 켜져 있습니다. 스캔을 시작할 수 있습니다.');
+      } else {
+        setStatusMessage('블루투스가 꺼져 있습니다. 블루투스 설정으로 이동합니다.');
+        // 블루투스 설정으로 이동 (안드로이드만 해당)
+        if (Platform.OS === 'android') {
+          Linking.openSettings();
+        }
+      }
+    } catch (error) {
+      console.error("Bluetooth state check error:", error);
+      setStatusMessage('블루투스 상태 확인 중 오류가 발생했습니다.');
     }
   };
 
@@ -179,27 +238,45 @@ export default function App() {
       <Text style={styles.deviceTextSmall}>{item.id}</Text>
     </TouchableOpacity>
   );
-
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>FTMS 테스트 앱</Text>
+      <Text style={styles.title}>IsYafit</Text>
       <Text style={styles.status}>{statusMessage}</Text>      {!connectedDevice ? (
         <>
-          <Button 
-            title={isScanning ? "스캔 중..." : "FTMS 장치 스캔"} 
-            onPress={handleScan} 
-            disabled={isScanning || !ftmsManager} 
-          />
+          <View style={styles.buttonsContainer}>
+            <TouchableOpacity 
+              style={styles.button}
+              onPress={checkAndEnableBluetooth}
+            >
+              <Text style={styles.buttonText}>블루투스 상태 확인</Text>
+            </TouchableOpacity>
+          </View>
+          <TouchableOpacity 
+            style={[styles.buttonPrimary, (isScanning || !managerInitialized) && styles.buttonDisabled]}
+            onPress={handleScan}
+            disabled={isScanning || !managerInitialized}
+          >
+            <Text style={styles.buttonPrimaryText}>{isScanning ? "스캔 중..." : "FTMS 장치 스캔"}</Text>
+          </TouchableOpacity>
           {scannedDevices.length > 0 && (
-            <FlatList
-              data={scannedDevices}
-              renderItem={renderDeviceItem}
-              keyExtractor={(item) => item.id}
-              style={styles.list}
-            />
+            <>
+              <Text style={styles.sectionTitle}>발견된 장치</Text>
+              <FlatList
+                data={scannedDevices}
+                renderItem={renderDeviceItem}
+                keyExtractor={(item) => item.id}
+                style={styles.list}
+                showsVerticalScrollIndicator={false}
+              />
+            </>
           )}
           {selectedDevice && (
-            <Button title={`'${selectedDevice.name || selectedDevice.id}' 테스트 시작`} onPress={handleConnectAndTest} />
+            <TouchableOpacity 
+              style={styles.buttonConnect} 
+              onPress={handleConnectAndTest}
+            >
+              <Text style={styles.buttonConnectText}>{`'${selectedDevice.name || selectedDevice.id}' 테스트 시작`}</Text>
+            </TouchableOpacity>
           )}
         </>
       ) : (
@@ -208,15 +285,46 @@ export default function App() {
           {bikeData && (
             <View style={styles.bikeDataContainer}>
               <Text style={styles.bikeDataTitle}>실시간 데이터:</Text>
-              <Text>속도: {bikeData.instantaneousSpeed?.toFixed(2)} km/h</Text>
-              <Text>케이던스: {bikeData.instantaneousCadence?.toFixed(1)} rpm</Text>
-              <Text>파워: {bikeData.instantaneousPower} W</Text>
-              <Text>저항: {bikeData.resistanceLevel}</Text>
-              {/* 필요에 따라 더 많은 데이터 필드 표시 */}
+              <View style={styles.dataRow}>
+                <View style={styles.dataItem}>
+                  <Text style={styles.dataValue}>{bikeData.instantaneousSpeed?.toFixed(2)}</Text>
+                  <Text style={styles.dataUnit}>km/h</Text>
+                  <Text style={styles.dataLabel}>속도</Text>
+                </View>
+                <View style={styles.dataItem}>
+                  <Text style={styles.dataValue}>{bikeData.instantaneousCadence?.toFixed(1)}</Text>
+                  <Text style={styles.dataUnit}>rpm</Text>
+                  <Text style={styles.dataLabel}>케이던스</Text>
+                </View>
+              </View>
+              <View style={styles.dataRow}>
+                <View style={styles.dataItem}>
+                  <Text style={styles.dataValue}>{bikeData.instantaneousPower}</Text>
+                  <Text style={styles.dataUnit}>W</Text>
+                  <Text style={styles.dataLabel}>파워</Text>
+                </View>
+                <View style={styles.dataItem}>
+                  <Text style={styles.dataValue}>{bikeData.resistanceLevel}</Text>
+                  <Text style={styles.dataUnit}></Text>
+                  <Text style={styles.dataLabel}>저항</Text>
+                </View>
+              </View>
             </View>
           )}
-          <Button title="테스트 시퀀스 재실행" onPress={() => ftmsManager?.runTestSequence()} />
-          <Button title="연결 해제" onPress={handleDisconnect} />
+          <View style={styles.buttonGroup}>
+            <TouchableOpacity 
+              style={styles.buttonSecondary}
+              onPress={() => ftmsManagerRef.current?.runTestSequence()}
+            >
+              <Text style={styles.buttonSecondaryText}>테스트 시퀀스 재실행</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={styles.buttonDanger}
+              onPress={handleDisconnect}
+            >
+              <Text style={styles.buttonDangerText}>연결 해제</Text>
+            </TouchableOpacity>
+          </View>
         </>
       )}
     </View>
@@ -228,63 +336,223 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'flex-start',
     alignItems: 'center',
-    backgroundColor: '#f0f0f0',
-    paddingTop: 50,
+    backgroundColor: '#1a2029',
+    paddingTop: 70, // Increased top padding as requested
     paddingHorizontal: 20,
   },
   title: {
-    fontSize: 24,
+    fontSize: 32,
     fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 10,
+    color: '#00c663',
+    marginBottom: 15,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
   },
   status: {
-    fontSize: 16,
-    color: '#666',
-    marginBottom: 20,
+    fontSize: 14,
+    color: '#fff',
+    marginBottom: 25,
     textAlign: 'center',
+    opacity: 0.8,
+  },
+  buttonsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    width: '100%',
+    marginBottom: 20,
   },
   list: {
     width: '100%',
-    maxHeight: 200,
-    marginBottom: 20,
-    borderWidth: 1,
-    borderColor: '#ddd',
+    maxHeight: 220,
+    marginBottom: 25,
+    borderWidth: 0,
+    borderRadius: 10,
+    overflow: 'hidden',
   },
   deviceItem: {
-    padding: 15,
+    padding: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#eee',
-    backgroundColor: '#fff',
+    borderBottomColor: '#2a3142',
+    backgroundColor: '#242c3b',
   },
   selectedDeviceItem: {
-    backgroundColor: '#e0e0ff',
+    backgroundColor: '#2d3748',
+    borderLeftWidth: 3,
+    borderLeftColor: '#00c663',
   },
   deviceText: {
     fontSize: 16,
-    color: '#333',
+    fontWeight: '600',
+    color: '#ffffff',
   },
   deviceTextSmall: {
     fontSize: 12,
-    color: '#777',
+    color: '#b3b3b3',
+    marginTop: 3,
   },
   connectedDeviceText: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: 'green',
-    marginBottom: 10,
+    color: '#00c663',
+    marginBottom: 15,
   },
   bikeDataContainer: {
-    marginTop: 15,
-    padding: 10,
-    backgroundColor: '#fff',
-    borderRadius: 5,
+    marginTop: 20,
+    padding: 18,
+    backgroundColor: '#242c3b',
+    borderRadius: 12,
     width: '100%',
     alignItems: 'flex-start',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 10,
+    elevation: 5,
+  },  bikeDataTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#00c663',
+    marginBottom: 10,
   },
-  bikeDataTitle: {
+  button: {
+    backgroundColor: '#242c3b',
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    minWidth: 150,
+    alignItems: 'center',
+    justifyContent: 'center',
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
+  },
+  buttonText: {
+    color: '#ffffff',
+    fontSize: 15,
+    fontWeight: '500',
+  },
+  buttonPrimary: {
+    backgroundColor: '#00c663',
+    paddingVertical: 14,
+    paddingHorizontal: 30,
+    borderRadius: 10,
+    width: '90%',
+    marginVertical: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+  },
+  buttonPrimaryText: {
+    color: '#fff',
     fontSize: 16,
     fontWeight: 'bold',
+  },
+  buttonDisabled: {
+    backgroundColor: '#4d5d6e',
+    opacity: 0.7,
+  },
+  sectionTitle: {
+    fontSize: 16,
+    color: '#fff',
+    fontWeight: '600',
+    alignSelf: 'flex-start',
+    marginLeft: 10,
+    marginTop: 10,
     marginBottom: 5,
+  },
+  buttonConnect: {
+    backgroundColor: '#00c663',
+    paddingVertical: 14,
+    paddingHorizontal: 25,
+    borderRadius: 10,
+    width: '90%',
+    marginTop: 5,
+    marginBottom: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+  },
+  buttonConnectText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  dataRow: {
+    flexDirection: 'row',
+    width: '100%',
+    justifyContent: 'space-between',
+    marginVertical: 8,
+  },
+  dataItem: {
+    flex: 1,
+    alignItems: 'center',
+    padding: 10,
+    backgroundColor: '#1a2029',
+    borderRadius: 8,
+    marginHorizontal: 5,
+  },
+  dataValue: {
+    fontSize: 24,
+    color: '#fff',
+    fontWeight: 'bold',
+  },
+  dataUnit: {
+    fontSize: 14,
+    color: '#aaa',
+    marginTop: 2,
+  },
+  dataLabel: {
+    fontSize: 13,
+    color: '#00c663',
+    marginTop: 5,
+    fontWeight: '600',
+  },
+  buttonGroup: {
+    flexDirection: 'row',
+    width: '90%',
+    justifyContent: 'space-between',
+    marginTop: 20,
+  },
+  buttonSecondary: {
+    backgroundColor: '#2d3748',
+    paddingVertical: 12,
+    paddingHorizontal: 15,
+    borderRadius: 8,
+    width: '48%',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#00c663',
+  },
+  buttonSecondaryText: {
+    color: '#00c663',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  buttonDanger: {
+    backgroundColor: 'rgba(239, 68, 68, 0.15)',
+    paddingVertical: 12,
+    paddingHorizontal: 15,
+    borderRadius: 8,
+    width: '48%',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#ef4444',
+  },
+  buttonDangerText: {
+    color: '#ef4444',
+    fontSize: 14,
+    fontWeight: '600',
   }
 });

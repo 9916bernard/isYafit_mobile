@@ -1,4 +1,4 @@
-import { BleManager, Device, Characteristic, Service, Subscription, BleErrorCode, BleError } from 'react-native-ble-plx';
+import { BleManager, Device, Characteristic, Service, Subscription, BleErrorCode, BleError, State } from 'react-native-ble-plx';
 import { Buffer } from 'buffer'; // Ensure 'buffer' is installed as a dependency
 
 // FTMS UUIDs
@@ -74,37 +74,65 @@ export class FTMSManager {
     private connectedDevice: Device | null = null;
     private controlPointSubscription: Subscription | null = null;
     private indoorBikeDataSubscription: Subscription | null = null;
+    private bluetoothStateSubscription: Subscription | null = null;
+    private currentState: State = State.Unknown;
 
     private ftmsFeatureBits: number = 0;
 
     constructor() {
         this.bleManager = new BleManager();
+        this.monitorBluetoothState();
+    }    private monitorBluetoothState(): void {
+        this.bluetoothStateSubscription = this.bleManager.onStateChange((state) => {
+            console.log(`Bluetooth state changed to: ${state}`);
+            this.currentState = state;
+        }, true); // true means start monitoring immediately
     }
-
+    
+    async checkBluetoothState(): Promise<boolean> {
+        const state = await this.bleManager.state();
+        console.log(`Current Bluetooth state: ${state}`);
+        this.currentState = state;
+        return state === State.PoweredOn;
+    }
+    
     async scanForFTMSDevices(
         scanDuration: number = 10000,
         onDeviceFound: (device: Device) => void
     ): Promise<void> {
         console.log("Scanning for FTMS devices...");
+        
+        // Check Bluetooth state before scanning
+        const isBluetoothOn = await this.checkBluetoothState();
+        if (!isBluetoothOn) {
+            console.error("Bluetooth is powered off. Cannot start scan.");
+            throw new Error("Bluetooth is not powered on");
+        }
+        
         return new Promise((resolve, reject) => {
-            this.bleManager.startDeviceScan([FTMS_SERVICE_UUID], null, (error, device) => {
-                if (error) {
-                    console.error("Scan error:", error);
-                    this.bleManager.stopDeviceScan();
-                    reject(error);
-                    return;
-                }
-                if (device) {
-                    console.log(`Found FTMS device: ${device.name} (${device.id})`);
-                    onDeviceFound(device);
-                }
-            });
+            try {
+                this.bleManager.startDeviceScan([FTMS_SERVICE_UUID], null, (error, device) => {
+                    if (error) {
+                        console.error("Scan error:", error);
+                        this.bleManager.stopDeviceScan();
+                        reject(error);
+                        return;
+                    }
+                    if (device) {
+                        console.log(`Found FTMS device: ${device.name} (${device.id})`);
+                        onDeviceFound(device);
+                    }
+                });
 
-            setTimeout(() => {
-                this.bleManager.stopDeviceScan();
-                console.log("Scan finished.");
-                resolve();
-            }, scanDuration);
+                setTimeout(() => {
+                    this.bleManager.stopDeviceScan();
+                    console.log("Scan finished.");
+                    resolve();
+                }, scanDuration);
+            } catch (e) {
+                console.error("Error starting scan:", e);
+                reject(e);
+            }
         });
     }
 
@@ -488,16 +516,28 @@ export class FTMSManager {
         } catch (error) {
             console.error("Error during test sequence:", error);
         }
-    }
-
-    getConnectedDevice(): Device | null {
+    }    getConnectedDevice(): Device | null {
         return this.connectedDevice;
     }
-
+    
     destroy() {
-        this.disconnectDevice();
-        this.bleManager.destroy();
-        console.log("FTMSManager destroyed.");
+        if (this.connectedDevice) {
+            this.disconnectDevice();
+        }
+        
+        // Clean up Bluetooth state subscription
+        if (this.bluetoothStateSubscription) {
+            this.bluetoothStateSubscription.remove();
+            this.bluetoothStateSubscription = null;
+        }
+        
+        // BleManager를 아직 destroy하지 않은 경우에만 destroy 수행
+        if (this.bleManager) {
+            this.bleManager.destroy();
+            console.log("FTMSManager destroyed.");
+            // destroy 후에는 bleManager를 null로 설정하여 중복 호출 방지
+            (this as any).bleManager = null;
+        }
     }
 }
 
