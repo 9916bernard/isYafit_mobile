@@ -5,10 +5,10 @@ import { FTMSManager, LogEntry } from './FtmsManager'; // Import LogEntry type f
 import { BleError, Device, BleErrorCode, State } from 'react-native-ble-plx';
 import TestScreen from './TestScreen'; // Import the new TestScreen component
 import EnhancedTestScreen from './EnhancedTestScreen'; // Import the enhanced test screen with logs
-import AppLogButton from './AppLogButton';
+
 
 // 앱 버전 관리
-const APP_VERSION = 'v0.0.4';
+const APP_VERSION = 'v0.0.6';
 
 export default function App() {
   const ftmsManagerRef = useRef<FTMSManager | null>(null);
@@ -304,7 +304,6 @@ export default function App() {
           <Text style={styles.version}>{APP_VERSION}</Text>
         </View>
         <View style={{ flexDirection: 'row' }}>
-          <AppLogButton logs={logs} />
           <TouchableOpacity style={styles.bluetoothIconContainer} onPress={checkAndEnableBluetooth}>
             <Icon name="bluetooth" size={24} color="#00c663" />
           </TouchableOpacity>
@@ -452,19 +451,6 @@ export default function App() {
                     )}
                     <View style={styles.buttonGroup}>
                       <TouchableOpacity 
-                        style={styles.buttonSecondary}
-                        onPress={() => {
-                          if (ftmsManagerRef.current) {
-                            setStatusMessage('테스트 시퀀스 실행 중...');
-                            ftmsManagerRef.current.runTestSequence()
-                              .then(() => setStatusMessage('테스트 시퀀스 완료. 데이터 수신 중...'))
-                              .catch(err => setStatusMessage(`테스트 중 오류 발생: ${err.message}`));
-                          }
-                        }}
-                      >
-                        <Text style={styles.buttonSecondaryText}>테스트 시작</Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity 
                         style={styles.buttonDanger}
                         onPress={handleDisconnect}
                       >
@@ -480,12 +466,12 @@ export default function App() {
                     </TouchableOpacity>
                     
                     {/* 로그 보기 버튼 */}
-                    <TouchableOpacity 
+                    {/* <TouchableOpacity 
                       style={[styles.buttonTestCompatibility, {marginTop: 10, backgroundColor: '#3182CE'}]}
                       onPress={showLogViewer}
                     >
                       <Text style={styles.buttonTestCompatibilityText}>명령/데이터 로그 보기</Text>
-                    </TouchableOpacity>
+                    </TouchableOpacity> */}
                   </>
                 )}
               </View>
@@ -785,3 +771,7 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   }
 });
+function setLogs(newLogs: LogEntry[]) {
+  throw new Error('Function not implemented.');
+}
+
