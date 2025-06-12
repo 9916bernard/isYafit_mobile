@@ -27,7 +27,8 @@ export class FTMSTester {
         commandPending: false,
         lastCommandType: '',
         commandSentTime: 0,
-        expectedResistance: undefined as number | undefined
+        expectedResistance: undefined as number | undefined,
+        resistanceChangeNotedForLastCmd: false // Added
     };
 
     constructor(ftmsManager: FTMSManager) {
@@ -426,21 +427,20 @@ export class FTMSTester {
             if (!this.testResults.controlTests) {
                 this.testResults.controlTests = {};
             }
-            
+
             // Test SET_RESISTANCE_LEVEL
             try {
-                // Use the middle of the resistance range if available
-                let resistanceLevel = 8; // Default value
-                if (this.testResults.supportRanges?.resistance) {
-                    const range = this.testResults.supportRanges.resistance;
-                    resistanceLevel = Math.floor((range.min + range.max) / 2);
-                }
+                // Use a common test resistance level, e.g., 5.
+                // This might need to be adjusted based on device's supported range,
+                // which should be read by readSupportRanges if available.
+                const resistanceLevel = 5; 
                 
                 this.resistanceTracking = {
                     commandPending: true,
                     lastCommandType: 'SET_RESISTANCE_LEVEL',
                     commandSentTime: Date.now(),
-                    expectedResistance: resistanceLevel
+                    expectedResistance: resistanceLevel,
+                    resistanceChangeNotedForLastCmd: false // Initialize
                 };
                 
                 await this.ftmsManager.setResistance(resistanceLevel);
@@ -471,7 +471,8 @@ export class FTMSTester {
                     commandPending: true,
                     lastCommandType: 'SET_TARGET_POWER',
                     commandSentTime: Date.now(),
-                    expectedResistance: undefined
+                    expectedResistance: undefined,
+                    resistanceChangeNotedForLastCmd: false // Initialize
                 };
                 
                 await this.ftmsManager.setTargetPower(targetPower);
@@ -501,7 +502,8 @@ export class FTMSTester {
                     commandPending: true,
                     lastCommandType: 'SET_SIM_PARAMS',
                     commandSentTime: Date.now(),
-                    expectedResistance: undefined
+                    expectedResistance: undefined,
+                    resistanceChangeNotedForLastCmd: false // Initialize
                 };
                 
                 await this.ftmsManager.setSimulationParameters(0, grade, 0.004, 0.5);
@@ -527,8 +529,7 @@ export class FTMSTester {
             // Don't throw here to allow the test to continue
         }
     }
-    
-    private handleControlPointResponse(data: Buffer): void {
+      private handleControlPointResponse(data: Buffer): void {
         if (data.length < 3) return;
         
         const responseOpCode = data[0];
@@ -537,27 +538,41 @@ export class FTMSTester {
         
         if (responseOpCode !== 0x80) return; // Not a control point response
         
+        // Result code 해석
+        const resultString = this.getResultCodeString(resultCode);
+        const responseTime = this.resistanceTracking.commandPending ? 
+            ` (응답시간: ${Date.now() - this.resistanceTracking.commandSentTime}ms)` : '';
+        
         // Update the control test result based on the response
         if (requestOpCode === 0x04 && this.testResults.controlTests?.['SET_RESISTANCE_LEVEL']) { // SET_RESISTANCE_LEVEL
             this.testResults.controlTests['SET_RESISTANCE_LEVEL'].status = resultCode === 0x01 ? "OK" : "Failed";
-            this.testResults.controlTests['SET_RESISTANCE_LEVEL'].details += ` (Response: ${resultCode === 0x01 ? "Success" : "Error code " + resultCode})`;
+            this.testResults.controlTests['SET_RESISTANCE_LEVEL'].details += 
+                ` (응답: ${resultString}${responseTime})`;
             
             if (resultCode !== 0x01) {
-                this.testResults.issuesFound.push(`저항 수준 설정 오류 (코드: ${resultCode})`);
+                this.testResults.issuesFound.push(`저항 수준 설정 오류 (코드: ${resultCode} - ${resultString})`);
             }
         } else if (requestOpCode === 0x05 && this.testResults.controlTests?.['SET_TARGET_POWER']) { // SET_TARGET_POWER
             this.testResults.controlTests['SET_TARGET_POWER'].status = resultCode === 0x01 ? "OK" : "Failed";
-            this.testResults.controlTests['SET_TARGET_POWER'].details += ` (Response: ${resultCode === 0x01 ? "Success" : "Error code " + resultCode})`;
+            this.testResults.controlTests['SET_TARGET_POWER'].details += 
+                ` (응답: ${resultString}${responseTime})`;
             
             if (resultCode !== 0x01) {
-                this.testResults.issuesFound.push(`목표 파워 설정 오류 (코드: ${resultCode})`);
+                this.testResults.issuesFound.push(`목표 파워 설정 오류 (코드: ${resultCode} - ${resultString})`);
+            } else {
+                // 성공 시 추가 설명
+                this.testResults.controlTests['SET_TARGET_POWER'].details += ' - 파워 목표 설정 확인됨';
             }
         } else if (requestOpCode === 0x11 && this.testResults.controlTests?.['SET_SIM_PARAMS']) { // SET_SIM_PARAMS
             this.testResults.controlTests['SET_SIM_PARAMS'].status = resultCode === 0x01 ? "OK" : "Failed";
-            this.testResults.controlTests['SET_SIM_PARAMS'].details += ` (Response: ${resultCode === 0x01 ? "Success" : "Error code " + resultCode})`;
+            this.testResults.controlTests['SET_SIM_PARAMS'].details += 
+                ` (응답: ${resultString}${responseTime})`;
             
             if (resultCode !== 0x01) {
-                this.testResults.issuesFound.push(`시뮬레이션 파라미터 설정 오류 (코드: ${resultCode})`);
+                this.testResults.issuesFound.push(`시뮬레이션 파라미터 설정 오류 (코드: ${resultCode} - ${resultString})`);
+            } else {
+                // 성공 시 추가 설명
+                this.testResults.controlTests['SET_SIM_PARAMS'].details += ' - 경사도 시뮬레이션 적용됨';
             }
         }
         
@@ -565,6 +580,18 @@ export class FTMSTester {
         if (this.resistanceTracking.commandPending && 
             (requestOpCode === 0x04 || requestOpCode === 0x05 || requestOpCode === 0x11)) {
             this.resistanceTracking.commandPending = false;
+        }
+    }
+    
+    // FTMS 제어 응답 코드를 의미있는 문자열로 변환
+    private getResultCodeString(resultCode: number): string {
+        switch(resultCode) {
+            case 0x01: return '성공';
+            case 0x02: return '잘못된 파라미터';
+            case 0x03: return '작업 실패';
+            case 0x04: return '제어 권한 없음';
+            case 0x05: return '잘못된 상태';
+            default: return `알 수 없음(${resultCode})`;
         }
     }
     
@@ -581,33 +608,80 @@ export class FTMSTester {
         if (data.instantaneousPower !== undefined) {
             this.testResults = updateDataField(this.testResults, 'power', data.instantaneousPower);
         }
-        
-        if (data.resistanceLevel !== undefined) {
+          if (data.resistanceLevel !== undefined) {
             this.testResults = updateDataField(this.testResults, 'resistance', data.resistanceLevel);
             
             // Track resistance changes
             if (this.lastResistanceLevel !== undefined && 
                 this.lastResistanceLevel !== data.resistanceLevel) {
-                    
+                
+                let changeSource = '자동 변경';
+                let attributedToCommandType: string | undefined = undefined;
+                const currentTime = Date.now();
+                const timeSinceLastCommand = currentTime - this.resistanceTracking.commandSentTime;
+
+                // If a relevant command was sent recently (e.g., within 5 seconds)
+                if (this.resistanceTracking.lastCommandType && timeSinceLastCommand < 5000) {
+                    switch(this.resistanceTracking.lastCommandType) {
+                        case 'SET_RESISTANCE_LEVEL':
+                            changeSource = `저항 레벨 명령 (${this.resistanceTracking.lastCommandType})`;
+                            attributedToCommandType = this.resistanceTracking.lastCommandType;
+                            break;
+                        case 'SET_TARGET_POWER':
+                            changeSource = `목표 파워 명령 (${this.resistanceTracking.lastCommandType})`;
+                            attributedToCommandType = this.resistanceTracking.lastCommandType;
+                            break;
+                        case 'SET_SIM_PARAMS':
+                            changeSource = `경사도 시뮬레이션 명령 (${this.resistanceTracking.lastCommandType})`;
+                            attributedToCommandType = this.resistanceTracking.lastCommandType;
+                            break;
+                    }
+                    if (attributedToCommandType) {
+                         changeSource += ` (저항 변경까지: ${timeSinceLastCommand}ms)`;
+                    }
+                }
+                
                 this.testResults = trackResistanceChange(
                     this.testResults,
                     'resistance',
                     data.resistanceLevel,
                     this.lastResistanceLevel,
-                    this.resistanceTracking.commandPending ? this.resistanceTracking.lastCommandType : undefined
+                    changeSource
                 );
                 
-                // If we were expecting a resistance change due to a command, check if it worked
-                if (this.resistanceTracking.commandPending && 
-                    this.resistanceTracking.lastCommandType === 'SET_RESISTANCE_LEVEL' &&
+                // Specific check for SET_RESISTANCE_LEVEL outcome
+                if (attributedToCommandType === 'SET_RESISTANCE_LEVEL' &&
                     this.resistanceTracking.expectedResistance !== undefined) {
                         
-                    if (data.resistanceLevel === this.resistanceTracking.expectedResistance) {
-                        if (this.testResults.controlTests?.['SET_RESISTANCE_LEVEL']) {
-                            this.testResults.controlTests['SET_RESISTANCE_LEVEL'].status = "OK";
-                            this.testResults.controlTests['SET_RESISTANCE_LEVEL'].details += " (확인됨 - 저항이 예상대로 변경됨)";
+                    const controlTestEntry = this.testResults.controlTests?.['SET_RESISTANCE_LEVEL'];
+                    if (controlTestEntry) {
+                        if (data.resistanceLevel === this.resistanceTracking.expectedResistance) {
+                            controlTestEntry.status = "OK";
+                            controlTestEntry.details += ` (실제 저항 확인됨: ${this.lastResistanceLevel} → ${data.resistanceLevel})`;
+                        } else {
+                            controlTestEntry.details += ` (경고: 저항이 예상(${this.resistanceTracking.expectedResistance})과 다르게 변경됨: ${this.lastResistanceLevel} → ${data.resistanceLevel})`;
+                            this.testResults.issuesFound.push(
+                                `저항 수준 설정 후 예상치 불일치: 예상 ${this.resistanceTracking.expectedResistance}, 실제 ${data.resistanceLevel} (명령 후 ${timeSinceLastCommand}ms)`
+                            );
                         }
-                        this.resistanceTracking.commandPending = false;
+                        this.resistanceTracking.expectedResistance = undefined; // Mark expectation as checked
+                    }
+                }
+
+                // Add confirmation for SET_TARGET_POWER and SET_SIM_PARAMS if resistance changed post-command
+                if (!this.resistanceTracking.resistanceChangeNotedForLastCmd) {
+                    if (attributedToCommandType === 'SET_TARGET_POWER') {
+                        const controlTestEntry = this.testResults.controlTests?.['SET_TARGET_POWER'];
+                        if (controlTestEntry && controlTestEntry.status === "OK") { // If command was ack'd
+                            controlTestEntry.details += ` (저항 변경 관찰됨: ${this.lastResistanceLevel} → ${data.resistanceLevel}, 명령 후 ${timeSinceLastCommand}ms)`;
+                            this.resistanceTracking.resistanceChangeNotedForLastCmd = true;
+                        }
+                    } else if (attributedToCommandType === 'SET_SIM_PARAMS') {
+                        const controlTestEntry = this.testResults.controlTests?.['SET_SIM_PARAMS'];
+                        if (controlTestEntry && controlTestEntry.status === "OK") { // If command was ack'd
+                            controlTestEntry.details += ` (저항 변경 관찰됨: ${this.lastResistanceLevel} → ${data.resistanceLevel}, 명령 후 ${timeSinceLastCommand}ms)`;
+                            this.resistanceTracking.resistanceChangeNotedForLastCmd = true;
+                        }
                     }
                 }
             }

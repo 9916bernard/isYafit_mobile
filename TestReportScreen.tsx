@@ -48,7 +48,6 @@ ${results.issuesFound && results.issuesFound.length > 0 ? '\n발견된 문제점
       console.error('Error sharing report:', error);
     }
   };
-
   const renderControlTests = () => {
     if (!results.controlTests || Object.keys(results.controlTests).length === 0) {
       return (
@@ -56,30 +55,62 @@ ${results.issuesFound && results.issuesFound.length > 0 ? '\n발견된 문제점
       );
     }
 
+    // 명령 타입별 한글 설명
+    const commandTypeLabels: { [key: string]: string } = {
+      'SET_RESISTANCE_LEVEL': '저항 레벨 설정',
+      'SET_TARGET_POWER': '목표 파워 설정',
+      'SET_SIM_PARAMS': '경사도 시뮬레이션'
+    };
+
     return (
       <>
-        {Object.entries(results.controlTests).map(([name, test]) => (
-          <View key={name} style={styles.controlTestItem}>
-            <View style={styles.controlTestHeader}>
-              <Text style={styles.controlTestName}>{name}</Text>
-              <View style={[
-                styles.statusBadge,
-                {
-                  backgroundColor: test.status === 'OK' ? '#4CAF50' : 
-                                  test.status === 'Failed' ? '#F44336' : '#FF9800'
-                }
-              ]}>
-                <Text style={styles.statusText}>{test.status}</Text>
+        {Object.entries(results.controlTests).map(([name, test]) => {
+          // 한글 명령어 레이블 가져오기
+          const commandLabel = commandTypeLabels[name] || name;
+          
+          return (
+            <View key={name} style={styles.controlTestItem}>
+              <View style={styles.controlTestHeader}>
+                <View style={styles.commandTypeContainer}>
+                  <Text style={styles.commandTypeLabel}>{commandLabel}</Text>
+                  <Text style={styles.controlTestName}>{name}</Text>
+                </View>
+                <View style={[
+                  styles.statusBadge,
+                  {
+                    backgroundColor: test.status === 'OK' ? '#4CAF50' : 
+                                    test.status === 'Failed' ? '#F44336' : 
+                                    test.status === 'Pending' ? '#FF9800' : '#607D8B'
+                  }
+                ]}>
+                  <Text style={styles.statusText}>{
+                    test.status === 'OK' ? '성공' :
+                    test.status === 'Failed' ? '실패' :
+                    test.status === 'Pending' ? '대기 중' : test.status
+                  }</Text>
+                </View>
+              </View>
+              
+              {test.details && (
+                <Text style={styles.controlTestDetails}>{test.details}</Text>
+              )}
+              
+              <View style={styles.testInfoRow}>
+                <Text style={styles.controlTestTimestamp}>
+                  테스트 시간: {new Date(test.timestamp).toLocaleTimeString()}
+                </Text>
+                
+                {/* 상태에 따른 아이콘 표시 */}
+                <Text style={[
+                  styles.testStatusIcon, 
+                  {color: test.status === 'OK' ? '#4CAF50' : test.status === 'Failed' ? '#F44336' : '#FF9800'}
+                ]}>
+                  {test.status === 'OK' ? '✓' : test.status === 'Failed' ? '✗' : '⟳'}
+                </Text>
               </View>
             </View>
-            {test.details && (
-              <Text style={styles.controlTestDetails}>{test.details}</Text>
-            )}
-            <Text style={styles.controlTestTimestamp}>
-              {new Date(test.timestamp).toLocaleTimeString()}
-            </Text>
-          </View>
-        ))}
+          );
+        })}
       </>
     );
   };
@@ -121,7 +152,6 @@ ${results.issuesFound && results.issuesFound.length > 0 ? '\n발견된 문제점
       </View>
     );
   };
-
   const renderResistanceChanges = () => {
     if (!results.resistanceChanges || results.resistanceChanges.length === 0) {
       return (
@@ -132,28 +162,41 @@ ${results.issuesFound && results.issuesFound.length > 0 ? '\n발견된 문제점
     return (
       <View style={styles.resistanceChangesTable}>
         <View style={styles.tableHeader}>
-          <Text style={[styles.tableHeaderCell, { flex: 1.5 }]}>시간</Text>
-          <Text style={[styles.tableHeaderCell, { flex: 1 }]}>유형</Text>
-          <Text style={[styles.tableHeaderCell, { flex: 1 }]}>이전값</Text>
-          <Text style={[styles.tableHeaderCell, { flex: 1 }]}>현재값</Text>
-          <Text style={[styles.tableHeaderCell, { flex: 1.5 }]}>명령어</Text>
+          <Text style={[styles.tableHeaderCell, { flex: 1.2 }]}>시간</Text>
+          <Text style={[styles.tableHeaderCell, { flex: 0.8 }]}>유형</Text>
+          <Text style={[styles.tableHeaderCell, { flex: 0.8 }]}>이전값</Text>
+          <Text style={[styles.tableHeaderCell, { flex: 0.8 }]}>현재값</Text>
+          <Text style={[styles.tableHeaderCell, { flex: 2 }]}>변경 원인</Text>
         </View>
 
-        {results.resistanceChanges.map((change, index) => (
-          <View key={index} style={styles.tableRow}>
-            <Text style={[styles.tableCell, { flex: 1.5 }]}>
-              {new Date(change.timestamp).toLocaleTimeString()}
-            </Text>
-            <Text style={[styles.tableCell, { flex: 1 }]}>{change.paramType}</Text>
-            <Text style={[styles.tableCell, { flex: 1 }]}>
-              {change.oldValue !== undefined ? change.oldValue.toString() : '-'}
-            </Text>
-            <Text style={[styles.tableCell, { flex: 1 }]}>{change.newValue}</Text>
-            <Text style={[styles.tableCell, { flex: 1.5 }]}>
-              {change.command || '자동 변화'}
-            </Text>
-          </View>
-        ))}
+        {results.resistanceChanges.map((change, index) => {
+          // 명령어에 따른 스타일 적용
+          const isCommandChange = change.command && change.command !== '자동 변경';
+          const textColor = isCommandChange ? '#00c663' : '#fff';
+          const bgColor = isCommandChange ? 'rgba(0, 198, 99, 0.1)' : 'transparent';
+          
+          return (
+            <View 
+              key={index} 
+              style={[
+                styles.tableRow, 
+                { backgroundColor: bgColor }
+              ]}
+            >
+              <Text style={[styles.tableCell, { flex: 1.2 }]}>
+                {new Date(change.timestamp).toLocaleTimeString()}
+              </Text>
+              <Text style={[styles.tableCell, { flex: 0.8 }]}>{change.paramType}</Text>
+              <Text style={[styles.tableCell, { flex: 0.8 }]}>
+                {change.oldValue !== undefined ? change.oldValue.toString() : '-'}
+              </Text>
+              <Text style={[styles.tableCell, { flex: 0.8, color: textColor }]}>{change.newValue}</Text>
+              <Text style={[styles.tableCell, { flex: 2, color: textColor, fontWeight: isCommandChange ? 'bold' : 'normal' }]}>
+                {change.command || '자동 변경'}
+              </Text>
+            </View>
+          );
+        })}
       </View>
     );
   };
@@ -387,6 +430,16 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 14,
   },
+  commandTypeContainer: {
+    flexDirection: 'column',
+    flex: 1,
+  },
+  commandTypeLabel: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#00c663',
+    marginBottom: 2,
+  },
   container: {
     flex: 1,
     padding: 16,
@@ -561,8 +614,7 @@ const styles = StyleSheet.create({
   controlTestTimestamp: {
     color: '#999',
     fontSize: 12,
-  },
-  resistanceChangesTable: {
+  },  resistanceChangesTable: {
     backgroundColor: '#1a2029',
     borderRadius: 8,
     overflow: 'hidden',
@@ -571,6 +623,16 @@ const styles = StyleSheet.create({
     backgroundColor: '#1a2029',
     borderRadius: 8,
     padding: 12,
+  },
+  testInfoRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 4,
+  },
+  testStatusIcon: {
+    fontSize: 16,
+    fontWeight: 'bold',
   },
 });
 
