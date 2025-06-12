@@ -160,6 +160,61 @@ export function trackResistanceChange(
     return updatedResults;
 }
 
+// New function to verify control test success based on logs
+export function verifyControlTestSuccessFromLogs(results: TestResults): TestResults {
+    const updatedResults = { ...results };
+    if (!updatedResults.controlTests) {
+        return updatedResults;
+    }
+
+    // Define which control test keys should be verified against logs.
+    // Add other relevant command keys here if needed (e.g., "SET_SIM_PARAMS" if it affects a logged value).
+    const controlTestKeysToVerify = ["SET_RESISTANCE_LEVEL", "SET_TARGET_POWER", "SET_SIM_PARAMS"]; 
+
+    for (const testKey of controlTestKeysToVerify) {
+        const test = updatedResults.controlTests[testKey];
+
+        // Only verify if the test was initially reported as "OK" (i.e., success code received)
+        if (test && test.status === "OK") {
+            let actualChangeObserved = false;
+            if (updatedResults.resistanceChanges && updatedResults.resistanceChanges.length > 0) {
+                for (const change of updatedResults.resistanceChanges) {
+                    // Check if the log entry's command matches the testKey 
+                    // and if an actual change in value occurred.
+                    if (change.command === testKey && change.oldValue !== undefined && change.newValue !== change.oldValue) {
+                        actualChangeObserved = true;
+                        break; // Found evidence of successful commanded change
+                    }
+                }
+            }
+
+            if (!actualChangeObserved) {
+                // If no corresponding change was found in the logs, downgrade the status.
+                test.status = "Failed"; 
+                const failureDetail = "Log verification failed: No actual value change observed for command despite initial success code.";
+                test.details = (test.details ? test.details + "; " : "") + failureDetail;
+                
+                const reason = `저항 변경 명령(${testKey})은 성공 응답을 받았으나, 실제 저항값 변경이 로그에서 확인되지 않았습니다.`;
+                
+                if (!updatedResults.reasons) {
+                    updatedResults.reasons = [];
+                }
+                if (!updatedResults.reasons.includes(reason)) {
+                    updatedResults.reasons.push(reason);
+                }
+
+                if (!updatedResults.issuesFound) {
+                    updatedResults.issuesFound = [];
+                }
+                if (!updatedResults.issuesFound.includes(reason)) {
+                    updatedResults.issuesFound.push(reason);
+                }
+            }
+        }
+    }
+    return updatedResults;
+}
+
 // Function to generate a compatibility rating based on test results
 export function determineCompatibility(results: TestResults): TestResults {
     const updatedResults = { ...results };
@@ -241,8 +296,13 @@ export function determineCompatibility(results: TestResults): TestResults {
 
 // Function to finalize and save the test report
 export function finalizeTestReport(results: TestResults): TestResults {
+    let processedResults = { ...results };
+
+    // New step: Verify control test success using logs before determining compatibility
+    processedResults = verifyControlTestSuccessFromLogs(processedResults);
+
     const finalResults = determineCompatibility({
-        ...results,
+        ...processedResults, // Use the processed results with potentially updated controlTest statuses
         testCompleted: true,
         testCompletedTimestamp: Date.now(),
         reportId: `yafit-${Date.now()}`

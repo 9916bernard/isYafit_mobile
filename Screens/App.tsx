@@ -8,7 +8,7 @@ import EnhancedTestScreen from './EnhancedTestScreen'; // Import the enhanced te
 
 
 // 앱 버전 관리
-const APP_VERSION = 'v0.1.4';
+const APP_VERSION = 'v0.2.0';
 
 export default function App() {
   const ftmsManagerRef = useRef<FTMSManager | null>(null);
