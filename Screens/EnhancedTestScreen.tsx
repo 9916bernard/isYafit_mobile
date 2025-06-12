@@ -8,7 +8,7 @@ import {
   TouchableOpacity,
   Modal,
 } from 'react-native';
-import { FTMSManager } from './FtmsManager'; 
+import { FTMSManager } from '../FtmsManager'; 
 import { Device } from 'react-native-ble-plx';
 
 interface EnhancedTestScreenProps {

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { StyleSheet, View, Text, FlatList, TouchableOpacity, PermissionsAndroid, Platform, Linking, ScrollView, SafeAreaView, Modal } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons'; // Import Icon
-import { FTMSManager, LogEntry } from './FtmsManager'; // Import LogEntry type from FtmsManager
+import { FTMSManager, LogEntry } from '../FtmsManager'; // Import LogEntry type from FtmsManager
 import { BleError, Device, BleErrorCode, State } from 'react-native-ble-plx';
 import TestScreen from './TestScreen'; // Import the new TestScreen component
 import EnhancedTestScreen from './EnhancedTestScreen'; // Import the enhanced test screen with logs

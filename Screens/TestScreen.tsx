@@ -11,12 +11,12 @@ import {
   Alert,
   SafeAreaView,
 } from 'react-native';
-import { TestResults, formatRangeInfo } from './FtmsTestReport';
-import { FTMSTester } from './FtmsTester';
+import { TestResults, formatRangeInfo } from '../FtmsTestReport';
+import { FTMSTester } from '../FtmsTester';
 import { Device } from 'react-native-ble-plx';
-import { FTMSManager } from './FtmsManager'; // Your existing manager
+import { FTMSManager } from '../FtmsManager'; // Your existing manager
 import TestReportScreen from './TestReportScreen';
-import LogDisplay from './LogDisplay'; // Import the Log Display component
+import LogDisplay from '../LogDisplay'; // Import the Log Display component
 
 interface TestScreenProps {
   device: Device;

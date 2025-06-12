@@ -8,8 +8,10 @@ import {
   TouchableOpacity,
   SafeAreaView,
   Share,
+  Alert, // Added for copy confirmation
 } from 'react-native';
-import { TestResults, formatRangeInfo } from './FtmsTestReport';
+import Clipboard from '@react-native-clipboard/clipboard'; // Added for clipboard functionality
+import { TestResults, formatRangeInfo } from '../FtmsTestReport';
 
 interface TestReportScreenProps {
   results: TestResults;
@@ -203,6 +205,22 @@ ${results.issuesFound && results.issuesFound.length > 0 ? '\n발견된 문제점
 
   const [showFullLog, setShowFullLog] = React.useState(false);
 
+  // Function to copy interaction logs
+  const handleCopyLogs = () => {
+    if (results.interactionLogs && results.interactionLogs.length > 0) {
+      try {
+        const logString = results.interactionLogs.join('\n');
+        Clipboard.setString(logString);
+        Alert.alert("성공", "상호작용 로그가 클립보드에 복사되었습니다.");
+      } catch (error) {
+        console.error('Failed to copy logs:', error);
+        Alert.alert("오류", "로그 복사에 실패했습니다.");
+      }
+    } else {
+      Alert.alert("정보", "복사할 로그가 없습니다.");
+    }
+  };
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <ScrollView style={styles.scrollViewContainer}>
@@ -362,14 +380,22 @@ ${results.issuesFound && results.issuesFound.length > 0 ? '\n발견된 문제점
             <Text style={styles.sectionTitle}>상호작용 로그</Text>
             {results.interactionLogs && results.interactionLogs.length > 0 ? (
               <>
-                <TouchableOpacity
-                  style={styles.toggleLogButton}
-                  onPress={() => setShowFullLog(!showFullLog)}
-                >
-                  <Text style={styles.toggleLogButtonText}>
-                    {showFullLog ? '로그 숨기기' : `전체 로그 보기 (${results.interactionLogs.length} 항목)`}
-                  </Text>
-                </TouchableOpacity>
+                <View style={styles.logActionsContainer}>
+                  <TouchableOpacity
+                    style={styles.toggleLogButton}
+                    onPress={() => setShowFullLog(!showFullLog)}
+                  >
+                    <Text style={styles.toggleLogButtonText}>
+                      {showFullLog ? '로그 숨기기' : `전체 로그 보기 (${results.interactionLogs.length} 항목)`}
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.copyLogButton}
+                    onPress={handleCopyLogs}
+                  >
+                    <Text style={styles.copyLogButtonText}>로그 복사</Text>
+                  </TouchableOpacity>
+                </View>
                 {showFullLog && (
                   <ScrollView style={styles.logScrollContainer} nestedScrollEnabled={true}>
                     <View style={styles.logContainer}>
@@ -724,15 +750,37 @@ const styles = StyleSheet.create({
     marginBottom: 6,
     fontFamily: 'monospace', // Monospaced font for logs
   },
+  logActionsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 10,
+    marginBottom: 10,
+  },
   toggleLogButton: {
     backgroundColor: '#007AFF',
     paddingVertical: 10,
     paddingHorizontal: 15,
     borderRadius: 5,
     alignItems: 'center',
-    marginTop: 10,
+    flex: 1, // Adjust flex to share space
+    marginRight: 5, // Add some margin if two buttons are side by side
   },
   toggleLogButtonText: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '500',
+  },
+  copyLogButton: {
+    backgroundColor: '#4CAF50', // Green color for copy button
+    paddingVertical: 10,
+    paddingHorizontal: 15,
+    borderRadius: 5,
+    alignItems: 'center',
+    flex: 1, // Adjust flex to share space
+    marginLeft: 5, // Add some margin if two buttons are side by side
+  },
+  copyLogButtonText: {
     color: '#FFFFFF',
     fontSize: 15,
     fontWeight: '500',
