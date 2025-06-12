@@ -34,7 +34,7 @@ export class FTMSTester {
     constructor(ftmsManager: FTMSManager) {
         this.ftmsManager = ftmsManager;
         this.testResults = initTestResults();
-        this.ftmsManager.setLogCallback(this.logInteraction.bind(this)); // Add this line
+        // this.ftmsManager.setLogCallback(this.logInteraction.bind(this)); // Remove this line
     }
 
     // Add this new method to log interactions
@@ -47,6 +47,19 @@ export class FTMSTester {
         this.testResults.interactionLogs.push(logEntry);
         // Optionally, you can also pass this to a UI callback if needed immediately
         // console.log(logEntry); // For debugging during development
+    }
+
+    // New method to merge logs from FtmsManager
+    private mergeFtmsManagerLogs() {
+        const managerLogs = this.ftmsManager.getLogs(); // FtmsManager.LogEntry[]
+        if (!this.testResults.interactionLogs) {
+            this.testResults.interactionLogs = [];
+        }
+        for (const log of managerLogs) {
+            const formattedLog = `${log.timestamp.replace('T', ' ').substring(0, 23)} - [FTMSManager][${log.type.toUpperCase()}] ${log.message}`;
+            this.testResults.interactionLogs.push(formattedLog);
+        }
+        this.ftmsManager.clearLogs(); // Clear logs in manager to avoid duplicates if manager is reused
     }
 
     // Main testing flow
@@ -119,6 +132,7 @@ export class FTMSTester {
                 
                 // Finalize the test
                 this.updateProgress(90, "호환성 분석 중...");
+                this.mergeFtmsManagerLogs(); // Merge logs before finalizing
                 this.testResults = finalizeTestReport(this.testResults);
                 
                 // Complete
@@ -142,6 +156,7 @@ export class FTMSTester {
                 }
                 
                 // Finalize CSC test
+                this.mergeFtmsManagerLogs(); // Merge logs before finalizing
                 this.testResults = finalizeTestReport(this.testResults);
                 this.updateProgress(100, "CSC 테스트 완료 (제한된 기능)");
                 if (this.onTestComplete) {
@@ -150,6 +165,7 @@ export class FTMSTester {
             } else {
                 // No supported protocols
                 this.testResults.reasons.push("지원되는 프로토콜(FTMS, CSC)을 찾을 수 없습니다.");
+                this.mergeFtmsManagerLogs(); // Merge logs before finalizing
                 this.testResults = finalizeTestReport(this.testResults);
                 this.updateProgress(100, "호환 불가능한 프로토콜");
                 if (this.onTestComplete) {
@@ -160,6 +176,8 @@ export class FTMSTester {
         } catch (error) {
             console.error("Device test error:", error);
             this.testResults.issuesFound.push(`테스트 오류: ${error instanceof Error ? error.message : String(error)}`);
+            this.logInteraction(`ERROR - Test: Critical error during test: ${error instanceof Error ? error.message : String(error)}`);
+            this.mergeFtmsManagerLogs(); // Merge logs even in case of error
             this.testResults = finalizeTestReport(this.testResults);
             if (this.onTestComplete) {
                 this.onTestComplete(this.testResults);
@@ -168,6 +186,22 @@ export class FTMSTester {
             this.isTestRunning = false;
             if (this.testTimeoutId) {
                 clearTimeout(this.testTimeoutId);
+                this.testTimeoutId = undefined; // Clear the timeout ID
+            }
+
+            // Disconnect the device
+            if (this.ftmsManager.getConnectedDevice()) {
+                this.logInteraction('INFO - Test: Attempting to disconnect from device post-test.');
+                try {
+                    await this.ftmsManager.disconnectDevice();
+                    // Logs from ftmsManager.disconnectDevice() will be captured if mergeFtmsManagerLogs was called again,
+                    // but we've already merged. FtmsTester's own log is sufficient here.
+                    this.logInteraction('INFO - Test: Device disconnected successfully post-test.');
+                } catch (disconnectError) {
+                    const errorMessage = disconnectError instanceof Error ? disconnectError.message : String(disconnectError);
+                    console.error("Error during post-test device disconnection:", disconnectError);
+                    this.logInteraction(`ERROR - Test: Failed to disconnect device post-test: ${errorMessage}`);
+                }
             }
         }
         

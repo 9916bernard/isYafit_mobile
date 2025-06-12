@@ -362,8 +362,8 @@ ${results.issuesFound && results.issuesFound.length > 0 ? '\n발견된 문제점
             <Text style={styles.sectionTitle}>상호작용 로그</Text>
             {results.interactionLogs && results.interactionLogs.length > 0 ? (
               <>
-                <TouchableOpacity 
-                  style={styles.toggleLogButton} 
+                <TouchableOpacity
+                  style={styles.toggleLogButton}
                   onPress={() => setShowFullLog(!showFullLog)}
                 >
                   <Text style={styles.toggleLogButtonText}>
@@ -371,44 +371,38 @@ ${results.issuesFound && results.issuesFound.length > 0 ? '\n발견된 문제점
                   </Text>
                 </TouchableOpacity>
                 {showFullLog && (
-                  <View style={styles.logContainer}>
-                    {results.interactionLogs.map((log, index) => (                      <Text key={index} style={styles.logEntry}>
-                        {(() => {
-                          // 명령 전송 로그 (녹색)
-                          if (log.includes('명령 전송:')) {
-                            return <Text style={{fontWeight: 'bold', color: '#2196F3'}}>{log}</Text>;
-                          }
-                          // 명령 응답 성공 로그 (녹색)
-                          else if (log.includes('명령 응답 [성공]') || log.includes('SUCCESS')) {
-                            return <Text style={{fontWeight: 'bold', color: '#00c663'}}>{log}</Text>;
-                          }
-                          // 명령 응답 실패 로그 (빨간색)
-                          else if (log.includes('명령 응답 [실패]') || log.includes('FAIL')) {
-                            return <Text style={{fontWeight: 'bold', color: '#F44336'}}>{log}</Text>;
-                          }
-                          // 바이크 데이터 로그 (파란색)
-                          else if (log.includes('바이크 데이터:')) {
-                            return <Text style={{color: '#03A9F4'}}>{log}</Text>;
-                          }
-                          // 저항 변경 로그 (보라색)
-                          else if (log.includes('Resistance changed')) {
-                            return <Text style={{fontWeight: 'bold', color: '#9C27B0'}}>{log}</Text>;
-                          }
-                          // 기타 중요 로그 (굵은 글씨)
-                          else if (
-                            log.includes('Control Response Received') || 
-                            log.includes('Sending') || 
-                            log.includes('Bike Data Flags') || 
-                            log.includes('raw data')
-                          ) {
-                            return <Text style={{fontWeight: 'bold'}}>{log}</Text>;
-                          }
-                          // 일반 로그
-                          return log;
-                        })()}
-                      </Text>
-                    ))}
-                  </View>
+                  <ScrollView style={styles.logScrollContainer} nestedScrollEnabled={true}>
+                    <View style={styles.logContainer}>
+                      {results.interactionLogs.map((log, index) => (
+                        <Text key={index} style={styles.logEntry}>
+                          {(() => {
+                            // 명령 전송 로그 (파란색)
+                            if (log.includes('명령 전송:')) {
+                              return <Text style={{fontWeight: 'bold', color: '#2196F3'}}>{log}</Text>;
+                            }
+                            // 명령 응답 성공 로그 (녹색)
+                            else if (log.includes('명령 응답 [성공]') || log.includes('SUCCESS')) {
+                              return <Text style={{fontWeight: 'bold', color: '#00c663'}}>{log}</Text>;
+                            }
+                            // 명령 응답 실패 로그 (빨간색)
+                            else if (log.includes('명령 응답 [실패]') || log.includes('FAIL')) {
+                              return <Text style={{fontWeight: 'bold', color: '#F44336'}}>{log}</Text>;
+                            }
+                            // 바이크 데이터 로그 (하늘색)
+                            else if (log.includes('바이크 데이터:')) {
+                              return <Text style={{color: '#03A9F4'}}>{log}</Text>;
+                            }
+                            // 저항 변경 로그 (보라색)
+                            else if (log.includes('Resistance changed')) {
+                              return <Text style={{fontWeight: 'bold', color: '#9C27B0'}}>{log}</Text>;
+                            }
+                            // 일반 로그 (기본 색상)
+                            return log;
+                          })()}
+                        </Text>
+                      ))}
+                    </View>
+                  </ScrollView>
                 )}
               </>
             ) : (
@@ -454,277 +448,294 @@ ${results.issuesFound && results.issuesFound.length > 0 ? '\n발견된 문제점
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#1A202C', // Dark background for the whole screen
+    backgroundColor: '#1E1E1E', // Dark background for the whole screen
   },
-  scrollViewContainer: { // Renamed from scrollView to avoid conflict
+  scrollViewContainer: {
     flex: 1,
   },
   container: {
-    flex: 1,
-    padding: 16,
+    padding: 15,
+    backgroundColor: '#1E1E1E', // Dark background
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 16,
+    marginBottom: 15,
     borderBottomWidth: 1,
-    borderBottomColor: '#2d3748',
+    borderBottomColor: '#333',
+    paddingBottom: 10,
   },
   title: {
-    fontSize: 18,
+    fontSize: 24,
     fontWeight: 'bold',
-    color: '#00c663',
-  },
-  headerButtons: {
-    flexDirection: 'row',
-  },
-  shareButton: {
-    backgroundColor: '#2d3748',
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 4,
-    marginRight: 8,
-  },
-  shareButtonText: {
-    color: '#fff',
-    fontSize: 14,
+    color: '#E0E0E0', // Light text for title
   },
   closeButton: {
-    backgroundColor: '#444',
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 4,
+    padding: 8,
+    backgroundColor: '#333',
+    borderRadius: 5,
   },
   closeButtonText: {
-    color: '#fff',
-    fontSize: 14,
+    color: '#E0E0E0',
+    fontSize: 16,
   },
-  commandTypeContainer: {
-    flexDirection: 'column',
-    flex: 1,
+  shareButton: {
+    backgroundColor: '#007AFF', // Blue color for share button
+    padding: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginBottom: 20,
   },
-  commandTypeLabel: {
+  shareButtonText: {
+    color: '#FFFFFF',
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#00c663',
-    marginBottom: 2,
   },
   section: {
     marginBottom: 20,
-    backgroundColor: '#242c3b',
+    backgroundColor: '#2C2C2C', // Slightly lighter dark shade for sections
+    padding: 15,
     borderRadius: 8,
-    padding: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 3,
+    elevation: 3,
   },
   sectionTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#00c663',
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#B0B0B0', // Lighter grey for section titles
     marginBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#444',
+    paddingBottom: 8,
   },
   deviceInfoContainer: {
-    backgroundColor: '#1a2029',
-    borderRadius: 8,
-    padding: 12,
+    paddingVertical: 10,
   },
   deviceName: {
-    color: '#fff',
     fontSize: 18,
     fontWeight: 'bold',
+    color: '#D0D0D0',
     marginBottom: 4,
   },
   deviceAddress: {
-    color: '#aaa',
     fontSize: 14,
-    marginBottom: 12,
+    color: '#888',
+    marginBottom: 10,
   },
   infoRow: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     marginBottom: 6,
+    paddingVertical: 4,
+    borderBottomWidth: 1,
+    borderBottomColor: '#3A3A3A',
   },
   infoLabel: {
-    color: '#aaa',
-    fontSize: 14,
-    width: 120,
+    fontSize: 15,
+    color: '#A0A0A0',
+    fontWeight: '500',
   },
   infoValue: {
-    color: '#fff',
-    fontSize: 14,
-    flex: 1,
+    fontSize: 15,
+    color: '#C0C0C0',
+    textAlign: 'right',
   },
   compatibilityRow: {
-    alignItems: 'center',
+    marginTop: 8,
   },
   compatibilityBadge: {
+    paddingVertical: 5,
     paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 16,
+    borderRadius: 15,
+    minWidth: 100,
+    alignItems: 'center',
   },
   compatibilityText: {
-    color: '#fff',
+    color: '#FFFFFF',
     fontWeight: 'bold',
-    fontSize: 12,
+    fontSize: 14,
   },
   reasonsContainer: {
-    backgroundColor: '#1a2029',
-    borderRadius: 8,
-    padding: 12,
+    marginTop: 5,
   },
   reasonText: {
-    color: '#fff',
     fontSize: 14,
-    marginBottom: 4,
+    color: '#B0B0B0',
+    marginBottom: 5,
+    lineHeight: 20,
   },
   issuesContainer: {
-    backgroundColor: '#1a2029',
-    borderRadius: 8,
-    padding: 12,
+    marginTop: 5,
   },
   issueText: {
-    color: '#ff6b6b',
     fontSize: 14,
-    marginBottom: 4,
+    color: '#FF7070', // Highlight issues in a reddish tone
+    marginBottom: 5,
+    lineHeight: 20,
   },
   rangesContainer: {
-    backgroundColor: '#1a2029',
-    borderRadius: 8,
-    padding: 12,
+    marginTop: 5,
   },
   rangeText: {
-    color: '#fff',
     fontSize: 14,
+    color: '#B0B0B0',
     marginBottom: 4,
   },
   featuresContainer: {
-    backgroundColor: '#1a2029',
-    borderRadius: 8,
-    padding: 12,
     flexDirection: 'row',
     flexWrap: 'wrap',
+    marginTop: 5,
   },
   featureItem: {
-    width: '50%',
-    marginBottom: 6,
+    marginRight: 15,
+    marginBottom: 8,
   },
   featureText: {
     fontSize: 14,
   },
   noDataText: {
-    color: '#aaa',
+    color: '#888',
     fontStyle: 'italic',
     textAlign: 'center',
-    padding: 12,
+    paddingVertical: 10,
   },
   dataFieldsTable: {
-    backgroundColor: '#1a2029',
-    borderRadius: 8,
-    overflow: 'hidden',
+    marginTop: 10,
+    borderWidth: 1,
+    borderColor: '#444',
+    borderRadius: 5,
   },
   tableHeader: {
     flexDirection: 'row',
-    backgroundColor: '#2d3748',
-    padding: 8,
+    backgroundColor: '#383838',
+    paddingVertical: 8,
+    paddingHorizontal: 5,
+    borderTopLeftRadius: 4,
+    borderTopRightRadius: 4,
   },
   tableHeaderCell: {
-    color: '#fff',
+    fontSize: 13,
     fontWeight: 'bold',
-    fontSize: 12,
+    color: '#D0D0D0',
+    textAlign: 'center',
   },
   tableRow: {
     flexDirection: 'row',
+    paddingVertical: 8,
+    paddingHorizontal: 5,
     borderBottomWidth: 1,
-    borderBottomColor: '#2d3748',
-    padding: 8,
+    borderBottomColor: '#3A3A3A',
   },
   tableCell: {
-    color: '#fff',
-    fontSize: 12,
+    fontSize: 13,
+    color: '#B0B0B0',
+    textAlign: 'center',
   },
   controlTestsContainer: {
-    backgroundColor: '#1a2029',
-    borderRadius: 8,
-    padding: 4,
+    marginTop: 5,
   },
   controlTestItem: {
-    borderBottomWidth: 1,
-    borderBottomColor: '#2d3748',
-    paddingVertical: 8,
-    paddingHorizontal: 8,
+    backgroundColor: '#333',
+    padding: 12,
+    borderRadius: 6,
+    marginBottom: 10,
   },
   controlTestHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 4,
+    marginBottom: 8,
+  },
+  commandTypeContainer: {
+    flex: 1,
+  },
+  commandTypeLabel: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#D0D0D0',
   },
   controlTestName: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: 'bold',
+    fontSize: 12,
+    color: '#888',
   },
   statusBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 15,
+    minWidth: 60,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   statusText: {
-    color: '#fff',
-    fontSize: 12,
+    color: '#FFFFFF',
     fontWeight: 'bold',
+    fontSize: 13,
   },
   controlTestDetails: {
-    color: '#ccc',
-    fontSize: 12,
-    marginBottom: 2,
+    fontSize: 13,
+    color: '#A0A0A0',
+    marginBottom: 8,
+    fontStyle: 'italic',
+  },
+  testInfoRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 5,
   },
   controlTestTimestamp: {
-    color: '#999',
     fontSize: 12,
-  },  resistanceChangesTable: {
-    backgroundColor: '#1a2029',
-    borderRadius: 8,
-    overflow: 'hidden',
+    color: '#888',
+  },
+  testStatusIcon: {
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  resistanceChangesTable: {
+    marginTop: 10,
+    borderWidth: 1,
+    borderColor: '#444',
+    borderRadius: 5,
   },
   metadataContainer: {
     backgroundColor: '#1a2029',
     borderRadius: 8,
     padding: 12,
   },
-  testInfoRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginTop: 4,
-  },
-  testStatusIcon: {
-    fontSize: 16,
-    fontWeight: 'bold',
+  logScrollContainer: {
+    maxHeight: 400, // Initial max height for the scrollable log area
+    borderColor: '#444',
+    borderWidth: 1,
+    borderRadius: 5,
+    marginTop: 10,
   },
   logContainer: {
-    marginTop: 10,
     padding: 10,
-    backgroundColor: '#2c3e50',
-    borderRadius: 5,
-    maxHeight: 400, // Limit height and make it scrollable if needed (ScrollView parent handles this)
+    backgroundColor: '#252525', // Darker background for log entries
   },
   logEntry: {
-    fontSize: 10,
-    color: '#ecf0f1',
-    fontFamily: 'monospace', // Use a monospace font for logs
-    marginBottom: 4,
+    fontSize: 13,
+    color: '#A0A0A0', // Default log text color
+    marginBottom: 6,
+    fontFamily: 'monospace', // Monospaced font for logs
   },
   toggleLogButton: {
-    backgroundColor: '#3498db',
-    paddingVertical: 8,
-    paddingHorizontal: 12,
+    backgroundColor: '#007AFF',
+    paddingVertical: 10,
+    paddingHorizontal: 15,
     borderRadius: 5,
-    alignSelf: 'flex-start',
+    alignItems: 'center',
     marginTop: 10,
   },
   toggleLogButtonText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: 'bold',
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '500',
   },
 });
 
