@@ -15,7 +15,8 @@ import { TestResults, formatRangeInfo } from './FtmsTestReport';
 import { FTMSTester } from './FtmsTester';
 import { Device } from 'react-native-ble-plx';
 import { FTMSManager } from './FtmsManager'; // Your existing manager
-import TestReportScreen from './TestReportScreen'; // We'll create this next
+import TestReportScreen from './TestReportScreen';
+import LogDisplay from './LogDisplay'; // Import the Log Display component
 
 interface TestScreenProps {
   device: Device;
@@ -30,11 +31,37 @@ const TestScreen: React.FC<TestScreenProps> = ({ device, ftmsManager, onClose })
   const [testCompleted, setTestCompleted] = useState(false);
   const [testResults, setTestResults] = useState<TestResults | null>(null);
   const [showReport, setShowReport] = useState(false);
+  const [realtimeLogs, setRealtimeLogs] = useState<string[]>([]);
+  const [showLogs, setShowLogs] = useState(false);
+  const logScrollViewRef = useRef<ScrollView>(null);
   const testerRef = useRef<FTMSTester | null>(null);
-
   useEffect(() => {
     // Initialize the FTMSTester
     testerRef.current = new FTMSTester(ftmsManager);
+    
+    // Set up log listener to capture logs in real-time
+    const originalLogs = ftmsManager.getLogs();
+    if (originalLogs.length > 0) {
+      const formattedLogs = originalLogs.map(log => 
+        `${new Date(log.timestamp).toLocaleTimeString()} - ${log.message}`
+      );
+      setRealtimeLogs(formattedLogs);
+    }
+    
+    // Set up log callback to get real-time updates
+    ftmsManager.setLogCallback((logs) => {
+      const formattedLogs = logs.map(log => 
+        `${new Date(log.timestamp).toLocaleTimeString()} - ${log.message}`
+      );
+      setRealtimeLogs(formattedLogs);
+      
+      // Scroll to bottom on update
+      if (logScrollViewRef.current && showLogs) {
+        setTimeout(() => {
+          logScrollViewRef.current?.scrollToEnd({ animated: true });
+        }, 100);
+      }
+    });
 
     return () => {
       // Clean up if needed
@@ -42,7 +69,7 @@ const TestScreen: React.FC<TestScreenProps> = ({ device, ftmsManager, onClose })
         testerRef.current.stopTest();
       }
     };
-  }, [ftmsManager]);
+  }, [ftmsManager, showLogs]);
 
   const handleStartTest = async () => {
     try {
@@ -126,7 +153,11 @@ const TestScreen: React.FC<TestScreenProps> = ({ device, ftmsManager, onClose })
       </View>
     );
   };
-
+  // Toggle real-time log display
+  const toggleLogs = () => {
+    setShowLogs(!showLogs);
+  };
+  
   return (
     <SafeAreaView style={styles.safeArea}>
       <ScrollView contentContainerStyle={styles.scrollViewContent}>
@@ -137,6 +168,16 @@ const TestScreen: React.FC<TestScreenProps> = ({ device, ftmsManager, onClose })
               {device.name || 'Unknown Device'} ({device.id.substring(0, 8)}...)
             </Text>
           </View>
+          
+          {/* Toggle Logs Button */}
+          <TouchableOpacity 
+            style={styles.toggleLogButton} 
+            onPress={toggleLogs}
+          >
+            <Text style={styles.toggleLogButtonText}>
+              {showLogs ? '로그 숨기기' : '실시간 로그 보기'}
+            </Text>
+          </TouchableOpacity>
 
           <View style={styles.progressContainer}>
             <View style={styles.progressBarBackground}>
@@ -251,8 +292,7 @@ const TestScreen: React.FC<TestScreenProps> = ({ device, ftmsManager, onClose })
         </View>
       </ScrollView>
 
-      {/* Report Modal */}
-      <Modal
+      {/* Report Modal */}      <Modal
         visible={showReport}
         animationType="slide"
         transparent={false}>
@@ -263,6 +303,13 @@ const TestScreen: React.FC<TestScreenProps> = ({ device, ftmsManager, onClose })
           />
         )}
       </Modal>
+      
+      {/* Real-time Log Display */}
+      <LogDisplay 
+        logs={realtimeLogs}
+        visible={showLogs}
+        onClose={toggleLogs}
+      />
     </SafeAreaView>
   );
 };
@@ -433,9 +480,57 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     alignItems: 'center',
     flex: 0.5,
-  },
-  backButtonText: {
+  },  backButtonText: {
     color: '#fff',
+  },
+  toggleLogButton: {
+    backgroundColor: '#2d3748',
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginVertical: 8,
+  },
+  toggleLogButtonText: {
+    color: '#00c663',
+    fontWeight: '600',
+  },
+  logContainer: {
+    backgroundColor: '#242c3b',
+    borderRadius: 8,
+    padding: 12,
+    marginVertical: 10,
+    maxHeight: 250,
+  },
+  logScrollView: {
+    flex: 1,
+  },
+  logEntryContainer: {
+    marginBottom: 4,
+  },
+  logEntry: {
+    fontSize: 12,
+    fontFamily: 'monospace',
+    color: '#fff',
+  },
+  logEntryCommand: {
+    fontWeight: 'bold',
+    color: '#2196F3',
+  },
+  logEntrySuccess: {
+    fontWeight: 'bold',
+    color: '#00c663',
+  },
+  logEntryError: {
+    fontWeight: 'bold',
+    color: '#F44336',
+  },
+  logEntryBikeData: {
+    color: '#03A9F4',
+  },
+  logEntryResistance: {
+    fontWeight: 'bold',
+    color: '#9C27B0',
   },
 });
 

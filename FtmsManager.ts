@@ -287,38 +287,39 @@ export class FTMSManager {
             const responseOpCode = data[0]; // Should be 0x80 for response
             const requestOpCode = data[1];
             const resultCode = data[2];
+            const commandName = this.getOpCodeName(requestOpCode);
+            const resultName = this.getResultCodeName(resultCode);
 
             if (responseOpCode === 0x80) {
                 if (resultCode === 0x01) { // Success
-                    this.logSuccess(`Control point operation successful for opcode: 0x${requestOpCode.toString(16)}`);
+                    this.logSuccess(`명령 응답 [성공] - 명령: ${commandName} (0x${requestOpCode.toString(16)}), 결과: ${resultName}`);
                     if (requestOpCode === 0x04) { // SET_RESISTANCE_LEVEL
-                        this.logSuccess("Resistance level set successfully");
+                        this.logSuccess("저항 레벨 설정 성공");
                     } else if (requestOpCode === 0x00) { // REQUEST_CONTROL
-                        this.logSuccess("Control request accepted");
+                        this.logSuccess("제어 요청 승인됨");
                     } else if (requestOpCode === 0x01) { // RESET
-                        this.logSuccess("Machine reset successful");
-                    } else if (requestOpCode === 0x07) { // START
-                        this.logSuccess("Machine started successfully");
+                        this.logSuccess("기기 리셋 성공");                    } else if (requestOpCode === 0x07) { // START
+                        this.logSuccess("기기 시작 성공");
                     } else if (requestOpCode === 0x08) { // STOP
-                        this.logSuccess("Machine stopped successfully");
+                        this.logSuccess("기기 정지 성공");
                     } else if (requestOpCode === 0x05) { // SET_TARGET_POWER
-                        this.logSuccess("Target power set successfully");
+                        this.logSuccess("목표 파워 설정 성공");
                     } else if (requestOpCode === 0x11) { // SET_SIM_PARAMS
-                        this.logSuccess("Simulation parameters set successfully");
+                        this.logSuccess("시뮬레이션 파라미터 설정 성공");
                     }
                     // Add more specific success messages based on requestOpCode
                 } else {
-                    this.logWarning(`Control point operation failed - Opcode: 0x${requestOpCode.toString(16)}, Result: 0x${resultCode.toString(16)}`);
+                    const commandName = this.getOpCodeName(requestOpCode);
+                    const resultName = this.getResultCodeName(resultCode);
+                    this.logWarning(`명령 응답 [실패] - 명령: ${commandName} (0x${requestOpCode.toString(16)}), 결과: ${resultName} (0x${resultCode.toString(16)})`);
                 }
             } else {
-                this.logWarning(`Received unexpected Control Point data format: ${data.toString('hex')}`);
+                this.logWarning(`예상치 못한 Control Point 데이터 포맷: ${data.toString('hex')}`);
             }
         } else {
-            this.logWarning(`Received short Control Point data: ${data.toString('hex')}`);
+            this.logWarning(`잘못된 Control Point 데이터 길이: ${data.toString('hex')}`);
         }
-    }
-
-    parseIndoorBikeData(data: Buffer): IndoorBikeData {
+    }parseIndoorBikeData(data: Buffer): IndoorBikeData {
         const parsed: IndoorBikeData = { raw: data.toString('hex') };
         let index = 0;
 
@@ -326,16 +327,12 @@ export class FTMSManager {
         index += 2;
         parsed.flags = flags;
 
-        // console.log(`\n\nBike Data Flags: ${flags.toString(16)}\n`);
-        // console.log("------------ Bike Info ------------");
-        // console.log("raw data: " + data.toString('hex'));
-        // console.log(`Data length: ${data.length}, Current index: ${index}, Remaining bytes: ${data.slice(index).toString('hex') || 'None'}`);
+        this.logInfo(`Bike Data Flags: 0x${flags.toString(16)}, Raw data: ${data.toString('hex')}`);
 
         // Instantaneous Speed (bit 0 == 0 when present)
         if (!(flags & 0x0001)) { // More Data field, if 0, speed is present
-            if (data.length >= index + 2) {
-                parsed.instantaneousSpeed = data.readUInt16LE(index) / 100; // km/h
-                // console.log(`Instantaneous Speed: ${parsed.instantaneousSpeed?.toFixed(2)} km/h`);
+            if (data.length >= index + 2) {                parsed.instantaneousSpeed = data.readUInt16LE(index) / 100; // km/h
+                this.logInfo(`바이크 데이터: 현재 속도 = ${parsed.instantaneousSpeed?.toFixed(2)} km/h`);
                 index += 2;
             }
         }
@@ -344,16 +341,15 @@ export class FTMSManager {
         if (flags & 0x0002) {
             if (data.length >= index + 2) {
                 parsed.averageSpeed = data.readUInt16LE(index) / 100; // km/h
-                // console.log(`Average Speed: ${parsed.averageSpeed?.toFixed(2)} km/h`);
+                this.logInfo(`바이크 데이터: 평균 속도 = ${parsed.averageSpeed?.toFixed(2)} km/h`);
                 index += 2;
             }
         }
 
         // Instantaneous Cadence (bit 2 == 1)
         if (flags & 0x0004) {
-            if (data.length >= index + 2) {
-                parsed.instantaneousCadence = data.readUInt16LE(index) / 2; // rpm
-                // console.log(`Instantaneous Cadence: ${parsed.instantaneousCadence?.toFixed(1)} rpm`);
+            if (data.length >= index + 2) {                parsed.instantaneousCadence = data.readUInt16LE(index) / 2; // rpm
+                this.logInfo(`바이크 데이터: 현재 케이던스 = ${parsed.instantaneousCadence?.toFixed(1)} rpm`);
                 index += 2;
             }
         }
@@ -362,7 +358,7 @@ export class FTMSManager {
         if (flags & 0x0008) {
             if (data.length >= index + 2) {
                 parsed.averageCadence = data.readUInt16LE(index) / 2; // rpm
-                // console.log(`Average Cadence: ${parsed.averageCadence?.toFixed(1)} rpm`);
+                this.logInfo(`바이크 데이터: 평균 케이던스 = ${parsed.averageCadence?.toFixed(1)} rpm`);
                 index += 2;
             }
         }
@@ -378,9 +374,8 @@ export class FTMSManager {
 
         // Resistance Level (bit 5 == 1)
         if (flags & 0x0020) {
-            if (data.length >= index + 2) {
-                parsed.resistanceLevel = data.readInt16LE(index);
-                // console.log(`Resistance Level: ${parsed.resistanceLevel}`);
+            if (data.length >= index + 2) {                parsed.resistanceLevel = data.readInt16LE(index);
+                this.logInfo(`바이크 데이터: 현재 저항 레벨 = ${parsed.resistanceLevel}`);
                 index += 2;
             }
         }
@@ -389,7 +384,7 @@ export class FTMSManager {
         if (flags & 0x0040) {
             if (data.length >= index + 2) {
                 parsed.instantaneousPower = data.readInt16LE(index); // Watts
-                // console.log(`Instantaneous Power: ${parsed.instantaneousPower} W`);
+                this.logInfo(`바이크 데이터: 현재 파워 = ${parsed.instantaneousPower} W`);
                 index += 2;
             }
         }
@@ -454,28 +449,28 @@ export class FTMSManager {
         }
         // console.log("------------------------------------\n");
         return parsed;
-    }
-
-    // --- Control Commands ---
+    }    // --- Control Commands ---
     async requestControl(): Promise<void> {
-        console.log("Requesting control...");
+        this.logInfo("명령 전송: REQUEST_CONTROL (0x00) - 제어 권한 요청");
         await this.writeControlPoint(REQUEST_CONTROL);
         await delay(500); // Time for device to respond
     }
 
     async resetMachine(): Promise<void> {
-        console.log("Sending Reset command...");
+        this.logInfo("명령 전송: RESET (0x01) - 기기 리셋");
         await this.writeControlPoint(RESET);
         await delay(1000);
-    }    async startMachine(): Promise<void> {
-        console.log("Sending Start command...");
+    }    
+    
+    async startMachine(): Promise<void> {
+        this.logInfo("명령 전송: START (0x07) - 기기 시작");
         await this.writeControlPoint(START);
         this.isDeviceActive = true; // Set device as active
         await delay(1000);
     }
 
     async stopMachine(): Promise<void> {
-        console.log("Sending Stop command...");
+        this.logInfo("명령 전송: STOP (0x08) - 기기 정지");
         await this.writeControlPoint(STOP); // Stop command might have parameters for pause etc.
         this.isDeviceActive = false; // Set device as inactive
         await delay(1000);

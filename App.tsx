@@ -1,12 +1,14 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { StyleSheet, View, Text, FlatList, TouchableOpacity, PermissionsAndroid, Platform, Linking, ScrollView, SafeAreaView } from 'react-native';
+import { StyleSheet, View, Text, FlatList, TouchableOpacity, PermissionsAndroid, Platform, Linking, ScrollView, SafeAreaView, Modal } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons'; // Import Icon
 import { FTMSManager, LogEntry } from './FtmsManager'; // Import LogEntry type from FtmsManager
 import { BleError, Device, BleErrorCode, State } from 'react-native-ble-plx';
 import TestScreen from './TestScreen'; // Import the new TestScreen component
+import EnhancedTestScreen from './EnhancedTestScreen'; // Import the enhanced test screen with logs
+import AppLogButton from './AppLogButton';
 
 // 앱 버전 관리
-const APP_VERSION = 'v0.0.3';
+const APP_VERSION = 'v0.0.4';
 
 export default function App() {
   const ftmsManagerRef = useRef<FTMSManager | null>(null);
@@ -17,9 +19,10 @@ export default function App() {
   const [isScanning, setIsScanning] = useState(false);
   const [statusMessage, setStatusMessage] = useState('앱 테스트 중입니다.');
   const [bikeData, setBikeData] = useState<any>(null); // 실제 IndoorBikeData 타입으로 변경 가능
-  const [logs, setLogs] = useState<LogEntry[]>([]);
-  const [showLogs, setShowLogs] = useState(false);
+  const [logs, setLogs] = useState<LogEntry[]>([]);  const [showLogs, setShowLogs] = useState(false);
+  const [formattedLogs, setFormattedLogs] = useState<string[]>([]);
   const [showTestScreen, setShowTestScreen] = useState(false); // For showing test screen
+  const [showLogScreen, setShowLogScreen] = useState(false); // For showing enhanced log screen
 
   const requestPermissions = useCallback(async () => {
     if (Platform.OS === 'android') {
@@ -69,10 +72,14 @@ export default function App() {
       try {
         const manager = new FTMSManager();
         ftmsManagerRef.current = manager;
-        
-        // Set up log callback to capture logs
+          // Set up log callback to capture logs
         manager.setLogCallback((newLogs) => {
           setLogs(newLogs);
+          // Format logs for display
+          const formatted = newLogs.map(log => 
+            `${new Date(log.timestamp).toLocaleTimeString()} - ${log.message}`
+          );
+          setFormattedLogs(formatted);
         });
         
         // 블루투스 상태 확인
@@ -173,15 +180,25 @@ export default function App() {
       await ftmsManagerRef.current.disconnectDevice(); // 이전 연결 해제
       const device = await ftmsManagerRef.current.connectToDevice(selectedDevice.id);
       setConnectedDevice(device);
-      setStatusMessage(`'${device.name}'에 연결됨. 알림 구독 중...`);
-
-      await ftmsManagerRef.current.subscribeToNotifications(
+      setStatusMessage(`'${device.name}'에 연결됨. 알림 구독 중...`);      await ftmsManagerRef.current.subscribeToNotifications(
         (cpResponse) => {
-          console.log("App: CP Response:", cpResponse.toString('hex'));
-          // UI에 CP 응답 표시 로직 추가 가능
+          // Control point response handling now managed by FTMSManager logging
+          if (cpResponse.length >= 3) {
+            const responseOpCode = cpResponse[0];
+            const requestOpCode = cpResponse[1];
+            const resultCode = cpResponse[2];
+            console.log(`App: CP Response - OpCode: ${requestOpCode.toString(16)}, Result: ${resultCode === 1 ? 'SUCCESS' : 'FAILURE'}`);
+          }
         },
         (newBikeData) => {
-          console.log("App: Bike Data:", JSON.stringify(newBikeData, null, 2));
+          // Log only key bike data metrics for cleaner console
+          const keyMetrics = {
+            speed: newBikeData.instantaneousSpeed,
+            cadence: newBikeData.instantaneousCadence,
+            power: newBikeData.instantaneousPower,
+            resistance: newBikeData.resistanceLevel
+          };
+          console.log("App: Bike Data:", JSON.stringify(keyMetrics, null, 2));
           setBikeData(newBikeData); // UI 업데이트를 위해 상태에 저장
         }
       );
@@ -254,24 +271,44 @@ export default function App() {
     
     setShowTestScreen(true);
   };
-
   // 테스트 화면 닫기
   const handleCloseTestScreen = () => {
     setShowTestScreen(false);
+  };
+  
+  // Toggle logs display
+  const toggleLogs = () => {
+    setShowLogs(!showLogs);
+  };
+  
+  // Show log screen
+  const showLogViewer = () => {
+    if (connectedDevice && ftmsManagerRef.current) {
+      setShowLogScreen(true);
+    } else {
+      setStatusMessage('로그를 보려면 장치에 연결되어 있어야 합니다.');
+    }
+  };
+  
+  // Close log screen
+  const handleCloseLogScreen = () => {
+    setShowLogScreen(false);
   };
 
   const renderListHeader = () => (
     // This View acts like the original styles.container for padding and alignment
     // when FlatList is the main scroller.
-    <View style={{ paddingHorizontal: styles.container.paddingHorizontal, paddingTop: styles.container.paddingTop, paddingBottom: styles.container.paddingBottom }}>
-      <View style={styles.headerContainer}>
+    <View style={{ paddingHorizontal: styles.container.paddingHorizontal, paddingTop: styles.container.paddingTop, paddingBottom: styles.container.paddingBottom }}>      <View style={styles.headerContainer}>
         <View style={styles.titleVersionContainer}>
           <Text style={styles.title}>IsYafit</Text>
           <Text style={styles.version}>{APP_VERSION}</Text>
         </View>
-        <TouchableOpacity style={styles.bluetoothIconContainer} onPress={checkAndEnableBluetooth}>
-          <Icon name="bluetooth" size={24} color="#00c663" />
-        </TouchableOpacity>
+        <View style={{ flexDirection: 'row' }}>
+          <AppLogButton logs={logs} />
+          <TouchableOpacity style={styles.bluetoothIconContainer} onPress={checkAndEnableBluetooth}>
+            <Icon name="bluetooth" size={24} color="#00c663" />
+          </TouchableOpacity>
+        </View>
       </View>
       <Text style={styles.status}>{statusMessage}</Text>
       
@@ -314,12 +351,18 @@ export default function App() {
       <Text style={styles.deviceText}>{item.name || 'Unknown Device'}</Text>
       <Text style={styles.deviceTextSmall}>{item.id}</Text>
     </TouchableOpacity>
-  );
-
-  return (
+  );  return (
     <SafeAreaView style={styles.safeArea}>
-      {/* Show the test screen when a device is connected and test is requested */}
-      {showTestScreen && connectedDevice && ftmsManagerRef.current ? (
+      {/* Show the enhanced log screen */}
+      {showLogScreen && connectedDevice && ftmsManagerRef.current ? (
+        <EnhancedTestScreen
+          device={connectedDevice}
+          ftmsManager={ftmsManagerRef.current}
+          onClose={handleCloseLogScreen}
+        />
+      ) : 
+      /* Show the test screen when a device is connected and test is requested */
+      showTestScreen && connectedDevice && ftmsManagerRef.current ? (
         <TestScreen
           device={connectedDevice}
           ftmsManager={ftmsManagerRef.current}
@@ -429,12 +472,19 @@ export default function App() {
                       </TouchableOpacity>
                     </View>
 
-                    {/* FTMS 호환성 테스트 버튼 */}
-                    <TouchableOpacity 
+                    {/* FTMS 호환성 테스트 버튼 */}                    <TouchableOpacity 
                       style={styles.buttonTestCompatibility}
                       onPress={handleStartTest}
                     >
                       <Text style={styles.buttonTestCompatibilityText}>FTMS 호환성 테스트</Text>
+                    </TouchableOpacity>
+                    
+                    {/* 로그 보기 버튼 */}
+                    <TouchableOpacity 
+                      style={[styles.buttonTestCompatibility, {marginTop: 10, backgroundColor: '#3182CE'}]}
+                      onPress={showLogViewer}
+                    >
+                      <Text style={styles.buttonTestCompatibilityText}>명령/데이터 로그 보기</Text>
                     </TouchableOpacity>
                   </>
                 )}

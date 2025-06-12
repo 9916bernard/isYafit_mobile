@@ -372,18 +372,41 @@ ${results.issuesFound && results.issuesFound.length > 0 ? '\n발견된 문제점
                 </TouchableOpacity>
                 {showFullLog && (
                   <View style={styles.logContainer}>
-                    {results.interactionLogs.map((log, index) => (
-                      <Text key={index} style={styles.logEntry}>{
-                        log.startsWith('INFO - FTMSTester: Control Response Received') || 
-                        log.includes('Sending') || 
-                        log.includes('Bike Data Flags') || 
-                        log.includes('raw data') || 
-                        log.includes('Resistance changed') ||
-                        log.includes('SUCCESS') ||
-                        log.includes('FAIL')
-                        ? <Text style={{fontWeight: 'bold', color: log.includes('FAIL') ? '#F44336' : '#00c663'}}>{log}</Text>
-                        : log
-                      }</Text>
+                    {results.interactionLogs.map((log, index) => (                      <Text key={index} style={styles.logEntry}>
+                        {(() => {
+                          // 명령 전송 로그 (녹색)
+                          if (log.includes('명령 전송:')) {
+                            return <Text style={{fontWeight: 'bold', color: '#2196F3'}}>{log}</Text>;
+                          }
+                          // 명령 응답 성공 로그 (녹색)
+                          else if (log.includes('명령 응답 [성공]') || log.includes('SUCCESS')) {
+                            return <Text style={{fontWeight: 'bold', color: '#00c663'}}>{log}</Text>;
+                          }
+                          // 명령 응답 실패 로그 (빨간색)
+                          else if (log.includes('명령 응답 [실패]') || log.includes('FAIL')) {
+                            return <Text style={{fontWeight: 'bold', color: '#F44336'}}>{log}</Text>;
+                          }
+                          // 바이크 데이터 로그 (파란색)
+                          else if (log.includes('바이크 데이터:')) {
+                            return <Text style={{color: '#03A9F4'}}>{log}</Text>;
+                          }
+                          // 저항 변경 로그 (보라색)
+                          else if (log.includes('Resistance changed')) {
+                            return <Text style={{fontWeight: 'bold', color: '#9C27B0'}}>{log}</Text>;
+                          }
+                          // 기타 중요 로그 (굵은 글씨)
+                          else if (
+                            log.includes('Control Response Received') || 
+                            log.includes('Sending') || 
+                            log.includes('Bike Data Flags') || 
+                            log.includes('raw data')
+                          ) {
+                            return <Text style={{fontWeight: 'bold'}}>{log}</Text>;
+                          }
+                          // 일반 로그
+                          return log;
+                        })()}
+                      </Text>
                     ))}
                   </View>
                 )}
