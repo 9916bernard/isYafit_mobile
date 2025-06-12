@@ -34,6 +34,19 @@ export class FTMSTester {
     constructor(ftmsManager: FTMSManager) {
         this.ftmsManager = ftmsManager;
         this.testResults = initTestResults();
+        this.ftmsManager.setLogCallback(this.logInteraction.bind(this)); // Add this line
+    }
+
+    // Add this new method to log interactions
+    private logInteraction(message: string) {
+        const timestamp = new Date().toISOString().replace('T', ' ').substring(0, 23);
+        const logEntry = `${timestamp} - ${message}`;
+        if (!this.testResults.interactionLogs) {
+            this.testResults.interactionLogs = [];
+        }
+        this.testResults.interactionLogs.push(logEntry);
+        // Optionally, you can also pass this to a UI callback if needed immediately
+        // console.log(logEntry); // For debugging during development
     }
 
     // Main testing flow
@@ -65,23 +78,33 @@ export class FTMSTester {
         try {
             // Step 1: Connect to device and discover services
             this.updateProgress(5, "기기에 연결 중...");
+            this.logInteraction('INFO - Test: Attempting to connect to device.');
             await this.connectToDevice(device);
             this.testResults.connection.status = true;
+            this.logInteraction('INFO - Test: Device connected successfully.');
             this.updateProgress(10, "서비스 확인 중...");
+            this.logInteraction('INFO - Test: Discovering services and characteristics.');
             await this.identifyProtocols();
+            this.logInteraction(`INFO - Test: Identified protocols: ${this.testResults.supportedProtocols.join(', ') || 'None'}.`);
             
             // Step 2: Read supported ranges if FTMS protocol is available
             if (this.testResults.supportedProtocols.includes("FTMS")) {
                 this.updateProgress(20, "지원 범위 확인 중...");
+                this.logInteraction('INFO - Test: Reading supported FTMS ranges.');
                 await this.readSupportRanges();
+                this.logInteraction('INFO - Test: Finished reading supported ranges.');
                 
                 // Step 3: Subscribe to notifications and monitor data fields
                 this.updateProgress(30, "데이터 필드 모니터링 설정 중...");
+                this.logInteraction('INFO - Test: Subscribing to FTMS notifications.');
                 await this.monitorBikeData();
+                this.logInteraction('INFO - Test: Subscribed to notifications and initial commands sent.');
                 
                 // Step 4: Test control points
                 this.updateProgress(40, "제어 기능 테스트 중...");
+                this.logInteraction('INFO - Test: Starting control point tests.');
                 await this.testControlPoints();
+                this.logInteraction('INFO - Test: Control point tests completed.');
                 
                 // Step 5: Let the test run for the remaining duration to collect data
                 const elapsed = Date.now() - this.startTime;
@@ -89,7 +112,9 @@ export class FTMSTester {
                 
                 if (remainingTime > 0) {
                     this.updateProgress(50, "데이터 수집 중...");
+                    this.logInteraction(`INFO - Test: Starting data collection phase for ${remainingTime / 1000} seconds.`);
                     await this.runDataCollection(remainingTime);
+                    this.logInteraction('INFO - Test: Data collection phase ended.');
                 }
                 
                 // Finalize the test
@@ -105,6 +130,7 @@ export class FTMSTester {
             } else if (this.testResults.supportedProtocols.includes("CSC")) {
                 // Limited CSC protocol testing
                 this.updateProgress(30, "CSC 데이터 모니터링 중...");
+                this.logInteraction('INFO - Test: Starting limited CSC protocol testing.');
                 await this.monitorCscData();
                 
                 // Let it run for a while to collect data
@@ -167,6 +193,7 @@ export class FTMSTester {
     private async connectToDevice(device: Device): Promise<void> {
         try {
             await this.ftmsManager.connectToDevice(device.id);
+            this.logInteraction(`INFO - FTMSTester: Successfully connected to device ${device.id}`);
             
             // Get the list of services
             const connectedDevice = this.ftmsManager.getConnectedDevice();
@@ -188,6 +215,7 @@ export class FTMSTester {
     private async identifyProtocols(): Promise<void> {
         try {
             // Read device services and identify supported protocols
+            this.logInteraction('INFO - FTMSTester: Identifying protocols.');
             const device = this.ftmsManager.getConnectedDevice();
             if (!device) {
                 throw new Error("기기가 연결되지 않았습니다.");
@@ -230,10 +258,12 @@ export class FTMSTester {
             
             // Read FTMS features if available
             if (supportedProtocols.includes("FTMS")) {
+                this.logInteraction('INFO - FTMSTester: Reading FTMS features.');
                 await this.readFtmsFeatures();
             }
             
         } catch (error) {
+            this.logInteraction(`ERROR - FTMSTester: Error identifying protocols: ${error instanceof Error ? error.message : String(error)}`);
             this.testResults.issuesFound.push(`프로토콜 식별 오류: ${error instanceof Error ? error.message : String(error)}`);
             throw error;
         }
@@ -242,7 +272,9 @@ export class FTMSTester {
     private async readFtmsFeatures(): Promise<void> {
         try {
             // Use the FTMSManager to read features
+            this.logInteraction('INFO - FTMSTester: Attempting to read FTMS features characteristic.');
             const featureBits = await this.ftmsManager.readFTMSFeatures();
+            this.logInteraction(`INFO - FTMSTester: FTMS Features raw bits: ${featureBits.toString(16)}`);
             
             // Map feature bits to feature names
             const featuresMap: { [key: number]: string } = {
@@ -274,8 +306,10 @@ export class FTMSTester {
             }
             
             this.testResults.features = features;
+            this.logInteraction(`INFO - FTMSTester: Parsed FTMS features: ${JSON.stringify(features)}`);
             
         } catch (error) {
+            this.logInteraction(`ERROR - FTMSTester: Error reading FTMS features: ${error instanceof Error ? error.message : String(error)}`);
             this.testResults.issuesFound.push(`FTMS 기능 읽기 오류: ${error instanceof Error ? error.message : String(error)}`);
             // Don't throw here to allow the test to continue
         }
@@ -286,6 +320,7 @@ export class FTMSTester {
             if (!this.testResults.supportRanges) {
                 this.testResults.supportRanges = {};
             }
+            this.logInteraction('INFO - FTMSTester: Reading support ranges.');
             
             const device = this.ftmsManager.getConnectedDevice();
             if (!device) {
@@ -309,8 +344,10 @@ export class FTMSTester {
                         max: range.max / 100,
                         increment: range.increment / 100
                     };
+                    this.logInteraction(`INFO - FTMSTester: Speed range: ${JSON.stringify(this.testResults.supportRanges.speed)}`);
                 }
             } catch (e) {
+                this.logInteraction(`WARN - FTMSTester: Speed range not available: ${e}`);
                 console.log("Speed range not available:", e);
             }
             
@@ -331,8 +368,10 @@ export class FTMSTester {
                         max: range.max / 10,
                         increment: range.increment / 10
                     };
+                    this.logInteraction(`INFO - FTMSTester: Incline range: ${JSON.stringify(this.testResults.supportRanges.incline)}`);
                 }
             } catch (e) {
+                this.logInteraction(`WARN - FTMSTester: Incline range not available: ${e}`);
                 console.log("Incline range not available:", e);
             }
             
@@ -352,8 +391,10 @@ export class FTMSTester {
                         max: range.max,
                         increment: range.increment
                     };
+                    this.logInteraction(`INFO - FTMSTester: Resistance range: ${JSON.stringify(this.testResults.supportRanges.resistance)}`);
                 }
             } catch (e) {
+                this.logInteraction(`WARN - FTMSTester: Resistance range not available: ${e}`);
                 console.log("Resistance range not available:", e);
             }
             
@@ -374,12 +415,15 @@ export class FTMSTester {
                         max: range.max,
                         increment: range.increment
                     };
+                    this.logInteraction(`INFO - FTMSTester: Power range: ${JSON.stringify(this.testResults.supportRanges.power)}`);
                 }
             } catch (e) {
+                this.logInteraction(`WARN - FTMSTester: Power range not available: ${e}`);
                 console.log("Power range not available:", e);
             }
             
         } catch (error) {
+            this.logInteraction(`ERROR - FTMSTester: Error reading support ranges: ${error instanceof Error ? error.message : String(error)}`);
             this.testResults.issuesFound.push(`범위 특성 읽기 오류: ${error instanceof Error ? error.message : String(error)}`);
             // Don't throw here to allow the test to continue
         }
@@ -387,6 +431,7 @@ export class FTMSTester {
     
     private async monitorBikeData(): Promise<void> {
         try {
+            this.logInteraction('INFO - FTMSTester: Setting up notifications for Indoor Bike Data and Control Point.');
             await this.ftmsManager.subscribeToNotifications(
                 // Control Point Response handler
                 (data: Buffer) => {
@@ -399,11 +444,13 @@ export class FTMSTester {
             );
             
             // Send initial commands to activate the device
+            this.logInteraction('INFO - FTMSTester: Sending initial FTMS commands (REQUEST_CONTROL, RESET, START).');
             await this.ftmsManager.requestControl();
             await this.ftmsManager.resetMachine();
             await this.ftmsManager.startMachine();
             
         } catch (error) {
+            this.logInteraction(`ERROR - FTMSTester: Error subscribing to notifications: ${error instanceof Error ? error.message : String(error)}`);
             this.testResults.issuesFound.push(`알림 구독 오류: ${error instanceof Error ? error.message : String(error)}`);
             throw error;
         }
@@ -433,7 +480,7 @@ export class FTMSTester {
                 // Use a common test resistance level, e.g., 5.
                 // This might need to be adjusted based on device's supported range,
                 // which should be read by readSupportRanges if available.
-                const resistanceLevel = 5; 
+                const resistanceLevel = 10; 
                 
                 this.resistanceTracking = {
                     commandPending: true,
@@ -442,7 +489,7 @@ export class FTMSTester {
                     expectedResistance: resistanceLevel,
                     resistanceChangeNotedForLastCmd: false // Initialize
                 };
-                
+                this.logInteraction(`INFO - FTMSTester: Sending SET_RESISTANCE_LEVEL: ${resistanceLevel}`);
                 await this.ftmsManager.setResistance(resistanceLevel);
                 
                 // Result will be handled by the control point response handler
@@ -471,10 +518,10 @@ export class FTMSTester {
                     commandPending: true,
                     lastCommandType: 'SET_TARGET_POWER',
                     commandSentTime: Date.now(),
-                    expectedResistance: undefined,
+                    expectedResistance: undefined, // Not directly expecting a specific resistance for power
                     resistanceChangeNotedForLastCmd: false // Initialize
                 };
-                
+                this.logInteraction(`INFO - FTMSTester: Sending SET_TARGET_POWER: ${targetPower}W`);
                 await this.ftmsManager.setTargetPower(targetPower);
                 
                 this.testResults.controlTests['SET_TARGET_POWER'] = {
@@ -497,16 +544,19 @@ export class FTMSTester {
             try {
                 // Test with 10% grade
                 const grade = 10;
+                const windSpeed = 0; // Example
+                const crr = 0.004; // Example Rolling Resistance Coefficient
+                const cw = 0.5; // Example Wind Resistance Coefficient
                 
                 this.resistanceTracking = {
                     commandPending: true,
                     lastCommandType: 'SET_SIM_PARAMS',
                     commandSentTime: Date.now(),
-                    expectedResistance: undefined,
+                    expectedResistance: undefined, // Not directly expecting for sim params
                     resistanceChangeNotedForLastCmd: false // Initialize
                 };
-                
-                await this.ftmsManager.setSimulationParameters(0, grade, 0.004, 0.5);
+                this.logInteraction(`INFO - FTMSTester: Sending SET_SIM_PARAMS: Grade ${grade}%, Wind ${windSpeed} km/h, CRR ${crr}, CW ${cw}`);
+                await this.ftmsManager.setSimulationParameters(windSpeed, grade, crr, cw); 
                 
                 this.testResults.controlTests['SET_SIM_PARAMS'] = {
                     status: "Pending", 
@@ -529,178 +579,136 @@ export class FTMSTester {
             // Don't throw here to allow the test to continue
         }
     }
-      private handleControlPointResponse(data: Buffer): void {
-        if (data.length < 3) return;
-        
-        const responseOpCode = data[0];
-        const requestOpCode = data[1];
+      private handleControlPointResponse(data: Buffer) {
+        // This method is called by FTMSManager's notification handler
+        // It needs to be adapted to use the logInteraction method if direct logging is needed here
+        // For now, FTMSManager will handle logging of CP responses.
+        const opCode = data[1];
         const resultCode = data[2];
-        
-        if (responseOpCode !== 0x80) return; // Not a control point response
-        
-        // Result code 해석
-        const resultString = this.getResultCodeString(resultCode);
-        const responseTime = this.resistanceTracking.commandPending ? 
-            ` (응답시간: ${Date.now() - this.resistanceTracking.commandSentTime}ms)` : '';
-        
-        // Update the control test result based on the response
-        if (requestOpCode === 0x04 && this.testResults.controlTests?.['SET_RESISTANCE_LEVEL']) { // SET_RESISTANCE_LEVEL
-            this.testResults.controlTests['SET_RESISTANCE_LEVEL'].status = resultCode === 0x01 ? "OK" : "Failed";
-            this.testResults.controlTests['SET_RESISTANCE_LEVEL'].details += 
-                ` (응답: ${resultString}${responseTime})`;
-            
-            if (resultCode !== 0x01) {
-                this.testResults.issuesFound.push(`저항 수준 설정 오류 (코드: ${resultCode} - ${resultString})`);
-            }
-        } else if (requestOpCode === 0x05 && this.testResults.controlTests?.['SET_TARGET_POWER']) { // SET_TARGET_POWER
-            this.testResults.controlTests['SET_TARGET_POWER'].status = resultCode === 0x01 ? "OK" : "Failed";
-            this.testResults.controlTests['SET_TARGET_POWER'].details += 
-                ` (응답: ${resultString}${responseTime})`;
-            
-            if (resultCode !== 0x01) {
-                this.testResults.issuesFound.push(`목표 파워 설정 오류 (코드: ${resultCode} - ${resultString})`);
-            } else {
-                // 성공 시 추가 설명
-                this.testResults.controlTests['SET_TARGET_POWER'].details += ' - 파워 목표 설정 확인됨';
-            }
-        } else if (requestOpCode === 0x11 && this.testResults.controlTests?.['SET_SIM_PARAMS']) { // SET_SIM_PARAMS
-            this.testResults.controlTests['SET_SIM_PARAMS'].status = resultCode === 0x01 ? "OK" : "Failed";
-            this.testResults.controlTests['SET_SIM_PARAMS'].details += 
-                ` (응답: ${resultString}${responseTime})`;
-            
-            if (resultCode !== 0x01) {
-                this.testResults.issuesFound.push(`시뮬레이션 파라미터 설정 오류 (코드: ${resultCode} - ${resultString})`);
-            } else {
-                // 성공 시 추가 설명
-                this.testResults.controlTests['SET_SIM_PARAMS'].details += ' - 경사도 시뮬레이션 적용됨';
-            }
-        }
-        
-        // Reset resistance tracking
+        const commandName = this.ftmsManager.getOpCodeName(opCode);
+        const resultName = this.ftmsManager.getResultCodeName(resultCode);
+
+        this.logInteraction(`INFO - FTMSTester: Control Response Received - OpCode: ${opCode.toString(16)}, Result: ${resultCode.toString(16)} (${commandName}, ${resultName})`);
+
         if (this.resistanceTracking.commandPending && 
-            (requestOpCode === 0x04 || requestOpCode === 0x05 || requestOpCode === 0x11)) {
-            this.resistanceTracking.commandPending = false;
+            (commandName === 'SET_RESISTANCE_LEVEL' || 
+             commandName === 'SET_TARGET_POWER' || 
+             commandName === 'SET_SIM_PARAMS')) {
+            
+            if (resultCode === 0x01) { // Success
+                this.testResults.controlTests[commandName] = {
+                    ...this.testResults.controlTests[commandName],
+                    status: "OK", // Initially OK, will be verified by resistance change
+                    details: `${commandName} successful. Waiting for resistance change.`
+                };
+                this.logInteraction(`INFO - FTMSTester: ${commandName} command successful via CP response.`);
+                // Now we wait for handleBikeData to confirm the change
+            } else {
+                this.testResults.controlTests[commandName] = {
+                    ...this.testResults.controlTests[commandName],
+                    status: "Failed",
+                    details: `${commandName} failed. Result: ${resultName} (${resultCode.toString(16)})`
+                };
+                this.resistanceTracking.commandPending = false;
+                this.logInteraction(`ERROR - FTMSTester: ${commandName} command failed via CP response. Result: ${resultName}`);
+            }
         }
     }
-    
-    // FTMS 제어 응답 코드를 의미있는 문자열로 변환
-    private getResultCodeString(resultCode: number): string {
-        switch(resultCode) {
-            case 0x01: return '성공';
-            case 0x02: return '잘못된 파라미터';
-            case 0x03: return '작업 실패';
-            case 0x04: return '제어 권한 없음';
-            case 0x05: return '잘못된 상태';
-            default: return `알 수 없음(${resultCode})`;
-        }
-    }
-    
-    private handleBikeData(data: any): void {
-        // Track data fields
+
+    private handleBikeData(data: any) {
+        // This method is called by FTMSManager's notification handler
+        // It needs to be adapted to use the logInteraction method if direct logging is needed here
+        // For now, FTMSManager will handle logging of Bike Data.
+        // Update data fields
         if (data.instantaneousSpeed !== undefined) {
             this.testResults = updateDataField(this.testResults, 'speed', data.instantaneousSpeed);
         }
-        
         if (data.instantaneousCadence !== undefined) {
             this.testResults = updateDataField(this.testResults, 'cadence', data.instantaneousCadence);
         }
-        
         if (data.instantaneousPower !== undefined) {
             this.testResults = updateDataField(this.testResults, 'power', data.instantaneousPower);
         }
-          if (data.resistanceLevel !== undefined) {
-            this.testResults = updateDataField(this.testResults, 'resistance', data.resistanceLevel);
-            
-            // Track resistance changes
-            if (this.lastResistanceLevel !== undefined && 
-                this.lastResistanceLevel !== data.resistanceLevel) {
-                
-                let changeSource = '자동 변경';
-                let attributedToCommandType: string | undefined = undefined;
-                const currentTime = Date.now();
-                const timeSinceLastCommand = currentTime - this.resistanceTracking.commandSentTime;
-
-                // If a relevant command was sent recently (e.g., within 5 seconds)
-                if (this.resistanceTracking.lastCommandType && timeSinceLastCommand < 5000) {
-                    switch(this.resistanceTracking.lastCommandType) {
-                        case 'SET_RESISTANCE_LEVEL':
-                            changeSource = `저항 레벨 명령 (${this.resistanceTracking.lastCommandType})`;
-                            attributedToCommandType = this.resistanceTracking.lastCommandType;
-                            break;
-                        case 'SET_TARGET_POWER':
-                            changeSource = `목표 파워 명령 (${this.resistanceTracking.lastCommandType})`;
-                            attributedToCommandType = this.resistanceTracking.lastCommandType;
-                            break;
-                        case 'SET_SIM_PARAMS':
-                            changeSource = `경사도 시뮬레이션 명령 (${this.resistanceTracking.lastCommandType})`;
-                            attributedToCommandType = this.resistanceTracking.lastCommandType;
-                            break;
-                    }
-                    if (attributedToCommandType) {
-                         changeSource += ` (저항 변경까지: ${timeSinceLastCommand}ms)`;
-                    }
-                }
-                
+        if (data.resistanceLevel !== undefined) {
+            const newResistance = data.resistanceLevel;
+            if (this.lastResistanceLevel !== newResistance) {
                 this.testResults = trackResistanceChange(
-                    this.testResults,
-                    'resistance',
-                    data.resistanceLevel,
+                    this.testResults, 
+                    'Resistance Level', 
+                    newResistance, 
                     this.lastResistanceLevel,
-                    changeSource
+                    this.resistanceTracking.commandPending ? this.resistanceTracking.lastCommandType : '자동 변경'
                 );
-                
-                // Specific check for SET_RESISTANCE_LEVEL outcome
-                if (attributedToCommandType === 'SET_RESISTANCE_LEVEL' &&
-                    this.resistanceTracking.expectedResistance !== undefined) {
-                        
-                    const controlTestEntry = this.testResults.controlTests?.['SET_RESISTANCE_LEVEL'];
-                    if (controlTestEntry) {
-                        if (data.resistanceLevel === this.resistanceTracking.expectedResistance) {
-                            controlTestEntry.status = "OK";
-                            controlTestEntry.details += ` (실제 저항 확인됨: ${this.lastResistanceLevel} → ${data.resistanceLevel})`;
-                        } else {
-                            controlTestEntry.details += ` (경고: 저항이 예상(${this.resistanceTracking.expectedResistance})과 다르게 변경됨: ${this.lastResistanceLevel} → ${data.resistanceLevel})`;
-                            this.testResults.issuesFound.push(
-                                `저항 수준 설정 후 예상치 불일치: 예상 ${this.resistanceTracking.expectedResistance}, 실제 ${data.resistanceLevel} (명령 후 ${timeSinceLastCommand}ms)`
-                            );
-                        }
-                        this.resistanceTracking.expectedResistance = undefined; // Mark expectation as checked
-                    }
-                }
+                this.logInteraction(`INFO - FTMSTester: Resistance changed from ${this.lastResistanceLevel} to ${newResistance}. Command pending: ${this.resistanceTracking.commandPending}, Type: ${this.resistanceTracking.lastCommandType}`);
 
-                // Add confirmation for SET_TARGET_POWER and SET_SIM_PARAMS if resistance changed post-command
-                if (!this.resistanceTracking.resistanceChangeNotedForLastCmd) {
-                    if (attributedToCommandType === 'SET_TARGET_POWER') {
-                        const controlTestEntry = this.testResults.controlTests?.['SET_TARGET_POWER'];
-                        if (controlTestEntry && controlTestEntry.status === "OK") { // If command was ack'd
-                            controlTestEntry.details += ` (저항 변경 관찰됨: ${this.lastResistanceLevel} → ${data.resistanceLevel}, 명령 후 ${timeSinceLastCommand}ms)`;
-                            this.resistanceTracking.resistanceChangeNotedForLastCmd = true;
+                if (this.resistanceTracking.commandPending && 
+                    !this.resistanceTracking.resistanceChangeNotedForLastCmd) {
+                    
+                    const commandName = this.resistanceTracking.lastCommandType;
+                    let commandSuccess = false;
+
+                    if (commandName === 'SET_RESISTANCE_LEVEL') {
+                        if (newResistance === this.resistanceTracking.expectedResistance) {
+                            commandSuccess = true;
+                            this.logInteraction(`INFO - FTMSTester: SET_RESISTANCE_LEVEL to ${this.resistanceTracking.expectedResistance} confirmed by bike data (new resistance: ${newResistance}).`);
+                        } else {
+                            this.logInteraction(`WARN - FTMSTester: SET_RESISTANCE_LEVEL to ${this.resistanceTracking.expectedResistance} expected, but bike data shows ${newResistance}.`);
                         }
-                    } else if (attributedToCommandType === 'SET_SIM_PARAMS') {
-                        const controlTestEntry = this.testResults.controlTests?.['SET_SIM_PARAMS'];
-                        if (controlTestEntry && controlTestEntry.status === "OK") { // If command was ack'd
-                            controlTestEntry.details += ` (저항 변경 관찰됨: ${this.lastResistanceLevel} → ${data.resistanceLevel}, 명령 후 ${timeSinceLastCommand}ms)`;
-                            this.resistanceTracking.resistanceChangeNotedForLastCmd = true;
-                        }
+                    } else if (commandName === 'SET_TARGET_POWER' || commandName === 'SET_SIM_PARAMS') {
+                        // For power/sim, any change in resistance after command is initially considered a success.
+                        // More sophisticated checks could be added (e.g. if power output changes as expected)
+                        commandSuccess = true; 
+                        this.logInteraction(`INFO - FTMSTester: ${commandName} appears to have changed resistance (new resistance: ${newResistance}).`);
+                    }
+
+                    if (commandSuccess) {
+                        this.testResults.controlTests[commandName] = {
+                            ...this.testResults.controlTests[commandName],
+                            status: "OK",
+                            details: `${commandName} successful. Resistance changed to ${newResistance}.`
+                        };
+                        this.resistanceTracking.resistanceChangeNotedForLastCmd = true; // Mark as noted
+                        // this.resistanceTracking.commandPending = false; // Keep pending until timeout or next command
+                    } else if (this.testResults.controlTests[commandName]?.status !== "Failed") {
+                        // If CP response was OK, but resistance didn't match for SET_RESISTANCE_LEVEL
+                        this.testResults.controlTests[commandName] = {
+                            ...this.testResults.controlTests[commandName],
+                            status: "Failed",
+                            details: `${commandName} to ${this.resistanceTracking.expectedResistance} failed. Bike reported ${newResistance}.`
+                        };
                     }
                 }
+                this.lastResistanceLevel = newResistance;
             }
-            
-            this.lastResistanceLevel = data.resistanceLevel;
+            this.testResults = updateDataField(this.testResults, 'resistance', data.resistanceLevel);
         }
-        
-        if (data.heartRate !== undefined) {
-            this.testResults = updateDataField(this.testResults, 'heartRate', data.heartRate);
-        }
-        
         if (data.totalDistance !== undefined) {
             this.testResults = updateDataField(this.testResults, 'distance', data.totalDistance);
+        }
+        if (data.heartRate !== undefined) {
+            this.testResults = updateDataField(this.testResults, 'heartRate', data.heartRate);
         }
     }
     
     private async runDataCollection(duration: number): Promise<void> {
         return new Promise((resolve) => {
+            this.logInteraction(`INFO - FTMSTester: Starting data collection phase for ${duration / 1000} seconds.`);
             this.testTimeoutId = setTimeout(() => {
+                this.logInteraction('INFO - FTMSTester: Data collection phase ended.');
+                // Check any pending resistance commands that didn't get a bike data confirmation
+                if (this.resistanceTracking.commandPending && !this.resistanceTracking.resistanceChangeNotedForLastCmd) {
+                    const commandName = this.resistanceTracking.lastCommandType;
+                    if (this.testResults.controlTests[commandName] && this.testResults.controlTests[commandName].status !== "Failed") {
+                        this.testResults.controlTests[commandName] = {
+                            ...this.testResults.controlTests[commandName],
+                            status: "Failed",
+                            details: `${commandName} did not result in an observed resistance change within timeout.`
+                        };
+                        this.logInteraction(`WARN - FTMSTester: ${commandName} timed out waiting for resistance change confirmation from bike data.`);
+                    }
+                }
+                this.resistanceTracking.commandPending = false; // Clear pending state after timeout
+
                 resolve();
             }, duration);
         });

@@ -69,6 +69,7 @@ export interface TestResults {
     testCompleted: boolean;
     testCompletedTimestamp?: number;
     reportId?: string;
+    interactionLogs?: string[]; // Added for detailed logging
 }
 
 // Initialize a new test result object
@@ -97,7 +98,8 @@ export function initTestResults(): TestResults {
         controlTests: {},
         testCompleted: false,
         issuesFound: [],
-        reasons: []
+        reasons: [],
+        interactionLogs: [] // Initialize logs array
     };
 }
 

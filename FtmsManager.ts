@@ -577,6 +577,37 @@ export class FTMSManager {
         this.logCallback = callback;
     }
 
+    // Add these helper methods
+    getOpCodeName(opCode: number): string {
+        switch (opCode) {
+            case 0x00: return 'REQUEST_CONTROL';
+            case 0x01: return 'RESET';
+            case 0x02: return 'SET_TARGET_SPEED'; // Not used in current example but good to have
+            case 0x03: return 'SET_TARGET_INCLINATION'; // Not used
+            case 0x04: return 'SET_RESISTANCE_LEVEL';
+            case 0x05: return 'SET_TARGET_POWER';
+            case 0x06: return 'SET_TARGET_HEART_RATE'; // Not used
+            case 0x07: return 'START';
+            case 0x08: return 'STOP';
+            case 0x09: return 'PAUSE'; // Not used, but part of STOP/PAUSE opcode
+            case 0x11: return 'SET_SIM_PARAMS'; // Corrected from SET_INDOOR_BIKE_SIMULATION
+            case 0x10: return 'GET_SUPPORTED_POWER_RANGE'; // Not used
+            case 0x12: return 'GET_SUPPORTED_RESISTANCE_RANGE'; // Not used
+            default: return `UNKNOWN_OPCODE_0x${opCode.toString(16)}`;
+        }
+    }
+
+    getResultCodeName(resultCode: number): string {
+        switch (resultCode) {
+            case 0x01: return 'SUCCESS';
+            case 0x02: return 'OP_CODE_NOT_SUPPORTED';
+            case 0x03: return 'INVALID_PARAMETER';
+            case 0x04: return 'OPERATION_FAILED';
+            case 0x05: return 'CONTROL_NOT_PERMITTED';
+            default: return `UNKNOWN_RESULT_0x${resultCode.toString(16)}`;
+        }
+    }
+
     getLogs(): LogEntry[] {
         return [...this.logs];
     }

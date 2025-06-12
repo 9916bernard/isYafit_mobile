@@ -184,7 +184,7 @@ ${results.issuesFound && results.issuesFound.length > 0 ? '\n발견된 문제점
               ]}
             >
               <Text style={[styles.tableCell, { flex: 1.2 }]}>
-                {new Date(change.timestamp).toLocaleTimeString()}
+                {new Date(change.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', fractionalSecondDigits: 3 })}
               </Text>
               <Text style={[styles.tableCell, { flex: 0.8 }]}>{change.paramType}</Text>
               <Text style={[styles.tableCell, { flex: 0.8 }]}>
@@ -201,186 +201,226 @@ ${results.issuesFound && results.issuesFound.length > 0 ? '\n발견된 문제점
     );
   };
 
+  const [showFullLog, setShowFullLog] = React.useState(false);
+
   return (
     <SafeAreaView style={styles.safeArea}>
-      <View style={styles.header}>
-        <Text style={styles.title}>FTMS 호환성 테스트 보고서</Text>
-        <View style={styles.headerButtons}>
-          <TouchableOpacity style={styles.shareButton} onPress={handleShare}>
-            <Text style={styles.shareButtonText}>공유</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.closeButton} onPress={onClose}>
-            <Text style={styles.closeButtonText}>닫기</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
+      <ScrollView style={styles.scrollViewContainer}>
+        <View style={styles.container}>
+          <View style={styles.header}>
+            <Text style={styles.title}>FTMS 테스트 보고서</Text>
+            <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+              <Text style={styles.closeButtonText}>닫기</Text>
+            </TouchableOpacity>
+          </View>
 
-      <ScrollView style={styles.container}>
-        {/* Device Information */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>장치 정보</Text>
-          <View style={styles.deviceInfoContainer}>
-            <Text style={styles.deviceName}>
-              {results.deviceInfo.name || 'Unknown Device'}
-            </Text>
-            <Text style={styles.deviceAddress}>{results.deviceInfo.address}</Text>
-            
-            <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>프로토콜:</Text>
-              <Text style={styles.infoValue}>
-                {results.deviceInfo.protocol || '알 수 없음'}
-              </Text>
-            </View>
-            
-            <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>지원 프로토콜:</Text>
-              <Text style={styles.infoValue}>
-                {results.supportedProtocols.join(', ') || '없음'}
-              </Text>
-            </View>
+          {/* Share Button */}
+          <TouchableOpacity onPress={handleShare} style={styles.shareButton}>
+            <Text style={styles.shareButtonText}>보고서 공유</Text>
+          </TouchableOpacity>
 
-            <View style={[styles.infoRow, styles.compatibilityRow]}>
-              <Text style={styles.infoLabel}>호환성:</Text>
-              <View style={[
-                styles.compatibilityBadge,
-                {
-                  backgroundColor: 
-                    results.compatibilityLevel === '완전 호환' ? '#4CAF50' :
-                    results.compatibilityLevel === '제한적 호환' ? '#FF9800' :
-                    results.compatibilityLevel === '수정 필요' ? '#2196F3' : '#F44336'
-                }
-              ]}>
-                <Text style={styles.compatibilityText}>
-                  {results.compatibilityLevel || '평가 불가'}
+          {/* Device Info Section */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>장치 정보</Text>
+            <View style={styles.deviceInfoContainer}>
+              <Text style={styles.deviceName}>
+                {results.deviceInfo.name || 'Unknown Device'}
+              </Text>
+              <Text style={styles.deviceAddress}>{results.deviceInfo.address}</Text>
+              
+              <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>프로토콜:</Text>
+                <Text style={styles.infoValue}>
+                  {results.deviceInfo.protocol || '알 수 없음'}
                 </Text>
               </View>
-            </View>
-          </View>
-        </View>
-
-        {/* Compatibility Reasons */}
-        {results.reasons && results.reasons.length > 0 && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>호환성 판정 사유</Text>
-            <View style={styles.reasonsContainer}>
-              {results.reasons.map((reason, index) => (
-                <Text key={index} style={styles.reasonText}>• {reason}</Text>
-              ))}
-            </View>
-          </View>
-        )}
-
-        {/* Issues Found */}
-        {results.issuesFound && results.issuesFound.length > 0 && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>문제점</Text>
-            <View style={styles.issuesContainer}>
-              {results.issuesFound.map((issue, index) => (
-                <Text key={index} style={styles.issueText}>• {issue}</Text>
-              ))}
-            </View>
-          </View>
-        )}
-
-        {/* Support Ranges */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>지원 범위</Text>
-          {results.supportRanges && Object.keys(results.supportRanges).length > 0 ? (
-            <View style={styles.rangesContainer}>
-              {results.supportRanges.speed && (
-                <Text style={styles.rangeText}>
-                  {formatRangeInfo(results.supportRanges.speed, 'speed')}
+              
+              <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>지원 프로토콜:</Text>
+                <Text style={styles.infoValue}>
+                  {results.supportedProtocols.join(', ') || '없음'}
                 </Text>
-              )}
-              {results.supportRanges.incline && (
-                <Text style={styles.rangeText}>
-                  {formatRangeInfo(results.supportRanges.incline, 'incline')}
-                </Text>
-              )}
-              {results.supportRanges.resistance && (
-                <Text style={styles.rangeText}>
-                  {formatRangeInfo(results.supportRanges.resistance, 'resistance')}
-                </Text>
-              )}
-              {results.supportRanges.power && (
-                <Text style={styles.rangeText}>
-                  {formatRangeInfo(results.supportRanges.power, 'power')}
-                </Text>
-              )}
-            </View>
-          ) : (
-            <Text style={styles.noDataText}>지원 범위 데이터 없음</Text>
-          )}
-        </View>
+              </View>
 
-        {/* Features */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>지원 기능</Text>
-          {results.features && Object.keys(results.features).length > 0 ? (
-            <View style={styles.featuresContainer}>
-              {Object.entries(results.features).map(([name, supported]) => (
-                <View key={name} style={styles.featureItem}>
-                  <Text style={[
-                    styles.featureText,
-                    { color: supported ? '#4CAF50' : '#ccc' }
-                  ]}>
-                    {supported ? '✓' : '✗'} {name}
+              <View style={[styles.infoRow, styles.compatibilityRow]}>
+                <Text style={styles.infoLabel}>호환성:</Text>
+                <View style={[
+                  styles.compatibilityBadge,
+                  {
+                    backgroundColor: 
+                      results.compatibilityLevel === '완전 호환' ? '#4CAF50' :
+                      results.compatibilityLevel === '제한적 호환' ? '#FF9800' :
+                      results.compatibilityLevel === '수정 필요' ? '#2196F3' : '#F44336'
+                  }
+                ]}>
+                  <Text style={styles.compatibilityText}>
+                    {results.compatibilityLevel || '평가 불가'}
                   </Text>
                 </View>
-              ))}
+              </View>
             </View>
-          ) : (
-            <Text style={styles.noDataText}>지원 기능 데이터 없음</Text>
-          )}
-        </View>
-
-        {/* Data Fields */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>감지된 데이터 필드</Text>
-          {renderDataFields()}
-        </View>
-
-        {/* Control Tests */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>제어 테스트 결과</Text>
-          <View style={styles.controlTestsContainer}>
-            {renderControlTests()}
           </View>
-        </View>
 
-        {/* Resistance Changes Log */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>저항 변화 로그</Text>
-          {renderResistanceChanges()}
-        </View>
-
-        {/* Test Metadata */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>테스트 정보</Text>
-          <View style={styles.metadataContainer}>
-            <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>테스트 완료 여부:</Text>
-              <Text style={[
-                styles.infoValue, 
-                { color: results.testCompleted ? '#4CAF50' : '#F44336' }
-              ]}>
-                {results.testCompleted ? '완료' : '미완료'}
-              </Text>
+          {/* Compatibility Reasons */}
+          {results.reasons && results.reasons.length > 0 && (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>호환성 판정 사유</Text>
+              <View style={styles.reasonsContainer}>
+                {results.reasons.map((reason, index) => (
+                  <Text key={index} style={styles.reasonText}>• {reason}</Text>
+                ))}
+              </View>
             </View>
-            {results.testCompletedTimestamp && (
+          )}
+
+          {/* Issues Found */}
+          {results.issuesFound && results.issuesFound.length > 0 && (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>문제점</Text>
+              <View style={styles.issuesContainer}>
+                {results.issuesFound.map((issue, index) => (
+                  <Text key={index} style={styles.issueText}>• {issue}</Text>
+                ))}
+              </View>
+            </View>
+          )}
+
+          {/* Support Ranges */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>지원 범위</Text>
+            {results.supportRanges && Object.keys(results.supportRanges).length > 0 ? (
+              <View style={styles.rangesContainer}>
+                {results.supportRanges.speed && (
+                  <Text style={styles.rangeText}>
+                    {formatRangeInfo(results.supportRanges.speed, 'speed')}
+                  </Text>
+                )}
+                {results.supportRanges.incline && (
+                  <Text style={styles.rangeText}>
+                    {formatRangeInfo(results.supportRanges.incline, 'incline')}
+                  </Text>
+                )}
+                {results.supportRanges.resistance && (
+                  <Text style={styles.rangeText}>
+                    {formatRangeInfo(results.supportRanges.resistance, 'resistance')}
+                  </Text>
+                )}
+                {results.supportRanges.power && (
+                  <Text style={styles.rangeText}>
+                    {formatRangeInfo(results.supportRanges.power, 'power')}
+                  </Text>
+                )}
+              </View>
+            ) : (
+              <Text style={styles.noDataText}>지원 범위 데이터 없음</Text>
+            )}
+          </View>
+
+          {/* Features */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>지원 기능</Text>
+            {results.features && Object.keys(results.features).length > 0 ? (
+              <View style={styles.featuresContainer}>
+                {Object.entries(results.features).map(([name, supported]) => (
+                  <View key={name} style={styles.featureItem}>
+                    <Text style={[
+                      styles.featureText,
+                      { color: supported ? '#4CAF50' : '#ccc' }
+                    ]}>
+                      {supported ? '✓' : '✗'} {name}
+                    </Text>
+                  </View>
+                ))}
+              </View>
+            ) : (
+              <Text style={styles.noDataText}>지원 기능 데이터 없음</Text>
+            )}
+          </View>
+
+          {/* Data Fields */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>감지된 데이터 필드</Text>
+            {renderDataFields()}
+          </View>
+
+          {/* Control Tests */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>제어 테스트 결과</Text>
+            <View style={styles.controlTestsContainer}>
+              {renderControlTests()}
+            </View>
+          </View>
+
+          {/* Resistance Changes Log */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>저항 변화 로그</Text>
+            {renderResistanceChanges()}
+          </View>
+
+          {/* Interaction Logs Section */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>상호작용 로그</Text>
+            {results.interactionLogs && results.interactionLogs.length > 0 ? (
+              <>
+                <TouchableOpacity 
+                  style={styles.toggleLogButton} 
+                  onPress={() => setShowFullLog(!showFullLog)}
+                >
+                  <Text style={styles.toggleLogButtonText}>
+                    {showFullLog ? '로그 숨기기' : `전체 로그 보기 (${results.interactionLogs.length} 항목)`}
+                  </Text>
+                </TouchableOpacity>
+                {showFullLog && (
+                  <View style={styles.logContainer}>
+                    {results.interactionLogs.map((log, index) => (
+                      <Text key={index} style={styles.logEntry}>{
+                        log.startsWith('INFO - FTMSTester: Control Response Received') || 
+                        log.includes('Sending') || 
+                        log.includes('Bike Data Flags') || 
+                        log.includes('raw data') || 
+                        log.includes('Resistance changed') ||
+                        log.includes('SUCCESS') ||
+                        log.includes('FAIL')
+                        ? <Text style={{fontWeight: 'bold', color: log.includes('FAIL') ? '#F44336' : '#00c663'}}>{log}</Text>
+                        : log
+                      }</Text>
+                    ))}
+                  </View>
+                )}
+              </>
+            ) : (
+              <Text style={styles.noDataText}>상호작용 로그 없음</Text>
+            )}
+          </View>
+
+          {/* Test Metadata */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>테스트 정보</Text>
+            <View style={styles.metadataContainer}>
               <View style={styles.infoRow}>
-                <Text style={styles.infoLabel}>완료 시간:</Text>
-                <Text style={styles.infoValue}>
-                  {new Date(results.testCompletedTimestamp).toLocaleString()}
+                <Text style={styles.infoLabel}>테스트 완료 여부:</Text>
+                <Text style={[
+                  styles.infoValue, 
+                  { color: results.testCompleted ? '#4CAF50' : '#F44336' }
+                ]}>
+                  {results.testCompleted ? '완료' : '미완료'}
                 </Text>
               </View>
-            )}
-            {results.reportId && (
-              <View style={styles.infoRow}>
-                <Text style={styles.infoLabel}>보고서 ID:</Text>
-                <Text style={styles.infoValue}>{results.reportId}</Text>
-              </View>
-            )}
+              {results.testCompletedTimestamp && (
+                <View style={styles.infoRow}>
+                  <Text style={styles.infoLabel}>완료 시간:</Text>
+                  <Text style={styles.infoValue}>
+                    {new Date(results.testCompletedTimestamp).toLocaleString()}
+                  </Text>
+                </View>
+              )}
+              {results.reportId && (
+                <View style={styles.infoRow}>
+                  <Text style={styles.infoLabel}>보고서 ID:</Text>
+                  <Text style={styles.infoValue}>{results.reportId}</Text>
+                </View>
+              )}
+            </View>
           </View>
         </View>
       </ScrollView>
@@ -391,7 +431,14 @@ ${results.issuesFound && results.issuesFound.length > 0 ? '\n발견된 문제점
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#1a2029',
+    backgroundColor: '#1A202C', // Dark background for the whole screen
+  },
+  scrollViewContainer: { // Renamed from scrollView to avoid conflict
+    flex: 1,
+  },
+  container: {
+    flex: 1,
+    padding: 16,
   },
   header: {
     flexDirection: 'row',
@@ -439,10 +486,6 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#00c663',
     marginBottom: 2,
-  },
-  container: {
-    flex: 1,
-    padding: 16,
   },
   section: {
     marginBottom: 20,
@@ -632,6 +675,32 @@ const styles = StyleSheet.create({
   },
   testStatusIcon: {
     fontSize: 16,
+    fontWeight: 'bold',
+  },
+  logContainer: {
+    marginTop: 10,
+    padding: 10,
+    backgroundColor: '#2c3e50',
+    borderRadius: 5,
+    maxHeight: 400, // Limit height and make it scrollable if needed (ScrollView parent handles this)
+  },
+  logEntry: {
+    fontSize: 10,
+    color: '#ecf0f1',
+    fontFamily: 'monospace', // Use a monospace font for logs
+    marginBottom: 4,
+  },
+  toggleLogButton: {
+    backgroundColor: '#3498db',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 5,
+    alignSelf: 'flex-start',
+    marginTop: 10,
+  },
+  toggleLogButtonText: {
+    color: '#fff',
+    fontSize: 14,
     fontWeight: 'bold',
   },
 });

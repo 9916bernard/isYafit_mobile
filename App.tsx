@@ -6,7 +6,7 @@ import { BleError, Device, BleErrorCode, State } from 'react-native-ble-plx';
 import TestScreen from './TestScreen'; // Import the new TestScreen component
 
 // 앱 버전 관리
-const APP_VERSION = 'v0.0.5';
+const APP_VERSION = 'v0.0.3';
 
 export default function App() {
   const ftmsManagerRef = useRef<FTMSManager | null>(null);
