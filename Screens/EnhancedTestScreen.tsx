@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { FTMSManager } from '../FtmsManager'; 
 import { Device } from 'react-native-ble-plx';
+import { useSafeAreaStyles, Colors } from '../styles/commonStyles';
 
 interface EnhancedTestScreenProps {
   device: Device;
@@ -25,6 +26,7 @@ const EnhancedTestScreen: React.FC<EnhancedTestScreenProps> = ({
   const [logs, setLogs] = useState<string[]>([]);
   const [showLogs, setShowLogs] = useState(false);
   const scrollViewRef = useRef<ScrollView>(null);
+  const safeAreaStyles = useSafeAreaStyles();
   
   useEffect(() => {
     // Get initial logs
@@ -55,9 +57,9 @@ const EnhancedTestScreen: React.FC<EnhancedTestScreenProps> = ({
   const toggleLogs = () => {
     setShowLogs(!showLogs);
   };
-
   return (
-    <View style={styles.container}>
+    <View style={safeAreaStyles.safeContainerMinPadding}>
+      <View style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.title}>실시간 명령/데이터 로그</Text>
         <TouchableOpacity onPress={onClose} style={styles.closeButton}>
@@ -123,14 +125,13 @@ const EnhancedTestScreen: React.FC<EnhancedTestScreenProps> = ({
             )}
           </ScrollView>
         </View>
-      )}
-
-      <TouchableOpacity
+      )}      <TouchableOpacity
         style={styles.backButton}
         onPress={onClose}
       >
         <Text style={styles.backButtonText}>돌아가기</Text>
       </TouchableOpacity>
+      </View>
     </View>
   );
 };

@@ -1,7 +1,8 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, SafeAreaView } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { Device } from 'react-native-ble-plx';
+import { useSafeAreaStyles, Colors } from '../styles/commonStyles';
 
 interface ModeSelectionScreenProps {
   device: Device;
@@ -16,8 +17,10 @@ const ModeSelectionScreen: React.FC<ModeSelectionScreenProps> = ({
   onSelectCompatibilityTest, 
   onDisconnect 
 }) => {
+  const safeAreaStyles = useSafeAreaStyles();
+
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <View style={safeAreaStyles.safeContainerMinPadding}>
       <View style={styles.container}>
         <View style={styles.header}>
           <Text style={styles.title}>모드 선택</Text>
@@ -52,8 +55,7 @@ const ModeSelectionScreen: React.FC<ModeSelectionScreenProps> = ({
             </View>
             <Text style={styles.modeButtonTitle}>Yafit 호환성 테스트</Text>
             <Text style={styles.modeButtonDescription}>
-              FTMS 프로토콜 지원 여부와{'\n'}Yafit 앱과의 호환성을 테스트합니다
-            </Text>
+              FTMS 프로토콜 지원 여부와{'\n'}Yafit 앱과의 호환성을 테스트합니다          </Text>
           </TouchableOpacity>
         </View>
 
@@ -62,32 +64,27 @@ const ModeSelectionScreen: React.FC<ModeSelectionScreenProps> = ({
           <Text style={styles.disconnectButtonText}>연결 해제</Text>
         </TouchableOpacity>
       </View>
-    </SafeAreaView>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: '#1a2029',
-  },
   container: {
     flex: 1,
-    backgroundColor: '#1a2029',
     paddingHorizontal: 24,
-    paddingTop: 40, 
-    paddingBottom: 80, // Adjusted: Significantly increased bottom padding
+    paddingTop: 20,
+    paddingBottom: 40,
   },
   header: {
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 20, // Adjusted
+    marginBottom: 20,
     paddingTop: 0, 
   },
   backButton: {
     padding: 10,
     borderRadius: 20,
-    backgroundColor: '#242c3b',
+    backgroundColor: Colors.secondary,
   },
   disconnectButton: {
     flexDirection: 'row',
@@ -97,98 +94,98 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     backgroundColor: 'rgba(239, 68, 68, 0.15)',
     borderWidth: 1,
-    borderColor: '#ef4444',
-    marginTop: 24, // Adjusted: Increased space above disconnect button
-    marginBottom: 10, // Adjusted: Ensure some margin at the very bottom
+    borderColor: Colors.error,
+    marginTop: 24,
+    marginBottom: 10,
   },
   disconnectButtonText: {
-    color: '#ef4444',
-    fontSize: 14, // Adjusted
+    color: Colors.error,
+    fontSize: 14,
     fontWeight: '600',
     marginLeft: 8,
   },
   title: {
-    fontSize: 22, // Adjusted
+    fontSize: 22,
     fontWeight: 'bold',
-    color: '#ffffff',
+    color: Colors.text,
     textAlign: 'center',
   },
   deviceInfo: {
     alignItems: 'center',
-    marginBottom: 24, // Adjusted
-    paddingVertical: 12, // Adjusted
-    paddingHorizontal: 16, // Adjusted
-    backgroundColor: '#1f2937', // Slightly different background
-    borderRadius: 12, // Adjusted
+    marginBottom: 24,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    backgroundColor: Colors.secondary,
+    borderRadius: 12,
     marginHorizontal: 4,
     borderWidth: 1,
-    borderColor: '#374151', // Added border for distinction
+    borderColor: Colors.border,
   },
   deviceName: {
-    fontSize: 16, // Adjusted
+    fontSize: 16,
     fontWeight: 'bold',
-    color: '#ffffff',
-    marginTop: 6, // Adjusted
+    color: Colors.text,
+    marginTop: 6,
     textAlign: 'center',
   },
   deviceId: {
-    fontSize: 11, // Adjusted
-    color: '#9ca3af', // Adjusted color
-    marginTop: 3, // Adjusted
+    fontSize: 11,
+    color: Colors.textSecondary,
+    marginTop: 3,
   },
   subtitle: {
     fontSize: 13, 
-    color: '#9ca3af', 
+    color: Colors.textSecondary, 
     textAlign: 'center',
     marginBottom: 20, 
     paddingHorizontal: 16,
   },
   buttonContainer: {
-    flex: 1, // This will make the button container take available space
-    justifyContent: 'center', // Mode buttons will be centered in this space
+    flex: 1,
+    justifyContent: 'center',
     gap: 10, 
     paddingHorizontal: 4,
   },
   modeButton: {
-    backgroundColor: '#242c3b',
-    borderRadius: 16, // Adjusted
-    padding: 16, // Adjusted
+    backgroundColor: Colors.secondary,
+    borderRadius: 16,
+    padding: 16,
     alignItems: 'center',
-    borderWidth: 1, // Adjusted
-    borderColor: '#374151', // Adjusted
-    elevation: 3, // Adjusted
+    borderWidth: 1,
+    borderColor: Colors.border,
+    elevation: 3,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 }, // Adjusted
-    shadowOpacity: 0.1, // Adjusted
-    shadowRadius: 4, // Adjusted
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
   },
   buttonIconContainer: {
-    width: 56, // Adjusted
-    height: 56, // Adjusted
-    backgroundColor: '#1a2029',
-    borderRadius: 28, // Adjusted
+    width: 56,
+    height: 56,
+    backgroundColor: Colors.background,
+    borderRadius: 28,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 10, // Adjusted
-    elevation: 1, // Adjusted
+    marginBottom: 10,
+    elevation: 1,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 }, // Adjusted
-    shadowOpacity: 0.05, // Adjusted
-    shadowRadius: 2, // Adjusted
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
   },
   modeButtonTitle: {
-    fontSize: 16, // Adjusted
+    fontSize: 16,
     fontWeight: 'bold',
-    color: '#ffffff',
+    color: Colors.text,
     textAlign: 'center',
-    marginBottom: 6, // Adjusted
+    marginBottom: 6,
     paddingHorizontal: 8,
   },
   modeButtonDescription: {
-    fontSize: 12, // Adjusted
-    color: '#9ca3af', // Adjusted color
+    fontSize: 12,
+    color: Colors.textSecondary,
     textAlign: 'center',
-    lineHeight: 16, // Adjusted
+    lineHeight: 16,
     paddingHorizontal: 12,
   },
 });

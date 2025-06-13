@@ -1,18 +1,20 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { StyleSheet, View, Text, FlatList, TouchableOpacity, PermissionsAndroid, Platform, Linking, ScrollView, SafeAreaView, Modal } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons'; // Import Icon
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { FTMSManager, LogEntry } from '../FtmsManager'; // Import LogEntry type from FtmsManager
 import { BleError, Device, BleErrorCode, State } from 'react-native-ble-plx';
 import TestScreen from './TestScreen'; // Import the new TestScreen component
 import EnhancedTestScreen from './EnhancedTestScreen'; // Import the enhanced test screen with logs
 import ModeSelectionScreen from './ModeSelectionScreen'; // Import the mode selection screen
 import RealtimeDataScreen from './RealtimeDataScreen'; // Import the realtime data screen
+import LoadingScreen from './LoadingScreen'; // Import the loading screen
 
 
 // 앱 버전 관리
-const APP_VERSION = 'v0.2.1';
+const APP_VERSION = 'v0.2.2';
 
-export default function App() {
+function App() {
   const ftmsManagerRef = useRef<FTMSManager | null>(null);
   const [managerInitialized, setManagerInitialized] = useState<boolean>(false);
   const [scannedDevices, setScannedDevices] = useState<Device[]>([]);  const [selectedDevice, setSelectedDevice] = useState<Device | null>(null);
@@ -22,10 +24,11 @@ export default function App() {
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [showLogs, setShowLogs] = useState(false);
   const [formattedLogs, setFormattedLogs] = useState<string[]>([]);
-  const [showTestScreen, setShowTestScreen] = useState(false); // For showing test screen
-  const [showLogScreen, setShowLogScreen] = useState(false); // For showing enhanced log screen
+  const [showTestScreen, setShowTestScreen] = useState(false); // For showing the test screen
+  const [showLogScreen, setShowLogScreen] = useState(false); // For showing the enhanced log screen
   const [showModeSelection, setShowModeSelection] = useState(false); // For showing mode selection
   const [showRealtimeData, setShowRealtimeData] = useState(false); // For showing realtime data screen
+  const [isLoadingCompatibilityTest, setIsLoadingCompatibilityTest] = useState(false); // For showing loading screen
 
   const requestPermissions = useCallback(async () => {
     if (Platform.OS === 'android') {
@@ -180,12 +183,14 @@ export default function App() {
     setShowModeSelection(false);
     setShowRealtimeData(true);
   };
-
   const handleSelectCompatibilityTest = async () => {
     setShowModeSelection(false);
+    setIsLoadingCompatibilityTest(true);
     
     if (!ftmsManagerRef.current || !selectedDevice) {
       setStatusMessage('FTMS Manager 또는 선택된 장치가 없습니다.');
+      setIsLoadingCompatibilityTest(false);
+      setShowModeSelection(true);
       return;
     }
 
@@ -195,12 +200,14 @@ export default function App() {
       const device = await ftmsManagerRef.current.connectToDevice(selectedDevice.id);
       setConnectedDevice(device);
       setStatusMessage(`'${device.name}'에 연결됨. 호환성 테스트를 시작합니다.`);
-      setShowTestScreen(true);
-    } catch (error) {
+      setIsLoadingCompatibilityTest(false);
+      setShowTestScreen(true);    } catch (error) {
       console.error("Connection error:", error);
       const bleError = error as BleError;
       setStatusMessage(`연결 오류: ${bleError.message}`);
       setConnectedDevice(null);
+      setIsLoadingCompatibilityTest(false);
+      setShowModeSelection(true);
     }
   };
   const handleBackFromModeSelection = async () => {
@@ -269,12 +276,12 @@ export default function App() {
       console.error("Bluetooth state check error:", error);
       setStatusMessage('블루투스 상태 확인 중 오류가 발생했습니다.');
     }
-  };
-  // FTMS 호환성 테스트 화면 닫기
+  };  // FTMS 호환성 테스트 화면 닫기
   const handleCloseTestScreen = () => {
     setShowTestScreen(false);
     setConnectedDevice(null);
     setSelectedDevice(null);
+    setIsLoadingCompatibilityTest(false);
     setStatusMessage('테스트가 완료되었습니다.');
   };
   
@@ -338,11 +345,17 @@ export default function App() {
       <Text style={styles.deviceText}>{item.name || 'Unknown Device'}</Text>
       <Text style={styles.deviceTextSmall}>{item.id}</Text>
     </TouchableOpacity>  );
-
   return (
     <SafeAreaView style={styles.safeArea}>
-      {/* Show mode selection screen */}
-      {showModeSelection && selectedDevice ? (
+      {/* Show loading screen for compatibility test */}
+      {isLoadingCompatibilityTest && selectedDevice ? (
+        <LoadingScreen
+          device={selectedDevice}
+          statusMessage={statusMessage}
+        />
+      ) :
+      /* Show mode selection screen */
+      showModeSelection && selectedDevice ? (
         <ModeSelectionScreen
           device={selectedDevice}
           onSelectRealtimeData={handleSelectRealtimeData}
@@ -729,7 +742,15 @@ const styles = StyleSheet.create({
   },
   buttonTestCompatibilityText: {    color: '#edf2f4',
     fontSize: 16,
-    fontWeight: '500',
-  }
+    fontWeight: '500',  }
 });
+
+// SafeAreaProvider로 감싸서 내보내기
+export default function AppWrapper() {
+  return (
+    <SafeAreaProvider>
+      <App />
+    </SafeAreaProvider>
+  );
+}
 

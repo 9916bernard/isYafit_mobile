@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, SafeAreaView, ScrollView } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { Device } from 'react-native-ble-plx';
 import { FTMSManager } from '../FtmsManager';
+import { useSafeAreaStyles, Colors } from '../styles/commonStyles';
 
 interface RealtimeDataScreenProps {
   device: Device;
@@ -18,6 +19,7 @@ const RealtimeDataScreen: React.FC<RealtimeDataScreenProps> = ({
   const [bikeData, setBikeData] = useState<any>(null);
   const [isConnected, setIsConnected] = useState(false);
   const [statusMessage, setStatusMessage] = useState('연결 중...');
+  const safeAreaStyles = useSafeAreaStyles();
 
   useEffect(() => {
     const connectToDevice = async () => {
@@ -85,9 +87,8 @@ const RealtimeDataScreen: React.FC<RealtimeDataScreenProps> = ({
       </View>
     </View>
   );
-
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <View style={safeAreaStyles.safeContainerMinPadding}>
       <View style={styles.container}>
         <View style={styles.header}>
           <TouchableOpacity onPress={handleBackPress} style={styles.backButton}>
@@ -121,15 +122,14 @@ const RealtimeDataScreen: React.FC<RealtimeDataScreenProps> = ({
               {renderDataItem("경과 시간", bikeData.elapsedTime, "s", "timer")}
               {renderDataItem("칼로리", bikeData.totalEnergy, "kcal", "fire")}
             </ScrollView>
-          </View>
-        ) : (
+          </View>        ) : (
           <View style={styles.loadingContainer}>
             <Icon name="loading" size={48} color="#00c663" />
             <Text style={styles.loadingText}>데이터 수신 대기 중...</Text>
           </View>
         )}
       </View>
-    </SafeAreaView>
+   )</View>
   );
 };
 

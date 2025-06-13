@@ -6,12 +6,12 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  SafeAreaView,
   Share,
   Alert, // Added for copy confirmation
 } from 'react-native';
 import Clipboard from '@react-native-clipboard/clipboard'; // Added for clipboard functionality
 import { TestResults, formatRangeInfo } from '../FtmsTestReport';
+import { useSafeAreaStyles, Colors } from '../styles/commonStyles';
 
 interface TestReportScreenProps {
   results: TestResults;
@@ -19,6 +19,8 @@ interface TestReportScreenProps {
 }
 
 const TestReportScreen: React.FC<TestReportScreenProps> = ({ results, onClose }) => {
+  const safeAreaStyles = useSafeAreaStyles();
+  
   // Function to share the test report
   const handleShare = async () => {
     try {
@@ -220,9 +222,8 @@ ${results.issuesFound && results.issuesFound.length > 0 ? '\n발견된 문제점
       Alert.alert("정보", "복사할 로그가 없습니다.");
     }
   };
-
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <View style={safeAreaStyles.safeContainerMinPadding}>
       <ScrollView style={styles.scrollViewContainer}>
         <View style={styles.container}>
           <View style={styles.header}>
@@ -465,9 +466,8 @@ ${results.issuesFound && results.issuesFound.length > 0 ? '\n발견된 문제점
               )}
             </View>
           </View>
-        </View>
-      </ScrollView>
-    </SafeAreaView>
+        </View>      </ScrollView>
+    </View>
   );
 };
 

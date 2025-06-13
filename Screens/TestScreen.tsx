@@ -9,7 +9,6 @@ import {
   ActivityIndicator,
   Modal,
   Alert,
-  SafeAreaView,
 } from 'react-native';
 import { TestResults, formatRangeInfo } from '../FtmsTestReport';
 import { FTMSTester } from '../FtmsTester';
@@ -17,6 +16,7 @@ import { Device } from 'react-native-ble-plx';
 import { FTMSManager } from '../FtmsManager'; // Your existing manager
 import TestReportScreen from './TestReportScreen';
 import LogDisplay from '../LogDisplay'; // Import the Log Display component
+import { useSafeAreaStyles, Colors } from '../styles/commonStyles';
 
 interface TestScreenProps {
   device: Device;
@@ -35,6 +35,7 @@ const TestScreen: React.FC<TestScreenProps> = ({ device, ftmsManager, onClose })
   const [showLogs, setShowLogs] = useState(false);
   const logScrollViewRef = useRef<ScrollView>(null);
   const testerRef = useRef<FTMSTester | null>(null);
+  const safeAreaStyles = useSafeAreaStyles();
   useEffect(() => {
     // Initialize the FTMSTester
     testerRef.current = new FTMSTester(ftmsManager);
@@ -157,9 +158,8 @@ const TestScreen: React.FC<TestScreenProps> = ({ device, ftmsManager, onClose })
   const toggleLogs = () => {
     setShowLogs(!showLogs);
   };
-  
-  return (
-    <SafeAreaView style={styles.safeArea}>
+    return (
+    <View style={safeAreaStyles.safeContainerMinPadding}>
       <ScrollView contentContainerStyle={styles.scrollViewContent}>
         <View style={styles.container}>
           <View style={styles.header}>
@@ -303,14 +303,13 @@ const TestScreen: React.FC<TestScreenProps> = ({ device, ftmsManager, onClose })
           />
         )}
       </Modal>
-      
-      {/* Real-time Log Display */}
+        {/* Real-time Log Display */}
       <LogDisplay 
         logs={realtimeLogs}
         visible={showLogs}
         onClose={toggleLogs}
       />
-    </SafeAreaView>
+    </View>
   );
 };
 
