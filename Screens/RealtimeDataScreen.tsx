@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Animated } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { Device } from 'react-native-ble-plx';
 import { FTMSManager } from '../FtmsManager';
@@ -20,6 +20,23 @@ const RealtimeDataScreen: React.FC<RealtimeDataScreenProps> = ({
   const [isConnected, setIsConnected] = useState(false);
   const [statusMessage, setStatusMessage] = useState('연결 중...');
   const safeAreaStyles = useSafeAreaStyles();
+  const spinValue = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    // Start the rotation animation
+    const spin = () => {
+      spinValue.setValue(0);
+      Animated.loop(
+        Animated.timing(spinValue, {
+          toValue: 1,
+          duration: 1000,
+          useNativeDriver: true,
+        })
+      ).start();
+    };
+    
+    spin();
+  }, [spinValue]);
 
   useEffect(() => {
     const connectToDevice = async () => {
@@ -124,12 +141,23 @@ const RealtimeDataScreen: React.FC<RealtimeDataScreenProps> = ({
             </ScrollView>
           </View>        ) : (
           <View style={styles.loadingContainer}>
-            <Icon name="loading" size={48} color="#00c663" />
+            <Animated.View
+              style={{
+                transform: [{
+                  rotate: spinValue.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: ['0deg', '360deg']
+                  })
+                }]
+              }}
+            >
+              <Icon name="loading" size={48} color="#00c663" />
+            </Animated.View>
             <Text style={styles.loadingText}>데이터 수신 대기 중...</Text>
           </View>
         )}
       </View>
-   )</View>
+    </View>
   );
 };
 

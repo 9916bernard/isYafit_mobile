@@ -474,14 +474,14 @@ ${results.issuesFound && results.issuesFound.length > 0 ? '\n발견된 문제점
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#1E1E1E', // Dark background for the whole screen
+    backgroundColor: '#1a2029', // Changed to match app theme
   },
   scrollViewContainer: {
     flex: 1,
   },
   container: {
     padding: 15,
-    backgroundColor: '#1E1E1E', // Dark background
+    backgroundColor: '#1a2029', // Changed to match app theme
   },
   header: {
     flexDirection: 'row',
@@ -489,38 +489,38 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 15,
     borderBottomWidth: 1,
-    borderBottomColor: '#333',
+    borderBottomColor: '#242c3b', // Changed to match app theme
     paddingBottom: 10,
   },
   title: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#E0E0E0', // Light text for title
+    color: '#ffffff', // Changed to white
   },
   closeButton: {
     padding: 8,
-    backgroundColor: '#333',
+    backgroundColor: '#242c3b', // Changed to match app theme
     borderRadius: 5,
   },
   closeButtonText: {
-    color: '#E0E0E0',
+    color: '#ffffff', // Changed to white
     fontSize: 16,
   },
   shareButton: {
-    backgroundColor: '#007AFF', // Blue color for share button
+    backgroundColor: '#00c663', // Changed to app green
     padding: 12,
     borderRadius: 8,
     alignItems: 'center',
     marginBottom: 20,
   },
   shareButtonText: {
-    color: '#FFFFFF',
+    color: '#ffffff',
     fontSize: 16,
     fontWeight: 'bold',
   },
   section: {
     marginBottom: 20,
-    backgroundColor: '#2C2C2C', // Slightly lighter dark shade for sections
+    backgroundColor: '#242c3b', // Changed to match app theme
     padding: 15,
     borderRadius: 8,
     shadowColor: '#000',
@@ -532,10 +532,10 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 20,
     fontWeight: '600',
-    color: '#B0B0B0', // Lighter grey for section titles
+    color: '#00c663', // Changed to app green
     marginBottom: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#444',
+    borderBottomColor: '#374151', // Slightly lighter than background
     paddingBottom: 8,
   },
   deviceInfoContainer: {
@@ -544,12 +544,12 @@ const styles = StyleSheet.create({
   deviceName: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#D0D0D0',
+    color: '#ffffff', // Changed to white
     marginBottom: 4,
   },
   deviceAddress: {
     fontSize: 14,
-    color: '#888',
+    color: '#9ca3af', // Changed to match app theme
     marginBottom: 10,
   },
   infoRow: {
@@ -559,16 +559,16 @@ const styles = StyleSheet.create({
     marginBottom: 6,
     paddingVertical: 4,
     borderBottomWidth: 1,
-    borderBottomColor: '#3A3A3A',
+    borderBottomColor: '#374151', // Changed to match app theme
   },
   infoLabel: {
     fontSize: 15,
-    color: '#A0A0A0',
+    color: '#9ca3af', // Changed to match app theme
     fontWeight: '500',
   },
   infoValue: {
     fontSize: 15,
-    color: '#C0C0C0',
+    color: '#ffffff', // Changed to white
     textAlign: 'right',
   },
   compatibilityRow: {
@@ -582,7 +582,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   compatibilityText: {
-    color: '#FFFFFF',
+    color: '#ffffff',
     fontWeight: 'bold',
     fontSize: 14,
   },
@@ -591,7 +591,7 @@ const styles = StyleSheet.create({
   },
   reasonText: {
     fontSize: 14,
-    color: '#B0B0B0',
+    color: '#ffffff', // Changed to white
     marginBottom: 5,
     lineHeight: 20,
   },
@@ -600,7 +600,7 @@ const styles = StyleSheet.create({
   },
   issueText: {
     fontSize: 14,
-    color: '#FF7070', // Highlight issues in a reddish tone
+    color: '#ef4444', // Keep red for issues but use a darker shade
     marginBottom: 5,
     lineHeight: 20,
   },
@@ -609,7 +609,7 @@ const styles = StyleSheet.create({
   },
   rangeText: {
     fontSize: 14,
-    color: '#B0B0B0',
+    color: '#ffffff', // Changed to white
     marginBottom: 4,
   },
   featuresContainer: {
@@ -625,7 +625,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   noDataText: {
-    color: '#888',
+    color: '#9ca3af', // Changed to match app theme
     fontStyle: 'italic',
     textAlign: 'center',
     paddingVertical: 10,
@@ -633,12 +633,12 @@ const styles = StyleSheet.create({
   dataFieldsTable: {
     marginTop: 10,
     borderWidth: 1,
-    borderColor: '#444',
+    borderColor: '#374151', // Changed to match app theme
     borderRadius: 5,
   },
   tableHeader: {
     flexDirection: 'row',
-    backgroundColor: '#383838',
+    backgroundColor: '#1a2029', // Changed to match app theme
     paddingVertical: 8,
     paddingHorizontal: 5,
     borderTopLeftRadius: 4,
@@ -647,7 +647,7 @@ const styles = StyleSheet.create({
   tableHeaderCell: {
     fontSize: 13,
     fontWeight: 'bold',
-    color: '#D0D0D0',
+    color: '#00c663', // Changed to app green
     textAlign: 'center',
   },
   tableRow: {
@@ -655,18 +655,18 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     paddingHorizontal: 5,
     borderBottomWidth: 1,
-    borderBottomColor: '#3A3A3A',
+    borderBottomColor: '#374151', // Changed to match app theme
   },
   tableCell: {
     fontSize: 13,
-    color: '#B0B0B0',
+    color: '#ffffff', // Changed to white
     textAlign: 'center',
   },
   controlTestsContainer: {
     marginTop: 5,
   },
   controlTestItem: {
-    backgroundColor: '#333',
+    backgroundColor: '#1a2029', // Changed to match app theme
     padding: 12,
     borderRadius: 6,
     marginBottom: 10,
@@ -683,11 +683,11 @@ const styles = StyleSheet.create({
   commandTypeLabel: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#D0D0D0',
+    color: '#ffffff', // Changed to white
   },
   controlTestName: {
     fontSize: 12,
-    color: '#888',
+    color: '#9ca3af', // Changed to match app theme
   },
   statusBadge: {
     paddingHorizontal: 10,
@@ -698,13 +698,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   statusText: {
-    color: '#FFFFFF',
+    color: '#ffffff',
     fontWeight: 'bold',
     fontSize: 13,
   },
   controlTestDetails: {
     fontSize: 13,
-    color: '#A0A0A0',
+    color: '#9ca3af', // Changed to match app theme
     marginBottom: 8,
     fontStyle: 'italic',
   },
@@ -716,7 +716,7 @@ const styles = StyleSheet.create({
   },
   controlTestTimestamp: {
     fontSize: 12,
-    color: '#888',
+    color: '#9ca3af', // Changed to match app theme
   },
   testStatusIcon: {
     fontSize: 16,
@@ -725,7 +725,7 @@ const styles = StyleSheet.create({
   resistanceChangesTable: {
     marginTop: 10,
     borderWidth: 1,
-    borderColor: '#444',
+    borderColor: '#374151', // Changed to match app theme
     borderRadius: 5,
   },
   metadataContainer: {
@@ -734,21 +734,21 @@ const styles = StyleSheet.create({
     padding: 12,
   },
   logScrollContainer: {
-    maxHeight: 400, // Initial max height for the scrollable log area
-    borderColor: '#444',
+    maxHeight: 400,
+    borderColor: '#374151', // Changed to match app theme
     borderWidth: 1,
     borderRadius: 5,
     marginTop: 10,
   },
   logContainer: {
     padding: 10,
-    backgroundColor: '#252525', // Darker background for log entries
+    backgroundColor: '#1a2029', // Changed to match app theme
   },
   logEntry: {
     fontSize: 13,
-    color: '#A0A0A0', // Default log text color
+    color: '#ffffff', // Changed to white
     marginBottom: 6,
-    fontFamily: 'monospace', // Monospaced font for logs
+    fontFamily: 'monospace',
   },
   logActionsContainer: {
     flexDirection: 'row',
@@ -758,30 +758,30 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   toggleLogButton: {
-    backgroundColor: '#007AFF',
+    backgroundColor: '#00c663', // Changed to app green
     paddingVertical: 10,
     paddingHorizontal: 15,
     borderRadius: 5,
     alignItems: 'center',
-    flex: 1, // Adjust flex to share space
-    marginRight: 5, // Add some margin if two buttons are side by side
+    flex: 1,
+    marginRight: 5,
   },
   toggleLogButtonText: {
-    color: '#FFFFFF',
+    color: '#ffffff',
     fontSize: 15,
     fontWeight: '500',
   },
   copyLogButton: {
-    backgroundColor: '#4CAF50', // Green color for copy button
+    backgroundColor: '#242c3b', // Changed to darker theme color
     paddingVertical: 10,
     paddingHorizontal: 15,
     borderRadius: 5,
     alignItems: 'center',
-    flex: 1, // Adjust flex to share space
-    marginLeft: 5, // Add some margin if two buttons are side by side
+    flex: 1,
+    marginLeft: 5,
   },
   copyLogButtonText: {
-    color: '#FFFFFF',
+    color: '#ffffff',
     fontSize: 15,
     fontWeight: '500',
   },
