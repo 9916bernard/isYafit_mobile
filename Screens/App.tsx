@@ -10,7 +10,7 @@ import RealtimeDataScreen from './RealtimeDataScreen'; // Import the realtime da
 
 
 // 앱 버전 관리
-const APP_VERSION = 'v0.2.0';
+const APP_VERSION = 'v0.2.1';
 
 export default function App() {
   const ftmsManagerRef = useRef<FTMSManager | null>(null);
@@ -203,17 +203,30 @@ export default function App() {
       setConnectedDevice(null);
     }
   };
+  const handleBackFromModeSelection = async () => {
+    // Disconnect the device when going back from mode selection
+    if (!ftmsManagerRef.current) {
+      setStatusMessage('FTMS Manager가 초기화되지 않았습니다.');
+      return;
+    }
 
-  const handleBackFromModeSelection = () => {
-    setShowModeSelection(false);
-    setSelectedDevice(null);
-    setStatusMessage('장치를 다시 선택하세요.');
+    setStatusMessage('연결 해제 중...');
+    try {
+      await ftmsManagerRef.current.disconnectDevice();
+      setConnectedDevice(null);
+      setSelectedDevice(null);
+      setShowModeSelection(false);
+      setStatusMessage('연결 해제됨.');
+    } catch (error) {
+      console.error("Disconnect error:", error);
+      setStatusMessage('연결 해제 중 오류 발생.');
+      setShowModeSelection(false);
+      setSelectedDevice(null);
+    }
   };
-
   const handleBackFromRealtimeData = () => {
     setShowRealtimeData(false);
-    setSelectedDevice(null);
-    setStatusMessage('장치를 다시 선택하세요.');
+    setShowModeSelection(true); // 모드 선택 화면으로 돌아가기
   };
       const handleDisconnect = async () => {
     if (!ftmsManagerRef.current) {
@@ -273,7 +286,8 @@ export default function App() {
   const renderListHeader = () => (
     // This View acts like the original styles.container for padding and alignment
     // when FlatList is the main scroller.
-    <View style={{ paddingHorizontal: styles.container.paddingHorizontal, paddingTop: styles.container.paddingTop, paddingBottom: styles.container.paddingBottom }}>      <View style={styles.headerContainer}>
+    <View style={{ paddingHorizontal: styles.container.paddingHorizontal, paddingTop: styles.container.paddingTop, paddingBottom: styles.container.paddingBottom }}>
+      <View style={styles.headerContainer}>
         <View style={styles.titleVersionContainer}>
           <Text style={styles.title}>IsYafit</Text>
           <Text style={styles.version}>{APP_VERSION}</Text>
@@ -323,8 +337,9 @@ export default function App() {
     >
       <Text style={styles.deviceText}>{item.name || 'Unknown Device'}</Text>
       <Text style={styles.deviceTextSmall}>{item.id}</Text>
-    </TouchableOpacity>
-  );  return (
+    </TouchableOpacity>  );
+
+  return (
     <SafeAreaView style={styles.safeArea}>
       {/* Show mode selection screen */}
       {showModeSelection && selectedDevice ? (
@@ -332,9 +347,9 @@ export default function App() {
           device={selectedDevice}
           onSelectRealtimeData={handleSelectRealtimeData}
           onSelectCompatibilityTest={handleSelectCompatibilityTest}
-          onBack={handleBackFromModeSelection}
+          onDisconnect={handleBackFromModeSelection}
         />
-      ) : 
+      ) :
       /* Show realtime data screen */
       showRealtimeData && selectedDevice && ftmsManagerRef.current ? (
         <RealtimeDataScreen
@@ -398,7 +413,8 @@ export default function App() {
                     {/* Message when no devices are found after a scan, and not currently scanning */}
                     {scannedDevices.length === 0 && !isScanning && statusMessage.includes("스캔 완료") && (
                         <Text style={{color: 'white', marginTop: 20, textAlign: 'center'}}>발견된 장치가 없습니다.</Text>
-                    )}                    {selectedDevice && ( // This button appears if a device was selected, even if scannedDevices is now empty
+                    )}
+                    {selectedDevice && ( // This button appears if a device was selected, even if scannedDevices is now empty
                       <TouchableOpacity 
                         style={styles.buttonConnect} 
                         onPress={handleShowModeSelection}
@@ -406,7 +422,8 @@ export default function App() {
                         <Text style={styles.buttonConnectText}>{`'${selectedDevice.name || selectedDevice.id}' 모드 선택`}</Text>
                       </TouchableOpacity>
                     )}
-                  </>                ) : (
+                  </>
+                ) : (
                   <>
                     <Text style={styles.connectedDeviceText}>연결된 장치: {connectedDevice.name || connectedDevice.id}</Text>
                     <View style={styles.buttonGroup}>

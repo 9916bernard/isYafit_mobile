@@ -7,39 +7,36 @@ interface ModeSelectionScreenProps {
   device: Device;
   onSelectRealtimeData: () => void;
   onSelectCompatibilityTest: () => void;
-  onBack: () => void;
+  onDisconnect: () => void;
 }
 
 const ModeSelectionScreen: React.FC<ModeSelectionScreenProps> = ({ 
   device, 
   onSelectRealtimeData, 
   onSelectCompatibilityTest, 
-  onBack 
+  onDisconnect 
 }) => {
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
         <View style={styles.header}>
-          <TouchableOpacity onPress={onBack} style={styles.backButton}>
-            <Icon name="arrow-left" size={24} color="#00c663" />
-          </TouchableOpacity>
           <Text style={styles.title}>모드 선택</Text>
-          <View style={styles.placeholder} />
         </View>
 
         <View style={styles.deviceInfo}>
-          <Icon name="bluetooth" size={32} color="#00c663" />
+          <Icon name="bluetooth" size={28} color="#00c663" />
           <Text style={styles.deviceName}>{device.name || 'Unknown Device'}</Text>
           <Text style={styles.deviceId}>{device.id.substring(0, 8)}...</Text>
         </View>
 
-        <Text style={styles.subtitle}>원하시는 기능을 선택해주세요</Text>        <View style={styles.buttonContainer}>
-          <TouchableOpacity
-            style={styles.modeButton}
+        <Text style={styles.subtitle}>원하시는 기능을 선택해주세요</Text>
+        
+        <View style={styles.buttonContainer}>
+          <TouchableOpacity            style={styles.modeButton}
             onPress={onSelectRealtimeData}
           >
             <View style={styles.buttonIconContainer}>
-              <Icon name="gauge" size={48} color="#00c663" />
+              <Icon name="gauge" size={36} color="#00c663" />
             </View>
             <Text style={styles.modeButtonTitle}>실시간 데이터 모니터링</Text>
             <Text style={styles.modeButtonDescription}>
@@ -48,11 +45,10 @@ const ModeSelectionScreen: React.FC<ModeSelectionScreenProps> = ({
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={styles.modeButton}
-            onPress={onSelectCompatibilityTest}
+            style={styles.modeButton}            onPress={onSelectCompatibilityTest}
           >
             <View style={styles.buttonIconContainer}>
-              <Icon name="test-tube" size={48} color="#00c663" />
+              <Icon name="test-tube" size={36} color="#00c663" />
             </View>
             <Text style={styles.modeButtonTitle}>Yafit 호환성 테스트</Text>
             <Text style={styles.modeButtonDescription}>
@@ -60,6 +56,11 @@ const ModeSelectionScreen: React.FC<ModeSelectionScreenProps> = ({
             </Text>
           </TouchableOpacity>
         </View>
+
+        <TouchableOpacity style={styles.disconnectButton} onPress={onDisconnect}>
+          <Icon name="bluetooth-off" size={20} color="#ef4444" />
+          <Text style={styles.disconnectButtonText}>연결 해제</Text>
+        </TouchableOpacity>
       </View>
     </SafeAreaView>
   );
@@ -73,93 +74,122 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#1a2029',
-    paddingHorizontal: 20,
-    paddingTop: 20,
+    paddingHorizontal: 24,
+    paddingTop: 40, 
+    paddingBottom: 80, // Adjusted: Significantly increased bottom padding
   },
   header: {
-    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 30,
+    justifyContent: 'center',
+    marginBottom: 20, // Adjusted
+    paddingTop: 0, 
   },
   backButton: {
     padding: 10,
     borderRadius: 20,
     backgroundColor: '#242c3b',
   },
+  disconnectButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 12, 
+    borderRadius: 12,
+    backgroundColor: 'rgba(239, 68, 68, 0.15)',
+    borderWidth: 1,
+    borderColor: '#ef4444',
+    marginTop: 24, // Adjusted: Increased space above disconnect button
+    marginBottom: 10, // Adjusted: Ensure some margin at the very bottom
+  },
+  disconnectButtonText: {
+    color: '#ef4444',
+    fontSize: 14, // Adjusted
+    fontWeight: '600',
+    marginLeft: 8,
+  },
   title: {
-    fontSize: 24,
+    fontSize: 22, // Adjusted
     fontWeight: 'bold',
     color: '#ffffff',
     textAlign: 'center',
-  },
-  placeholder: {
-    width: 44, // Same width as back button to center the title
   },
   deviceInfo: {
     alignItems: 'center',
-    marginBottom: 40,
-    padding: 20,
-    backgroundColor: '#242c3b',
-    borderRadius: 12,
+    marginBottom: 24, // Adjusted
+    paddingVertical: 12, // Adjusted
+    paddingHorizontal: 16, // Adjusted
+    backgroundColor: '#1f2937', // Slightly different background
+    borderRadius: 12, // Adjusted
+    marginHorizontal: 4,
+    borderWidth: 1,
+    borderColor: '#374151', // Added border for distinction
   },
   deviceName: {
-    fontSize: 20,
+    fontSize: 16, // Adjusted
     fontWeight: 'bold',
     color: '#ffffff',
-    marginTop: 10,
+    marginTop: 6, // Adjusted
     textAlign: 'center',
   },
   deviceId: {
-    fontSize: 14,
-    color: '#aaa',
-    marginTop: 5,
+    fontSize: 11, // Adjusted
+    color: '#9ca3af', // Adjusted color
+    marginTop: 3, // Adjusted
   },
   subtitle: {
-    fontSize: 16,
-    color: '#aaa',
+    fontSize: 13, 
+    color: '#9ca3af', 
     textAlign: 'center',
-    marginBottom: 30,
+    marginBottom: 20, 
+    paddingHorizontal: 16,
   },
   buttonContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    gap: 20,
+    flex: 1, // This will make the button container take available space
+    justifyContent: 'center', // Mode buttons will be centered in this space
+    gap: 10, 
+    paddingHorizontal: 4,
   },
   modeButton: {
     backgroundColor: '#242c3b',
-    borderRadius: 16,
-    padding: 24,
+    borderRadius: 16, // Adjusted
+    padding: 16, // Adjusted
     alignItems: 'center',
-    borderWidth: 2,
-    borderColor: 'transparent',
-    elevation: 3,
+    borderWidth: 1, // Adjusted
+    borderColor: '#374151', // Adjusted
+    elevation: 3, // Adjusted
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 }, // Adjusted
+    shadowOpacity: 0.1, // Adjusted
+    shadowRadius: 4, // Adjusted
   },
   buttonIconContainer: {
-    width: 80,
-    height: 80,
+    width: 56, // Adjusted
+    height: 56, // Adjusted
     backgroundColor: '#1a2029',
-    borderRadius: 40,
+    borderRadius: 28, // Adjusted
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 16,
+    marginBottom: 10, // Adjusted
+    elevation: 1, // Adjusted
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 }, // Adjusted
+    shadowOpacity: 0.05, // Adjusted
+    shadowRadius: 2, // Adjusted
   },
   modeButtonTitle: {
-    fontSize: 18,
+    fontSize: 16, // Adjusted
     fontWeight: 'bold',
     color: '#ffffff',
     textAlign: 'center',
-    marginBottom: 8,
+    marginBottom: 6, // Adjusted
+    paddingHorizontal: 8,
   },
   modeButtonDescription: {
-    fontSize: 14,
-    color: '#aaa',
+    fontSize: 12, // Adjusted
+    color: '#9ca3af', // Adjusted color
     textAlign: 'center',
-    lineHeight: 20,
+    lineHeight: 16, // Adjusted
+    paddingHorizontal: 12,
   },
 });
 

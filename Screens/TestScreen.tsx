@@ -282,17 +282,17 @@ const TestScreen: React.FC<TestScreenProps> = ({ device, ftmsManager, onClose })
                 style={styles.stopButton}
                 onPress={handleStopTest}>
                 <Text style={styles.stopButtonText}>테스트 중단</Text>
-              </TouchableOpacity>
-            )}            <TouchableOpacity
-              style={styles.backButton}
+              </TouchableOpacity>            )}
+            <TouchableOpacity              style={styles.backButton}
               onPress={onClose}>
-              <Text style={styles.backButtonText}>돌아가기</Text>
+            <Text style={styles.backButtonText}>돌아가기</Text>
             </TouchableOpacity>
           </View>
         </View>
       </ScrollView>
 
-      {/* Report Modal */}      <Modal
+      {/* Report Modal */}
+      <Modal
         visible={showReport}
         animationType="slide"
         transparent={false}>
@@ -476,11 +476,11 @@ const styles = StyleSheet.create({
   backButton: {
     backgroundColor: '#2d3748',
     paddingVertical: 14,
-    paddingHorizontal: 24,
-    borderRadius: 8,
+    paddingHorizontal: 24,    borderRadius: 8,
     alignItems: 'center',
     flex: 0.5,
-  },  backButtonText: {
+  },
+  backButtonText: {
     color: '#fff',
   },
   toggleLogButton: {

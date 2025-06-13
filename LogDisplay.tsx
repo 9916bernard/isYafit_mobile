@@ -77,9 +77,8 @@ const LogDisplay: React.FC<LogDisplayProps> = ({ logs, visible, onClose }) => {
                     log.includes('raw data')
                   ) {
                     return <Text style={styles.logEntryImportant}>{log}</Text>;
-                  }
-                  // 일반 로그
-                  return log;
+                  }                  // 일반 로그
+                  return <Text style={styles.logEntry}>{log}</Text>;
                 })()}
               </Text>
             </View>

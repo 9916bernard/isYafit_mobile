@@ -24,6 +24,9 @@
     "@babel/core": "^7.20.0",
     "@react-native-community/cli": "latest",
     "@types/react": "~19.0.10",
+    "@typescript-eslint/eslint-plugin": "^8.34.0",
+    "@typescript-eslint/parser": "^8.34.0",
+    "eslint-plugin-react-native": "^5.0.0",
     "typescript": "~5.8.3"
   },
   "private": true

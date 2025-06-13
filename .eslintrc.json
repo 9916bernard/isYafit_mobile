@@ -1,0 +1,6 @@
+{
+  "plugins": ["react-native"],
+  "rules": {
+    "react-native/no-raw-text": "error"
+  }
+}
