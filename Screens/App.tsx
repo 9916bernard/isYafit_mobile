@@ -5,6 +5,8 @@ import { FTMSManager, LogEntry } from '../FtmsManager'; // Import LogEntry type 
 import { BleError, Device, BleErrorCode, State } from 'react-native-ble-plx';
 import TestScreen from './TestScreen'; // Import the new TestScreen component
 import EnhancedTestScreen from './EnhancedTestScreen'; // Import the enhanced test screen with logs
+import ModeSelectionScreen from './ModeSelectionScreen'; // Import the mode selection screen
+import RealtimeDataScreen from './RealtimeDataScreen'; // Import the realtime data screen
 
 
 // 앱 버전 관리
@@ -13,16 +15,17 @@ const APP_VERSION = 'v0.2.0';
 export default function App() {
   const ftmsManagerRef = useRef<FTMSManager | null>(null);
   const [managerInitialized, setManagerInitialized] = useState<boolean>(false);
-  const [scannedDevices, setScannedDevices] = useState<Device[]>([]);
-  const [selectedDevice, setSelectedDevice] = useState<Device | null>(null);
+  const [scannedDevices, setScannedDevices] = useState<Device[]>([]);  const [selectedDevice, setSelectedDevice] = useState<Device | null>(null);
   const [connectedDevice, setConnectedDevice] = useState<Device | null>(null);
   const [isScanning, setIsScanning] = useState(false);
   const [statusMessage, setStatusMessage] = useState('앱 테스트 중입니다.');
-  const [bikeData, setBikeData] = useState<any>(null); // 실제 IndoorBikeData 타입으로 변경 가능
-  const [logs, setLogs] = useState<LogEntry[]>([]);  const [showLogs, setShowLogs] = useState(false);
+  const [logs, setLogs] = useState<LogEntry[]>([]);
+  const [showLogs, setShowLogs] = useState(false);
   const [formattedLogs, setFormattedLogs] = useState<string[]>([]);
   const [showTestScreen, setShowTestScreen] = useState(false); // For showing test screen
   const [showLogScreen, setShowLogScreen] = useState(false); // For showing enhanced log screen
+  const [showModeSelection, setShowModeSelection] = useState(false); // For showing mode selection
+  const [showRealtimeData, setShowRealtimeData] = useState(false); // For showing realtime data screen
 
   const requestPermissions = useCallback(async () => {
     if (Platform.OS === 'android') {
@@ -159,68 +162,60 @@ export default function App() {
       setIsScanning(false);
     }
   };
-
   const handleSelectDevice = (device: Device) => {
     setSelectedDevice(device);
-    setStatusMessage(`${device.name || device.id} 선택됨. 연결 및 테스트 준비 완료.`);
+    setStatusMessage(`${device.name || device.id} 선택됨. 모드를 선택하세요.`);
   };
   
-  const handleConnectAndTest = async () => {
-    if (!ftmsManagerRef.current) {
-      setStatusMessage('FTMS Manager가 아직 초기화되지 않았습니다.');
+  // Show mode selection screen
+  const handleShowModeSelection = () => {
+    if (!selectedDevice) {
+      setStatusMessage('먼저 장치를 선택하세요.');
+      return;
+    }
+    setShowModeSelection(true);
+  };
+  // Handle mode selection
+  const handleSelectRealtimeData = () => {
+    setShowModeSelection(false);
+    setShowRealtimeData(true);
+  };
+
+  const handleSelectCompatibilityTest = async () => {
+    setShowModeSelection(false);
+    
+    if (!ftmsManagerRef.current || !selectedDevice) {
+      setStatusMessage('FTMS Manager 또는 선택된 장치가 없습니다.');
       return;
     }
 
-    if (!selectedDevice) {
-      setStatusMessage('테스트할 장치를 먼저 선택하세요.');
-      return;
-    }
     setStatusMessage(`'${selectedDevice.name || selectedDevice.id}'에 연결 중...`);
     try {
       await ftmsManagerRef.current.disconnectDevice(); // 이전 연결 해제
       const device = await ftmsManagerRef.current.connectToDevice(selectedDevice.id);
       setConnectedDevice(device);
-      setStatusMessage(`'${device.name}'에 연결됨. 알림 구독 중...`);      await ftmsManagerRef.current.subscribeToNotifications(
-        (cpResponse) => {
-          // Control point response handling now managed by FTMSManager logging
-          if (cpResponse.length >= 3) {
-            const responseOpCode = cpResponse[0];
-            const requestOpCode = cpResponse[1];
-            const resultCode = cpResponse[2];
-            console.log(`App: CP Response - OpCode: ${requestOpCode.toString(16)}, Result: ${resultCode === 1 ? 'SUCCESS' : 'FAILURE'}`);
-          }
-        },
-        (newBikeData) => {
-          // Log only key bike data metrics for cleaner console
-          const keyMetrics = {
-            speed: newBikeData.instantaneousSpeed,
-            cadence: newBikeData.instantaneousCadence,
-            power: newBikeData.instantaneousPower,
-            resistance: newBikeData.resistanceLevel
-          };
-          console.log("App: Bike Data:", JSON.stringify(keyMetrics, null, 2));
-          setBikeData(newBikeData); // UI 업데이트를 위해 상태에 저장
-        }
-      );
-      
-      setStatusMessage('알림 구독 완료. 초기 연결 시퀀스 실행 중...');
-      
-      // connectSequence 실행 - 기본 요청, 리셋, 시작만 수행
-      const success = await ftmsManagerRef.current.connectSequence();
-      if(success) {
-        setStatusMessage('초기 연결 시퀀스 완료. 데이터 수신 중...');
-      } else {
-        setStatusMessage('초기 연결 시퀀스 중 오류 발생. 다시 시도하세요.');
-      }
+      setStatusMessage(`'${device.name}'에 연결됨. 호환성 테스트를 시작합니다.`);
+      setShowTestScreen(true);
     } catch (error) {
       console.error("Connection error:", error);
       const bleError = error as BleError;
-      setStatusMessage(`오류: ${bleError.message}`);
+      setStatusMessage(`연결 오류: ${bleError.message}`);
       setConnectedDevice(null);
     }
   };
-  
-  const handleDisconnect = async () => {
+
+  const handleBackFromModeSelection = () => {
+    setShowModeSelection(false);
+    setSelectedDevice(null);
+    setStatusMessage('장치를 다시 선택하세요.');
+  };
+
+  const handleBackFromRealtimeData = () => {
+    setShowRealtimeData(false);
+    setSelectedDevice(null);
+    setStatusMessage('장치를 다시 선택하세요.');
+  };
+      const handleDisconnect = async () => {
     if (!ftmsManagerRef.current) {
       setStatusMessage('FTMS Manager가 초기화되지 않았습니다.');
       return;
@@ -231,7 +226,8 @@ export default function App() {
       await ftmsManagerRef.current.disconnectDevice();
       setConnectedDevice(null);
       setSelectedDevice(null);
-      setBikeData(null);
+      setShowTestScreen(false);
+      setShowRealtimeData(false);
       setStatusMessage('연결 해제됨.');
     } catch (error) {
       console.error("Disconnect error:", error);
@@ -261,33 +257,12 @@ export default function App() {
       setStatusMessage('블루투스 상태 확인 중 오류가 발생했습니다.');
     }
   };
-
-  // FTMS 호환성 테스트 화면으로 이동
-  const handleStartTest = () => {
-    if (!connectedDevice) {
-      setStatusMessage('테스트할 장치가 연결되어 있어야 합니다.');
-      return;
-    }
-    
-    setShowTestScreen(true);
-  };
-  // 테스트 화면 닫기
+  // FTMS 호환성 테스트 화면 닫기
   const handleCloseTestScreen = () => {
     setShowTestScreen(false);
-  };
-  
-  // Toggle logs display
-  const toggleLogs = () => {
-    setShowLogs(!showLogs);
-  };
-  
-  // Show log screen
-  const showLogViewer = () => {
-    if (connectedDevice && ftmsManagerRef.current) {
-      setShowLogScreen(true);
-    } else {
-      setStatusMessage('로그를 보려면 장치에 연결되어 있어야 합니다.');
-    }
+    setConnectedDevice(null);
+    setSelectedDevice(null);
+    setStatusMessage('테스트가 완료되었습니다.');
   };
   
   // Close log screen
@@ -322,16 +297,15 @@ export default function App() {
       <Text style={styles.sectionTitle}>발견된 장치</Text>
     </View>
   );
-
   const renderListFooter = () => (
     selectedDevice && (
       // This View also considers container's horizontal padding for alignment
       <View style={{ alignItems: 'center', paddingHorizontal: styles.container.paddingHorizontal, paddingTop: 10, paddingBottom: styles.container.paddingBottom || 20 }}>
         <TouchableOpacity
           style={styles.buttonConnect}
-          onPress={handleConnectAndTest}
+          onPress={handleShowModeSelection}
         >
-          <Text style={styles.buttonConnectText}>{`'${selectedDevice.name || selectedDevice.id}' 테스트 시작`}</Text>
+          <Text style={styles.buttonConnectText}>{`'${selectedDevice.name || selectedDevice.id}' 모드 선택`}</Text>
         </TouchableOpacity>
       </View>
     )
@@ -352,12 +326,21 @@ export default function App() {
     </TouchableOpacity>
   );  return (
     <SafeAreaView style={styles.safeArea}>
-      {/* Show the enhanced log screen */}
-      {showLogScreen && connectedDevice && ftmsManagerRef.current ? (
-        <EnhancedTestScreen
-          device={connectedDevice}
+      {/* Show mode selection screen */}
+      {showModeSelection && selectedDevice ? (
+        <ModeSelectionScreen
+          device={selectedDevice}
+          onSelectRealtimeData={handleSelectRealtimeData}
+          onSelectCompatibilityTest={handleSelectCompatibilityTest}
+          onBack={handleBackFromModeSelection}
+        />
+      ) : 
+      /* Show realtime data screen */
+      showRealtimeData && selectedDevice && ftmsManagerRef.current ? (
+        <RealtimeDataScreen
+          device={selectedDevice}
           ftmsManager={ftmsManagerRef.current}
-          onClose={handleCloseLogScreen}
+          onBack={handleBackFromRealtimeData}
         />
       ) : 
       /* Show the test screen when a device is connected and test is requested */
@@ -366,6 +349,14 @@ export default function App() {
           device={connectedDevice}
           ftmsManager={ftmsManagerRef.current}
           onClose={handleCloseTestScreen}
+        />
+      ) : 
+      /* Show the enhanced log screen */
+      showLogScreen && connectedDevice && ftmsManagerRef.current ? (
+        <EnhancedTestScreen
+          device={connectedDevice}
+          ftmsManager={ftmsManagerRef.current}
+          onClose={handleCloseLogScreen}
         />
       ) : (
         <>
@@ -407,48 +398,17 @@ export default function App() {
                     {/* Message when no devices are found after a scan, and not currently scanning */}
                     {scannedDevices.length === 0 && !isScanning && statusMessage.includes("스캔 완료") && (
                         <Text style={{color: 'white', marginTop: 20, textAlign: 'center'}}>발견된 장치가 없습니다.</Text>
-                    )}
-                    {selectedDevice && ( // This button appears if a device was selected, even if scannedDevices is now empty
+                    )}                    {selectedDevice && ( // This button appears if a device was selected, even if scannedDevices is now empty
                       <TouchableOpacity 
                         style={styles.buttonConnect} 
-                        onPress={handleConnectAndTest}
+                        onPress={handleShowModeSelection}
                       >
-                        <Text style={styles.buttonConnectText}>{`'${selectedDevice.name || selectedDevice.id}' 테스트 시작`}</Text>
+                        <Text style={styles.buttonConnectText}>{`'${selectedDevice.name || selectedDevice.id}' 모드 선택`}</Text>
                       </TouchableOpacity>
                     )}
-                  </>
-                ) : (
+                  </>                ) : (
                   <>
                     <Text style={styles.connectedDeviceText}>연결된 장치: {connectedDevice.name || connectedDevice.id}</Text>
-                    {bikeData && (
-                      <View style={styles.bikeDataContainer}>
-                        <Text style={styles.bikeDataTitle}>실시간 데이터:</Text>
-                        <View style={styles.dataRow}>
-                          <View style={styles.dataItem}>
-                            <Text style={styles.dataValue}>{bikeData.instantaneousSpeed?.toFixed(2)}</Text>
-                            <Text style={styles.dataUnit}>km/h</Text>
-                            <Text style={styles.dataLabel}>속도</Text>
-                          </View>
-                          <View style={styles.dataItem}>
-                            <Text style={styles.dataValue}>{bikeData.instantaneousCadence?.toFixed(1)}</Text>
-                            <Text style={styles.dataUnit}>rpm</Text>
-                            <Text style={styles.dataLabel}>케이던스</Text>
-                          </View>
-                        </View>
-                        <View style={styles.dataRow}>
-                          <View style={styles.dataItem}>
-                            <Text style={styles.dataValue}>{bikeData.instantaneousPower}</Text>
-                            <Text style={styles.dataUnit}>W</Text>
-                            <Text style={styles.dataLabel}>파워</Text>
-                          </View>
-                          <View style={styles.dataItem}>
-                            <Text style={styles.dataValue}>{bikeData.resistanceLevel}</Text>
-                            <Text style={styles.dataUnit}></Text>
-                            <Text style={styles.dataLabel}>저항</Text>
-                          </View>
-                        </View>
-                      </View>
-                    )}
                     <View style={styles.buttonGroup}>
                       <TouchableOpacity 
                         style={styles.buttonDanger}
@@ -457,21 +417,6 @@ export default function App() {
                         <Text style={styles.buttonDangerText}>연결 해제</Text>
                       </TouchableOpacity>
                     </View>
-
-                    {/* FTMS 호환성 테스트 버튼 */}                    <TouchableOpacity 
-                      style={styles.buttonTestCompatibility}
-                      onPress={handleStartTest}
-                    >
-                      <Text style={styles.buttonTestCompatibilityText}>FTMS 호환성 테스트</Text>
-                    </TouchableOpacity>
-                    
-                    {/* 로그 보기 버튼 */}
-                    {/* <TouchableOpacity 
-                      style={[styles.buttonTestCompatibility, {marginTop: 10, backgroundColor: '#3182CE'}]}
-                      onPress={showLogViewer}
-                    >
-                      <Text style={styles.buttonTestCompatibilityText}>명령/데이터 로그 보기</Text>
-                    </TouchableOpacity> */}
                   </>
                 )}
               </View>
@@ -765,13 +710,9 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 3,
   },
-  buttonTestCompatibilityText: {
-    color: '#edf2f4',
+  buttonTestCompatibilityText: {    color: '#edf2f4',
     fontSize: 16,
     fontWeight: '500',
   }
 });
-function setLogs(newLogs: LogEntry[]) {
-  throw new Error('Function not implemented.');
-}
 
