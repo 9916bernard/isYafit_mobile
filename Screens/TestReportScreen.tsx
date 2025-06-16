@@ -7,8 +7,13 @@ import {
   ScrollView,
   TouchableOpacity,
   Share,
-  Alert, // Added for copy confirmation
+  Alert,
+  Animated,
+  Dimensions,
 } from 'react-native';
+import Icon from 'react-native-vector-icons/MaterialIcons';
+import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
+import Ionicons from 'react-native-vector-icons/Ionicons';
 import Clipboard from '@react-native-clipboard/clipboard'; // Added for clipboard functionality
 import { TestResults, formatRangeInfo } from '../FtmsTestReport';
 import { useSafeAreaStyles, Colors } from '../styles/commonStyles';
@@ -20,6 +25,27 @@ interface TestReportScreenProps {
 
 const TestReportScreen: React.FC<TestReportScreenProps> = ({ results, onClose }) => {
   const safeAreaStyles = useSafeAreaStyles();
+  const [showFullLog, setShowFullLog] = React.useState(false);
+  
+  // Animation values
+  const fadeAnim = React.useRef(new Animated.Value(0)).current;
+  const slideAnim = React.useRef(new Animated.Value(30)).current;
+  
+  React.useEffect(() => {
+    // Entrance animation
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 600,
+        useNativeDriver: true,
+      }),
+      Animated.timing(slideAnim, {
+        toValue: 0,
+        duration: 500,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, [fadeAnim, slideAnim]);
   
   // Function to share the test report
   const handleShare = async () => {
@@ -201,11 +227,8 @@ ${results.issuesFound && results.issuesFound.length > 0 ? '\n발견된 문제점
             </View>
           );
         })}
-      </View>
-    );
+      </View>    );
   };
-
-  const [showFullLog, setShowFullLog] = React.useState(false);
 
   // Function to copy interaction logs
   const handleCopyLogs = () => {
@@ -221,84 +244,106 @@ ${results.issuesFound && results.issuesFound.length > 0 ? '\n발견된 문제점
     } else {
       Alert.alert("정보", "복사할 로그가 없습니다.");
     }
-  };
-  return (
+  };  return (
     <View style={safeAreaStyles.safeContainerMinPadding}>
-      <ScrollView style={styles.scrollViewContainer}>
-        <View style={styles.container}>
-          <View style={styles.header}>
-            <Text style={styles.title}>FTMS 테스트 보고서</Text>
-            <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-              <Text style={styles.closeButtonText}>닫기</Text>
-            </TouchableOpacity>
-          </View>
-
-          {/* Share Button */}
-          <TouchableOpacity onPress={handleShare} style={styles.shareButton}>
-            <Text style={styles.shareButtonText}>보고서 공유</Text>
-          </TouchableOpacity>
-
-          {/* Device Info Section */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>장치 정보</Text>
-            <View style={styles.deviceInfoContainer}>
-              <Text style={styles.deviceName}>
-                {results.deviceInfo.name || 'Unknown Device'}
-              </Text>
-              <Text style={styles.deviceAddress}>{results.deviceInfo.address}</Text>
-              
-              <View style={styles.infoRow}>
-                <Text style={styles.infoLabel}>프로토콜:</Text>
-                <Text style={styles.infoValue}>
-                  {results.deviceInfo.protocol || '알 수 없음'}
-                </Text>
+      <Animated.View 
+        style={[
+          styles.animatedContainer,
+          {
+            opacity: fadeAnim,
+            transform: [{ translateY: slideAnim }]
+          }
+        ]}
+      >
+        <ScrollView 
+          style={styles.scrollViewContainer}
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={styles.container}>            <View style={styles.header}>
+              <View style={styles.titleContainer}>
+                <MaterialCommunityIcons name="file-chart" size={28} color="#00c663" />
+                <Text style={styles.title}>FTMS 테스트 보고서</Text>
               </View>
-              
-              <View style={styles.infoRow}>
-                <Text style={styles.infoLabel}>지원 프로토콜:</Text>
-                <Text style={styles.infoValue}>
-                  {results.supportedProtocols.join(', ') || '없음'}
-                </Text>
-              </View>
+              <TouchableOpacity onPress={onClose} style={styles.closeButton} activeOpacity={0.8}>
+                <Icon name="close" size={20} color="#ffffff" />
+              </TouchableOpacity>
+            </View>
 
-              <View style={[styles.infoRow, styles.compatibilityRow]}>
-                <Text style={styles.infoLabel}>호환성:</Text>
-                <View style={[
-                  styles.compatibilityBadge,
-                  {
-                    backgroundColor: 
-                      results.compatibilityLevel === '완전 호환' ? '#4CAF50' :
-                      results.compatibilityLevel === '제한적 호환' ? '#FF9800' :
-                      results.compatibilityLevel === '수정 필요' ? '#2196F3' : '#F44336'
-                  }
-                ]}>
-                  <Text style={styles.compatibilityText}>
-                    {results.compatibilityLevel || '평가 불가'}
+            {/* Action Buttons */}            <View style={styles.actionButtonsContainer}>
+              <TouchableOpacity onPress={handleShare} style={styles.shareButton} activeOpacity={0.8}>
+                <Ionicons name="share-outline" size={20} color="#ffffff" />
+                <Text style={styles.shareButtonText}>보고서 공유</Text>
+              </TouchableOpacity>
+            </View>{/* Device Info Section */}            <View style={styles.section}>
+              <View style={styles.sectionHeader}>
+                <MaterialCommunityIcons name="devices" size={24} color="#00c663" />
+                <Text style={styles.sectionTitle}>장치 정보</Text>
+              </View>
+              <View style={styles.deviceInfoContainer}>
+                <View style={styles.deviceNameRow}>
+                  <Text style={styles.deviceName}>
+                    {results.deviceInfo.name || 'Unknown Device'}
                   </Text>
+                  <View style={[
+                    styles.compatibilityBadge,
+                    {
+                      backgroundColor: 
+                        results.compatibilityLevel === '완전 호환' ? '#4CAF50' :
+                        results.compatibilityLevel === '제한적 호환' ? '#FF9800' :
+                        results.compatibilityLevel === '수정 필요' ? '#2196F3' : '#F44336'
+                    }
+                  ]}>
+                    <Text style={styles.compatibilityText}>
+                      {results.compatibilityLevel || '평가 불가'}
+                    </Text>
+                  </View>
+                </View>
+                
+                <Text style={styles.deviceAddress}>{results.deviceInfo.address}</Text>
+                
+                <View style={styles.infoGrid}>
+                  <View style={styles.infoCard}>
+                    <Text style={styles.infoCardLabel}>프로토콜</Text>
+                    <Text style={styles.infoCardValue}>
+                      {results.deviceInfo.protocol || '알 수 없음'}
+                    </Text>
+                  </View>
+                  
+                  <View style={styles.infoCard}>
+                    <Text style={styles.infoCardLabel}>지원 프로토콜</Text>
+                    <Text style={styles.infoCardValue}>
+                      {results.supportedProtocols.join(', ') || '없음'}
+                    </Text>
+                  </View>
                 </View>
               </View>
-            </View>
-          </View>
-
-          {/* Compatibility Reasons */}
-          {results.reasons && results.reasons.length > 0 && (
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>호환성 판정 사유</Text>
-              <View style={styles.reasonsContainer}>
-                {results.reasons.map((reason, index) => (
-                  <Text key={index} style={styles.reasonText}>• {reason}</Text>
-                ))}
+            </View>            {/* Compatibility Reasons */}
+            {results.reasons && results.reasons.length > 0 && (              <View style={styles.section}>
+                <View style={styles.sectionHeader}>
+                  <Icon name="lightbulb-outline" size={24} color="#00c663" />
+                  <Text style={styles.sectionTitle}>호환성 판정 사유</Text>
+                </View>
+                <View style={styles.reasonsContainer}>                  {results.reasons.map((reason, index) => (
+                    <View key={index} style={styles.reasonItem}>
+                      <View style={styles.reasonBullet} />
+                      <Text style={styles.reasonText}>{reason}</Text>
+                    </View>
+                  ))}
+                </View>
               </View>
-            </View>
-          )}
-
-          {/* Issues Found */}
+            )}          {/* Issues Found */}
           {results.issuesFound && results.issuesFound.length > 0 && (
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>문제점</Text>
+              <View style={styles.sectionHeader}>
+                <Icon name="error-outline" size={24} color="#ef4444" />
+                <Text style={styles.sectionTitle}>문제점</Text>
+              </View>
               <View style={styles.issuesContainer}>
                 {results.issuesFound.map((issue, index) => (
-                  <Text key={index} style={styles.issueText}>• {issue}</Text>
+                  <View key={index} style={styles.issueItem}>
+                    <View style={styles.issueBullet} />
+                    <Text style={styles.issueText}>{issue}</Text>
+                  </View>
                 ))}
               </View>
             </View>
@@ -306,7 +351,10 @@ ${results.issuesFound && results.issuesFound.length > 0 ? '\n발견된 문제점
 
           {/* Support Ranges */}
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>지원 범위</Text>
+            <View style={styles.sectionHeader}>
+              <Ionicons name="speedometer-outline" size={24} color="#00c663" />
+              <Text style={styles.sectionTitle}>지원 범위</Text>
+            </View>
             {results.supportRanges && Object.keys(results.supportRanges).length > 0 ? (
               <View style={styles.rangesContainer}>
                 {results.supportRanges.speed && (
@@ -333,11 +381,12 @@ ${results.issuesFound && results.issuesFound.length > 0 ? '\n발견된 문제점
             ) : (
               <Text style={styles.noDataText}>지원 범위 데이터 없음</Text>
             )}
-          </View>
-
-          {/* Features */}
+          </View>          {/* Features */}
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>지원 기능</Text>
+            <View style={styles.sectionHeader}>
+              <MaterialCommunityIcons name="feature-search-outline" size={24} color="#00c663" />
+              <Text style={styles.sectionTitle}>지원 기능</Text>
+            </View>
             {results.features && Object.keys(results.features).length > 0 ? (
               <View style={styles.featuresContainer}>
                 {Object.entries(results.features).map(([name, supported]) => (
@@ -354,31 +403,35 @@ ${results.issuesFound && results.issuesFound.length > 0 ? '\n발견된 문제점
             ) : (
               <Text style={styles.noDataText}>지원 기능 데이터 없음</Text>
             )}
-          </View>
-
-          {/* Data Fields */}
+          </View>          {/* Data Fields */}
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>감지된 데이터 필드</Text>
+            <View style={styles.sectionHeader}>
+              <MaterialCommunityIcons name="database-outline" size={24} color="#00c663" />
+              <Text style={styles.sectionTitle}>감지된 데이터 필드</Text>
+            </View>
             {renderDataFields()}
-          </View>
-
-          {/* Control Tests */}
+          </View>          {/* Control Tests */}
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>제어 테스트 결과</Text>
+            <View style={styles.sectionHeader}>
+              <MaterialCommunityIcons name="test-tube" size={24} color="#00c663" />
+              <Text style={styles.sectionTitle}>제어 테스트 결과</Text>
+            </View>
             <View style={styles.controlTestsContainer}>
               {renderControlTests()}
             </View>
-          </View>
-
-          {/* Resistance Changes Log */}
+          </View>          {/* Resistance Changes Log */}
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>저항 변화 로그</Text>
+            <View style={styles.sectionHeader}>
+              <MaterialCommunityIcons name="chart-timeline-variant" size={24} color="#00c663" />
+              <Text style={styles.sectionTitle}>저항 변화 로그</Text>
+            </View>
             {renderResistanceChanges()}
-          </View>
-
-          {/* Interaction Logs Section */}
+          </View>          {/* Interaction Logs Section */}
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>상호작용 로그</Text>
+            <View style={styles.sectionHeader}>
+              <MaterialCommunityIcons name="console" size={24} color="#00c663" />
+              <Text style={styles.sectionTitle}>상호작용 로그</Text>
+            </View>
             {results.interactionLogs && results.interactionLogs.length > 0 ? (
               <>
                 <View style={styles.logActionsContainer}>
@@ -435,11 +488,12 @@ ${results.issuesFound && results.issuesFound.length > 0 ? '\n발견된 문제점
             ) : (
               <Text style={styles.noDataText}>상호작용 로그 없음</Text>
             )}
-          </View>
-
-          {/* Test Metadata */}
+          </View>          {/* Test Metadata */}
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>테스트 정보</Text>
+            <View style={styles.sectionHeader}>
+              <Icon name="info-outline" size={24} color="#00c663" />
+              <Text style={styles.sectionTitle}>테스트 정보</Text>
+            </View>
             <View style={styles.metadataContainer}>
               <View style={styles.infoRow}>
                 <Text style={styles.infoLabel}>테스트 완료 여부:</Text>
@@ -463,10 +517,11 @@ ${results.issuesFound && results.issuesFound.length > 0 ? '\n발견된 문제점
                   <Text style={styles.infoLabel}>보고서 ID:</Text>
                   <Text style={styles.infoValue}>{results.reportId}</Text>
                 </View>
-              )}
-            </View>
+              )}            </View>
           </View>
-        </View>      </ScrollView>
+        </View>
+      </ScrollView>
+      </Animated.View>
     </View>
   );
 };
@@ -474,83 +529,170 @@ ${results.issuesFound && results.issuesFound.length > 0 ? '\n발견된 문제점
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#1a2029', // Changed to match app theme
+    backgroundColor: '#1a2029',
+  },
+  animatedContainer: {
+    flex: 1,
   },
   scrollViewContainer: {
     flex: 1,
   },
   container: {
     padding: 15,
-    backgroundColor: '#1a2029', // Changed to match app theme
+    backgroundColor: '#1a2029',
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 15,
-    borderBottomWidth: 1,
-    borderBottomColor: '#242c3b', // Changed to match app theme
-    paddingBottom: 10,
+    marginBottom: 20,
+    backgroundColor: '#242c3b',
+    borderRadius: 16,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  titleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },  headerIcon: {
+    marginRight: 12,
   },
   title: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#ffffff', // Changed to white
+    color: '#ffffff',
+    flex: 1,
+    marginLeft: 12,
   },
   closeButton: {
-    padding: 8,
-    backgroundColor: '#242c3b', // Changed to match app theme
-    borderRadius: 5,
+    width: 40,
+    height: 40,
+    backgroundColor: '#374151',
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 4,
   },
   closeButtonText: {
-    color: '#ffffff', // Changed to white
+    color: '#ffffff',
     fontSize: 16,
   },
-  shareButton: {
-    backgroundColor: '#00c663', // Changed to app green
-    padding: 12,
-    borderRadius: 8,
-    alignItems: 'center',
+  closeButtonIcon: {
+    color: '#ffffff',
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  actionButtonsContainer: {
     marginBottom: 20,
+  },
+  shareButton: {
+    backgroundColor: '#00c663',
+    padding: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'center',
+    shadowColor: '#00c663',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
+    elevation: 8,
+  },  shareButtonIcon: {
+    marginRight: 12,
   },
   shareButtonText: {
     color: '#ffffff',
     fontSize: 16,
     fontWeight: 'bold',
+    marginLeft: 12,
   },
   section: {
-    marginBottom: 20,
-    backgroundColor: '#242c3b', // Changed to match app theme
-    padding: 15,
-    borderRadius: 8,
+    marginBottom: 24,
+    backgroundColor: '#242c3b',
+    borderRadius: 16,
+    padding: 20,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
-    shadowRadius: 3,
-    elevation: 3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#374151',
+  },  sectionIcon: {
+    marginRight: 12,
   },
   sectionTitle: {
     fontSize: 20,
     fontWeight: '600',
-    color: '#00c663', // Changed to app green
-    marginBottom: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#374151', // Slightly lighter than background
-    paddingBottom: 8,
+    color: '#00c663',
+    flex: 1,
+    marginLeft: 12,
   },
   deviceInfoContainer: {
     paddingVertical: 10,
   },
+  deviceNameRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
   deviceName: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#ffffff', // Changed to white
-    marginBottom: 4,
+    color: '#ffffff',
+    flex: 1,
+    marginRight: 16,
   },
   deviceAddress: {
     fontSize: 14,
-    color: '#9ca3af', // Changed to match app theme
-    marginBottom: 10,
+    color: '#9ca3af',
+    marginBottom: 16,
+    fontFamily: 'monospace',
+    backgroundColor: '#1a2029',
+    padding: 8,
+    borderRadius: 6,
+  },
+  infoGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+  },
+  infoCard: {
+    backgroundColor: '#1a2029',
+    borderRadius: 12,
+    padding: 16,
+    flex: 1,
+    minWidth: '45%',
+    borderLeftWidth: 4,
+    borderLeftColor: '#00c663',
+  },
+  infoCardLabel: {
+    fontSize: 12,
+    color: '#9ca3af',
+    fontWeight: '500',
+    marginBottom: 4,
+    textTransform: 'uppercase',
+  },
+  infoCardValue: {
+    fontSize: 15,
+    color: '#ffffff',
+    fontWeight: '600',
   },
   infoRow: {
     flexDirection: 'row',
@@ -559,27 +701,32 @@ const styles = StyleSheet.create({
     marginBottom: 6,
     paddingVertical: 4,
     borderBottomWidth: 1,
-    borderBottomColor: '#374151', // Changed to match app theme
+    borderBottomColor: '#374151',
   },
   infoLabel: {
     fontSize: 15,
-    color: '#9ca3af', // Changed to match app theme
+    color: '#9ca3af',
     fontWeight: '500',
   },
   infoValue: {
     fontSize: 15,
-    color: '#ffffff', // Changed to white
+    color: '#ffffff',
     textAlign: 'right',
   },
   compatibilityRow: {
     marginTop: 8,
-  },
-  compatibilityBadge: {
-    paddingVertical: 5,
-    paddingHorizontal: 10,
-    borderRadius: 15,
-    minWidth: 100,
+  },  compatibilityBadge: {
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 20,
     alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 4,
+    borderWidth: 2,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
   },
   compatibilityText: {
     color: '#ffffff',
@@ -587,29 +734,57 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   reasonsContainer: {
-    marginTop: 5,
+    backgroundColor: '#1a2029',
+    borderRadius: 12,
+    padding: 16,
+  },
+  reasonItem: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 12,
+  },  reasonBullet: {
+    width: 8,
+    height: 8,
+    backgroundColor: '#00c663',
+    borderRadius: 4,
+    marginRight: 12,
+    marginTop: 6,
   },
   reasonText: {
     fontSize: 14,
-    color: '#ffffff', // Changed to white
-    marginBottom: 5,
+    color: '#ffffff',
     lineHeight: 20,
+    flex: 1,
+  },  issuesContainer: {
+    backgroundColor: '#1a2029',
+    borderRadius: 12,
+    padding: 16,
   },
-  issuesContainer: {
-    marginTop: 5,
+  issueItem: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 12,
+  },
+  issueBullet: {
+    width: 8,
+    height: 8,
+    backgroundColor: '#ef4444',
+    borderRadius: 4,
+    marginRight: 12,
+    marginTop: 6,
   },
   issueText: {
     fontSize: 14,
-    color: '#ef4444', // Keep red for issues but use a darker shade
-    marginBottom: 5,
+    color: '#ef4444',
     lineHeight: 20,
+    flex: 1,
   },
   rangesContainer: {
     marginTop: 5,
   },
   rangeText: {
     fontSize: 14,
-    color: '#ffffff', // Changed to white
+    color: '#ffffff',
     marginBottom: 4,
   },
   featuresContainer: {
@@ -625,57 +800,59 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   noDataText: {
-    color: '#9ca3af', // Changed to match app theme
+    color: '#9ca3af',
     fontStyle: 'italic',
     textAlign: 'center',
-    paddingVertical: 10,
+    paddingVertical: 20,
+    fontSize: 16,
   },
   dataFieldsTable: {
     marginTop: 10,
     borderWidth: 1,
-    borderColor: '#374151', // Changed to match app theme
-    borderRadius: 5,
+    borderColor: '#374151',
+    borderRadius: 12,
+    overflow: 'hidden',
   },
   tableHeader: {
     flexDirection: 'row',
-    backgroundColor: '#1a2029', // Changed to match app theme
-    paddingVertical: 8,
-    paddingHorizontal: 5,
-    borderTopLeftRadius: 4,
-    borderTopRightRadius: 4,
+    backgroundColor: '#1a2029',
+    paddingVertical: 12,
+    paddingHorizontal: 8,
   },
   tableHeaderCell: {
     fontSize: 13,
     fontWeight: 'bold',
-    color: '#00c663', // Changed to app green
+    color: '#00c663',
     textAlign: 'center',
   },
   tableRow: {
     flexDirection: 'row',
-    paddingVertical: 8,
-    paddingHorizontal: 5,
+    paddingVertical: 12,
+    paddingHorizontal: 8,
     borderBottomWidth: 1,
-    borderBottomColor: '#374151', // Changed to match app theme
+    borderBottomColor: '#374151',
   },
   tableCell: {
     fontSize: 13,
-    color: '#ffffff', // Changed to white
+    color: '#ffffff',
     textAlign: 'center',
   },
   controlTestsContainer: {
     marginTop: 5,
   },
   controlTestItem: {
-    backgroundColor: '#1a2029', // Changed to match app theme
-    padding: 12,
-    borderRadius: 6,
-    marginBottom: 10,
+    backgroundColor: '#1a2029',
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 12,
+    borderLeftWidth: 4,
+    borderLeftColor: '#00c663',
   },
   controlTestHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: 12,
   },
   commandTypeContainer: {
     flex: 1,
@@ -683,19 +860,26 @@ const styles = StyleSheet.create({
   commandTypeLabel: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#ffffff', // Changed to white
+    color: '#ffffff',
   },
   controlTestName: {
     fontSize: 12,
-    color: '#9ca3af', // Changed to match app theme
+    color: '#9ca3af',
+    marginTop: 4,
+    fontFamily: 'monospace',
   },
   statusBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 15,
-    minWidth: 60,
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 20,
+    minWidth: 70,
     alignItems: 'center',
     justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 4,
   },
   statusText: {
     color: '#ffffff',
@@ -704,51 +888,58 @@ const styles = StyleSheet.create({
   },
   controlTestDetails: {
     fontSize: 13,
-    color: '#9ca3af', // Changed to match app theme
+    color: '#9ca3af',
     marginBottom: 8,
     fontStyle: 'italic',
+    lineHeight: 18,
   },
   testInfoRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginTop: 5,
+    marginTop: 8,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: '#374151',
   },
   controlTestTimestamp: {
     fontSize: 12,
-    color: '#9ca3af', // Changed to match app theme
+    color: '#9ca3af',
   },
   testStatusIcon: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: 'bold',
   },
   resistanceChangesTable: {
     marginTop: 10,
     borderWidth: 1,
-    borderColor: '#374151', // Changed to match app theme
-    borderRadius: 5,
+    borderColor: '#374151',
+    borderRadius: 12,
+    overflow: 'hidden',
   },
   metadataContainer: {
     backgroundColor: '#1a2029',
-    borderRadius: 8,
-    padding: 12,
+    borderRadius: 12,
+    padding: 16,
   },
   logScrollContainer: {
     maxHeight: 400,
-    borderColor: '#374151', // Changed to match app theme
+    borderColor: '#374151',
     borderWidth: 1,
-    borderRadius: 5,
+    borderRadius: 12,
     marginTop: 10,
+    overflow: 'hidden',
   },
   logContainer: {
-    padding: 10,
-    backgroundColor: '#1a2029', // Changed to match app theme
+    padding: 16,
+    backgroundColor: '#1a2029',
   },
   logEntry: {
     fontSize: 13,
-    color: '#ffffff', // Changed to white
+    color: '#ffffff',
     marginBottom: 6,
     fontFamily: 'monospace',
+    lineHeight: 18,
   },
   logActionsContainer: {
     flexDirection: 'row',
@@ -756,34 +947,43 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: 10,
     marginBottom: 10,
+    gap: 12,
   },
   toggleLogButton: {
-    backgroundColor: '#00c663', // Changed to app green
-    paddingVertical: 10,
-    paddingHorizontal: 15,
-    borderRadius: 5,
+    backgroundColor: '#00c663',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 10,
     alignItems: 'center',
     flex: 1,
-    marginRight: 5,
+    shadowColor: '#00c663',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 4,
   },
   toggleLogButtonText: {
     color: '#ffffff',
     fontSize: 15,
-    fontWeight: '500',
+    fontWeight: '600',
   },
   copyLogButton: {
-    backgroundColor: '#242c3b', // Changed to darker theme color
-    paddingVertical: 10,
-    paddingHorizontal: 15,
-    borderRadius: 5,
+    backgroundColor: '#374151',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 10,
     alignItems: 'center',
     flex: 1,
-    marginLeft: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 4,
   },
   copyLogButtonText: {
     color: '#ffffff',
     fontSize: 15,
-    fontWeight: '500',
+    fontWeight: '600',
   },
 });
 

@@ -14,7 +14,7 @@ import { Colors, ButtonStyles, CardStyles, TextStyles, Shadows } from '../styles
 
 
 // 앱 버전 관리
-const APP_VERSION = 'v0.3.5';
+const APP_VERSION = 'v0.4.2';
 
 function App() {
   const ftmsManagerRef = useRef<FTMSManager | null>(null);
@@ -166,8 +166,13 @@ function App() {
     } finally {
       setIsScanning(false);
     }
-  };
-  const handleSelectDevice = (device: Device) => {
+  };  const handleSelectDevice = (device: Device) => {
+    // 이미 선택된 장치를 다시 클릭하면 연결 시도
+    if (selectedDevice?.id === device.id) {
+      handleShowModeSelection();
+      return;
+    }
+    
     setSelectedDevice(device);
     setStatusMessage(`${device.name || device.id} 선택됨. 모드를 선택하세요.`);
   };
@@ -329,14 +334,12 @@ function App() {
             {isScanning ? "스캔 중..." : "FTMS 장치 스캔"}
           </Text>
         </LinearGradient>
-      </TouchableOpacity>
-      
-      <View style={styles.sectionHeader}>
+      </TouchableOpacity>      <View style={styles.sectionHeader}>
         <Icon name="devices" size={20} color={Colors.primary} />
         <Text style={styles.sectionTitle}>발견된 장치</Text>
       </View>
     </LinearGradient>
-  );  const renderListFooter = () => (
+  );const renderListFooter = () => (
     selectedDevice && (
       <View style={styles.connectButtonContainer}>
         <TouchableOpacity
@@ -638,7 +641,7 @@ const styles = StyleSheet.create({
   list: {
     width: '100%',
     // maxHeight: 350, // No longer needed here if FlatList is primary scroller or items are rendered in ScrollView
-    marginBottom: 25, // This might still be useful if list is shown within ScrollView context
+    marginBottom: 0, // This might still be useful if list is shown within ScrollView context
     borderWidth: 0,
     borderRadius: 10,
     overflow: 'hidden',
@@ -710,7 +713,7 @@ const styles = StyleSheet.create({
   },
   buttonPrimary: {
     backgroundColor: '#00c663',
-    paddingVertical: 16, // Increased padding
+    paddingVertical: 0, // Increased padding
     paddingHorizontal: 30,
     borderRadius: 10,
     width: '100%', // Changed from 90% to 100% to fill container (respecting parent padding)
@@ -731,24 +734,20 @@ const styles = StyleSheet.create({
   buttonDisabled: {
     backgroundColor: '#4d5d6e',
     opacity: 0.7,
-  },
-  sectionTitle: {
+  },  sectionTitle: {
     fontSize: 16,
     color: '#fff',
     fontWeight: '600',
-    alignSelf: 'flex-start',
-    marginLeft: 10,
-    marginTop: 10,
-    marginBottom: 0, // Reduced marginBottom to bring the list closer
+    marginLeft: 8,
   },
   buttonConnect: {
     backgroundColor: '#00c663',
-    paddingVertical: 14,
+    paddingVertical: 0,
     paddingHorizontal: 25,
     borderRadius: 10,
     width: '100%', // Changed from 90% to 100%
-    marginTop: 10, // Adjusted margin
-    marginBottom: 20,
+    marginTop: 0, // Adjusted margin
+    marginBottom: 30,
     alignItems: 'center',
     justifyContent: 'center',
     elevation: 3,
@@ -885,11 +884,11 @@ const styles = StyleSheet.create({
     color: Colors.text,
     fontSize: 16,
     fontWeight: 'bold',
-  },
-  sectionHeader: {
+  },  sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 8,
+    marginTop: 8,
   },
   deviceItemCard: {
     backgroundColor: Colors.secondary,
@@ -909,10 +908,10 @@ const styles = StyleSheet.create({
   },
   connectButtonContainer: {
     paddingHorizontal: 20,
-    paddingVertical: 16,
+    paddingVertical: 0,
   },
   connectButtonGradient: {
-    paddingVertical: 16,
+    paddingVertical: 10,
     paddingHorizontal: 24,
     borderRadius: 16,
     alignItems: 'center',

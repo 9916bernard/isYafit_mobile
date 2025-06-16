@@ -55,7 +55,8 @@ const ModeSelectionScreen: React.FC<ModeSelectionScreenProps> = ({
             </View>
             <Text style={styles.modeButtonTitle}>Yafit 호환성 테스트</Text>
             <Text style={styles.modeButtonDescription}>
-              FTMS 프로토콜 지원 여부와{'\n'}Yafit 앱과의 호환성을 테스트합니다          </Text>
+              FTMS 프로토콜 지원 여부와{'\n'}Yafit 앱과의 호환성을 테스트합니다          
+            </Text>
           </TouchableOpacity>
         </View>
 
