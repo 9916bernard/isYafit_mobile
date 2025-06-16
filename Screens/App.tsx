@@ -12,7 +12,7 @@ import LoadingScreen from './LoadingScreen'; // Import the loading screen
 
 
 // 앱 버전 관리
-const APP_VERSION = 'v0.3.1';
+const APP_VERSION = 'v0.3.4';
 
 function App() {
   const ftmsManagerRef = useRef<FTMSManager | null>(null);
