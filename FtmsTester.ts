@@ -35,9 +35,7 @@ export class FTMSTester {
         this.ftmsManager = ftmsManager;
         this.testResults = initTestResults();
         // this.ftmsManager.setLogCallback(this.logInteraction.bind(this)); // Remove this line
-    }
-
-    // Add this new method to log interactions
+    }    // Add this new method to log interactions
     private logInteraction(message: string) {
         const timestamp = new Date().toISOString().replace('T', ' ').substring(0, 23);
         const logEntry = `${timestamp} - ${message}`;
@@ -45,8 +43,13 @@ export class FTMSTester {
             this.testResults.interactionLogs = [];
         }
         this.testResults.interactionLogs.push(logEntry);
-        // Optionally, you can also pass this to a UI callback if needed immediately
-        // console.log(logEntry); // For debugging during development
+        
+        // Add console logging for debugging - especially for status changes
+        if (message.includes('SUCCESS') || message.includes('FAILED') || message.includes('Status changed') || 
+            message.includes('RESISTANCE CHANGED') || message.includes('Command pending') || 
+            message.includes('CP Response') || message.includes('status changed')) {
+            console.log(`[FTMS_DEBUG] ${logEntry}`);
+        }
     }
 
     // New method to merge logs from FtmsManager
@@ -93,11 +96,13 @@ export class FTMSTester {
             this.updateProgress(5, "기기에 연결 중...");
             this.logInteraction('INFO - Test: Attempting to connect to device.');
             await this.connectToDevice(device);
+
             this.testResults.connection.status = true;
             this.logInteraction('INFO - Test: Device connected successfully.');
             this.updateProgress(10, "서비스 확인 중...");
             this.logInteraction('INFO - Test: Discovering services and characteristics.');
             await this.identifyProtocols();
+            
             this.logInteraction(`INFO - Test: Identified protocols: ${this.testResults.supportedProtocols.join(', ') || 'None'}.`);
             
             // Step 2: Read supported ranges if FTMS protocol is available
@@ -462,10 +467,9 @@ export class FTMSTester {
             // Don't throw here to allow the test to continue
         }
     }
-    
-    private async monitorBikeData(): Promise<void> {
+      private async monitorBikeData(): Promise<void> {
         try {
-            this.logInteraction('INFO - FTMSTester: Setting up notifications for Indoor Bike Data and Control Point.');
+            this.logInteraction('INFO - [monitorBikeData] Setting up notifications for Indoor Bike Data and Control Point.');
             await this.ftmsManager.subscribeToNotifications(
                 // Control Point Response handler
                 (data: Buffer) => {
@@ -478,13 +482,20 @@ export class FTMSTester {
             );
             
             // Send initial commands to activate the device
-            this.logInteraction('INFO - FTMSTester: Sending initial FTMS commands (REQUEST_CONTROL, RESET, START).');
+            this.logInteraction('INFO - [monitorBikeData] Sending initial FTMS commands (REQUEST_CONTROL, RESET, START).');
+            
+            // Clear any previous command state before starting
+            this.resistanceTracking.commandPending = false;
+            this.logInteraction('DEBUG - [monitorBikeData] Command tracking cleared before initial commands');
+            
             await this.ftmsManager.requestControl();
             await this.ftmsManager.resetMachine();
             await this.ftmsManager.startMachine();
             
+            this.logInteraction('INFO - [monitorBikeData] Initial FTMS commands completed successfully.');
+            
         } catch (error) {
-            this.logInteraction(`ERROR - FTMSTester: Error subscribing to notifications: ${error instanceof Error ? error.message : String(error)}`);
+            this.logInteraction(`ERROR - [monitorBikeData] Error subscribing to notifications: ${error instanceof Error ? error.message : String(error)}`);
             this.testResults.issuesFound.push(`알림 구독 오류: ${error instanceof Error ? error.message : String(error)}`);
             throw error;
         }
@@ -502,157 +513,148 @@ export class FTMSTester {
             throw error;
         }
     }
-    
-    private async testControlPoints(): Promise<void> {
+      private async testControlPoints(): Promise<void> {
         try {
             if (!this.testResults.controlTests) {
                 this.testResults.controlTests = {};
             }
 
-            // Test SET_RESISTANCE_LEVEL
-            try {
-                // Use a common test resistance level, e.g., 5.
-                // This might need to be adjusted based on device's supported range,
-                // which should be read by readSupportRanges if available.
-                const resistanceLevel = 10; 
-                
-                this.resistanceTracking = {
-                    commandPending: true,
-                    lastCommandType: 'SET_RESISTANCE_LEVEL',
-                    commandSentTime: Date.now(),
-                    expectedResistance: resistanceLevel,
-                    resistanceChangeNotedForLastCmd: false // Initialize
-                };
-                this.logInteraction(`INFO - FTMSTester: Sending SET_RESISTANCE_LEVEL: ${resistanceLevel}`);
+            this.logInteraction('INFO - [testControlPoints] Control point testing started. Testing order: SET_RESISTANCE_LEVEL -> SET_SIM_PARAMS -> SET_TARGET_POWER (last)');
+
+            // Test SET_RESISTANCE_LEVEL first
+            await this.testSingleControlCommand('SET_RESISTANCE_LEVEL', async () => {
+                const resistanceLevel = 10;
+                this.logInteraction(`INFO - [testControlPoints] Executing SET_RESISTANCE_LEVEL with value: ${resistanceLevel}`);
                 await this.ftmsManager.setResistance(resistanceLevel);
-                
-                // Result will be handled by the control point response handler
-                this.testResults.controlTests['SET_RESISTANCE_LEVEL'] = {
-                    status: "Pending", 
-                    timestamp: Date.now(),
-                    details: `Resistance level: ${resistanceLevel}`
-                };
-                
-                // Wait a bit to let the device respond
-                await new Promise(resolve => setTimeout(resolve, 2000));
-            } catch (e) {
-                this.testResults.controlTests['SET_RESISTANCE_LEVEL'] = {
-                    status: "Failed", 
-                    timestamp: Date.now(),
-                    details: `Error: ${e instanceof Error ? e.message : String(e)}`
-                };
-            }
+                return `Resistance level: ${resistanceLevel}`;
+            });
             
-            // Test SET_TARGET_POWER
-            try {
-                // Use 100W as a standard test value
-                const targetPower = 100;
-                
-                this.resistanceTracking = {
-                    commandPending: true,
-                    lastCommandType: 'SET_TARGET_POWER',
-                    commandSentTime: Date.now(),
-                    expectedResistance: undefined, // Not directly expecting a specific resistance for power
-                    resistanceChangeNotedForLastCmd: false // Initialize
-                };
-                this.logInteraction(`INFO - FTMSTester: Sending SET_TARGET_POWER: ${targetPower}W`);
-                await this.ftmsManager.setTargetPower(targetPower);
-                
-                this.testResults.controlTests['SET_TARGET_POWER'] = {
-                    status: "Pending", 
-                    timestamp: Date.now(),
-                    details: `Target power: ${targetPower}W`
-                };
-                
-                // Wait a bit to let the device respond
-                await new Promise(resolve => setTimeout(resolve, 2000));
-            } catch (e) {
-                this.testResults.controlTests['SET_TARGET_POWER'] = {
-                    status: "Failed", 
-                    timestamp: Date.now(),
-                    details: `Error: ${e instanceof Error ? e.message : String(e)}`
-                };
-            }
-            
-            // Test SET_SIM_PARAMS
-            try {
-                // Test with 10% grade
+            // Test SET_SIM_PARAMS second
+            await this.testSingleControlCommand('SET_SIM_PARAMS', async () => {
                 const grade = 10;
-                const windSpeed = 0; // Example
-                const crr = 0.004; // Example Rolling Resistance Coefficient
-                const cw = 0.5; // Example Wind Resistance Coefficient
-                
-                this.resistanceTracking = {
-                    commandPending: true,
-                    lastCommandType: 'SET_SIM_PARAMS',
-                    commandSentTime: Date.now(),
-                    expectedResistance: undefined, // Not directly expecting for sim params
-                    resistanceChangeNotedForLastCmd: false // Initialize
-                };
-                this.logInteraction(`INFO - FTMSTester: Sending SET_SIM_PARAMS: Grade ${grade}%, Wind ${windSpeed} km/h, CRR ${crr}, CW ${cw}`);
-                await this.ftmsManager.setSimulationParameters(windSpeed, grade, crr, cw); 
-                
-                this.testResults.controlTests['SET_SIM_PARAMS'] = {
-                    status: "Pending", 
-                    timestamp: Date.now(),
-                    details: `Grade: ${grade}%, Wind: 0 m/s, CRR: 0.004, CW: 0.5`
-                };
-                
-                // Wait a bit to let the device respond
-                await new Promise(resolve => setTimeout(resolve, 2000));
-            } catch (e) {
-                this.testResults.controlTests['SET_SIM_PARAMS'] = {
-                    status: "Failed", 
-                    timestamp: Date.now(),
-                    details: `Error: ${e instanceof Error ? e.message : String(e)}`
-                };
-            }
+                const windSpeed = 0;
+                const crr = 0.004;
+                const cw = 0.5;
+                this.logInteraction(`INFO - [testControlPoints] Executing SET_SIM_PARAMS with Grade: ${grade}%, Wind: ${windSpeed} km/h, CRR: ${crr}, CW: ${cw}`);
+                await this.ftmsManager.setSimulationParameters(windSpeed, grade, crr, cw);
+                return `Grade: ${grade}%, Wind: ${windSpeed} km/h, CRR: ${crr}, CW: ${cw}`;
+            });
+            
+            // Test SET_TARGET_POWER last (to avoid interference with other commands)
+            await this.testSingleControlCommand('SET_TARGET_POWER', async () => {
+                const targetPower = 100;
+                this.logInteraction(`INFO - [testControlPoints] Executing SET_TARGET_POWER with value: ${targetPower}W (executed last to prevent resistance interference)`);
+                await this.ftmsManager.setTargetPower(targetPower);
+                return `Target power: ${targetPower}W`;
+            });
+            
+            this.logInteraction('INFO - [testControlPoints] All control point tests completed');
             
         } catch (error) {
+            this.logInteraction(`ERROR - [testControlPoints] Control point testing failed: ${error instanceof Error ? error.message : String(error)}`);
             this.testResults.issuesFound.push(`제어 포인트 테스트 오류: ${error instanceof Error ? error.message : String(error)}`);
             // Don't throw here to allow the test to continue
         }
     }
-      private handleControlPointResponse(data: Buffer) {
+
+    private async testSingleControlCommand(commandName: string, commandExecutor: () => Promise<string>): Promise<void> {
+        try {
+            // Clear previous command state and set new command
+            this.logInteraction(`INFO - [testSingleControlCommand] Starting ${commandName} test`);
+            this.logInteraction(`DEBUG - [testSingleControlCommand] Previous commandPending state: ${this.resistanceTracking.commandPending}, lastCommandType: ${this.resistanceTracking.lastCommandType}`);
+            
+            this.resistanceTracking = {
+                commandPending: true,
+                lastCommandType: commandName,
+                commandSentTime: Date.now(),
+                expectedResistance: undefined, // Using change detection for all commands
+                resistanceChangeNotedForLastCmd: false
+            };
+            
+            this.logInteraction(`DEBUG - [testSingleControlCommand] Command tracking initialized for ${commandName} at ${this.resistanceTracking.commandSentTime}`);
+            
+            // Execute command
+            const details = await commandExecutor();
+            
+            // Set initial test result
+            this.testResults.controlTests[commandName] = {
+                status: "Pending", 
+                timestamp: Date.now(),
+                details: details
+            };
+            
+            this.logInteraction(`DEBUG - [testSingleControlCommand] ${commandName} command sent, status set to Pending`);
+            
+            // Wait for response (longer timeout for SET_TARGET_POWER)
+            const waitTime = commandName === 'SET_TARGET_POWER' ? 5000 : 3000;
+            this.logInteraction(`DEBUG - [testSingleControlCommand] Waiting ${waitTime}ms for ${commandName} response...`);
+            await new Promise(resolve => setTimeout(resolve, waitTime));
+            
+            // Check final status after wait
+            const finalStatus = this.testResults.controlTests[commandName]?.status || 'Unknown';
+            this.logInteraction(`INFO - [testSingleControlCommand] ${commandName} test completed with final status: ${finalStatus}`);
+            
+            if (finalStatus === 'Pending') {
+                this.logInteraction(`WARN - [testSingleControlCommand] ${commandName} remained in Pending state - no response received`);
+                this.testResults.controlTests[commandName] = {
+                    ...this.testResults.controlTests[commandName],
+                    status: "Failed",
+                    details: `${details} - No response received within timeout`
+                };
+            }
+            
+        } catch (e) {
+            this.logInteraction(`ERROR - [testSingleControlCommand] ${commandName} execution failed: ${e instanceof Error ? e.message : String(e)}`);
+            this.testResults.controlTests[commandName] = {
+                status: "Failed", 
+                timestamp: Date.now(),
+                details: `Error: ${e instanceof Error ? e.message : String(e)}`
+            };
+            
+            // Clear command pending state on error
+            this.resistanceTracking.commandPending = false;
+            this.logInteraction(`DEBUG - [testSingleControlCommand] Command pending cleared due to error in ${commandName}`);
+        }
+    }      private handleControlPointResponse(data: Buffer) {
         // This method is called by FTMSManager's notification handler
-        // It needs to be adapted to use the logInteraction method if direct logging is needed here
-        // For now, FTMSManager will handle logging of CP responses.
         const opCode = data[1];
         const resultCode = data[2];
         const commandName = this.ftmsManager.getOpCodeName(opCode);
         const resultName = this.ftmsManager.getResultCodeName(resultCode);
 
-        this.logInteraction(`INFO - FTMSTester: Control Response Received - OpCode: ${opCode.toString(16)}, Result: ${resultCode.toString(16)} (${commandName}, ${resultName})`);
+        this.logInteraction(`INFO - [handleControlPointResponse] Control Response Received - OpCode: 0x${opCode.toString(16)}, Result: 0x${resultCode.toString(16)} (${commandName}, ${resultName})`);
 
-        if (this.resistanceTracking.commandPending && 
-            (commandName === 'SET_RESISTANCE_LEVEL' || 
-             commandName === 'SET_TARGET_POWER' || 
-             commandName === 'SET_SIM_PARAMS')) {
+        if (this.resistanceTracking.commandPending) {
+            this.logInteraction(`DEBUG - [handleControlPointResponse] Current pending command: ${this.resistanceTracking.lastCommandType}, received response for: ${commandName}`);
             
-            if (resultCode === 0x01) { // Success
-                this.testResults.controlTests[commandName] = {
-                    ...this.testResults.controlTests[commandName],
-                    status: "OK", // Initially OK, will be verified by resistance change
-                    details: `${commandName} successful. Waiting for resistance change.`
-                };
-                this.logInteraction(`INFO - FTMSTester: ${commandName} command successful via CP response.`);
-                // Now we wait for handleBikeData to confirm the change
+            if (commandName === this.resistanceTracking.lastCommandType) {
+                const timeSinceCommand = Date.now() - this.resistanceTracking.commandSentTime;
+                this.logInteraction(`DEBUG - [handleControlPointResponse] Response time: ${timeSinceCommand}ms for ${commandName}`);
+                
+                if (resultCode === 0x01) { // Success
+                    this.testResults.controlTests[commandName] = {
+                        ...this.testResults.controlTests[commandName],
+                        status: "Success", // Changed from "OK" to indicate CP success
+                        details: `${this.testResults.controlTests[commandName]?.details || commandName}. CP Response: Success. Waiting for resistance change confirmation.`
+                    };
+                    this.logInteraction(`INFO - [handleControlPointResponse] ${commandName} command SUCCESS via CP response. Status changed to: Success`);
+                    // Keep commandPending=true to wait for resistance change confirmation
+                } else {
+                    this.testResults.controlTests[commandName] = {
+                        ...this.testResults.controlTests[commandName],
+                        status: "Failed",
+                        details: `${this.testResults.controlTests[commandName]?.details || commandName}. CP Response: ${resultName} (0x${resultCode.toString(16)})`
+                    };
+                    this.resistanceTracking.commandPending = false;
+                    this.logInteraction(`ERROR - [handleControlPointResponse] ${commandName} command FAILED via CP response. Status changed to: Failed. Result: ${resultName}. CommandPending cleared.`);
+                }
             } else {
-                this.testResults.controlTests[commandName] = {
-                    ...this.testResults.controlTests[commandName],
-                    status: "Failed",
-                    details: `${commandName} failed. Result: ${resultName} (${resultCode.toString(16)})`
-                };
-                this.resistanceTracking.commandPending = false;
-                this.logInteraction(`ERROR - FTMSTester: ${commandName} command failed via CP response. Result: ${resultName}`);
+                this.logInteraction(`WARN - [handleControlPointResponse] Received response for ${commandName} but pending command is ${this.resistanceTracking.lastCommandType}. Possible command mismatch.`);
             }
+        } else {
+            this.logInteraction(`DEBUG - [handleControlPointResponse] Received CP response for ${commandName} but no command is currently pending`);
         }
-    }
-
-    private handleBikeData(data: any) {
-        // This method is called by FTMSManager's notification handler
-        // It needs to be adapted to use the logInteraction method if direct logging is needed here
-        // For now, FTMSManager will handle logging of Bike Data.
+    }    private handleBikeData(data: any) {
         // Update data fields
         if (data.instantaneousSpeed !== undefined) {
             this.testResults = updateDataField(this.testResults, 'speed', data.instantaneousSpeed);
@@ -665,7 +667,14 @@ export class FTMSTester {
         }
         if (data.resistanceLevel !== undefined) {
             const newResistance = data.resistanceLevel;
+            
+            // Log every resistance value for debugging
+            this.logInteraction(`DEBUG - [handleBikeData] Current resistance: ${newResistance}, Previous: ${this.lastResistanceLevel}, CommandPending: ${this.resistanceTracking.commandPending}, CommandType: ${this.resistanceTracking.lastCommandType}`);
+            
             if (this.lastResistanceLevel !== newResistance) {
+                const timeFromCommand = this.resistanceTracking.commandPending ? 
+                    Date.now() - this.resistanceTracking.commandSentTime : 0;
+                    
                 this.testResults = trackResistanceChange(
                     this.testResults, 
                     'Resistance Level', 
@@ -673,45 +682,37 @@ export class FTMSTester {
                     this.lastResistanceLevel,
                     this.resistanceTracking.commandPending ? this.resistanceTracking.lastCommandType : '자동 변경'
                 );
-                this.logInteraction(`INFO - FTMSTester: Resistance changed from ${this.lastResistanceLevel} to ${newResistance}. Command pending: ${this.resistanceTracking.commandPending}, Type: ${this.resistanceTracking.lastCommandType}`);
+                
+                this.logInteraction(`INFO - [handleBikeData] RESISTANCE CHANGED from ${this.lastResistanceLevel} to ${newResistance}. CommandPending: ${this.resistanceTracking.commandPending}, CommandType: ${this.resistanceTracking.lastCommandType}, TimeFromCommand: ${timeFromCommand}ms`);
 
                 if (this.resistanceTracking.commandPending && 
                     !this.resistanceTracking.resistanceChangeNotedForLastCmd) {
                     
                     const commandName = this.resistanceTracking.lastCommandType;
-                    let commandSuccess = false;
+                    this.logInteraction(`DEBUG - [handleBikeData] Processing resistance change for pending command: ${commandName}`);
 
-                    if (commandName === 'SET_RESISTANCE_LEVEL') {
-                        if (newResistance === this.resistanceTracking.expectedResistance) {
-                            commandSuccess = true;
-                            this.logInteraction(`INFO - FTMSTester: SET_RESISTANCE_LEVEL to ${this.resistanceTracking.expectedResistance} confirmed by bike data (new resistance: ${newResistance}).`);
-                        } else {
-                            this.logInteraction(`WARN - FTMSTester: SET_RESISTANCE_LEVEL to ${this.resistanceTracking.expectedResistance} expected, but bike data shows ${newResistance}.`);
-                        }
-                    } else if (commandName === 'SET_TARGET_POWER' || commandName === 'SET_SIM_PARAMS') {
-                        // For power/sim, any change in resistance after command is initially considered a success.
-                        // More sophisticated checks could be added (e.g. if power output changes as expected)
-                        commandSuccess = true; 
-                        this.logInteraction(`INFO - FTMSTester: ${commandName} appears to have changed resistance (new resistance: ${newResistance}).`);
-                    }
-
-                    if (commandSuccess) {
+                    if (commandName === 'SET_RESISTANCE_LEVEL' || commandName === 'SET_TARGET_POWER' || commandName === 'SET_SIM_PARAMS') {
+                        // For all commands, any change in resistance after command is considered a success.
+                        this.logInteraction(`INFO - [handleBikeData] ${commandName} SUCCESS - Resistance change detected (${this.lastResistanceLevel} -> ${newResistance}) after ${timeFromCommand}ms`);
+                        
+                        const currentStatus = this.testResults.controlTests[commandName]?.status || 'Unknown';
                         this.testResults.controlTests[commandName] = {
                             ...this.testResults.controlTests[commandName],
-                            status: "OK",
-                            details: `${commandName} successful. Resistance changed to ${newResistance}.`
+                            status: "OK", // Final success status
+                            details: `${commandName} successful. CP Response: Success, Resistance changed from ${this.lastResistanceLevel} to ${newResistance} after ${timeFromCommand}ms.`
                         };
-                        this.resistanceTracking.resistanceChangeNotedForLastCmd = true; // Mark as noted
-                        // this.resistanceTracking.commandPending = false; // Keep pending until timeout or next command
-                    } else if (this.testResults.controlTests[commandName]?.status !== "Failed") {
-                        // If CP response was OK, but resistance didn't match for SET_RESISTANCE_LEVEL
-                        this.testResults.controlTests[commandName] = {
-                            ...this.testResults.controlTests[commandName],
-                            status: "Failed",
-                            details: `${commandName} to ${this.resistanceTracking.expectedResistance} failed. Bike reported ${newResistance}.`
-                        };
+                        
+                        this.logInteraction(`INFO - [handleBikeData] ${commandName} status changed from ${currentStatus} to OK`);
+                        this.resistanceTracking.resistanceChangeNotedForLastCmd = true;
+                        this.resistanceTracking.commandPending = false; // Clear pending state after successful confirmation
+                        this.logInteraction(`DEBUG - [handleBikeData] Command pending cleared for ${commandName} after successful resistance change confirmation`);
                     }
+                } else if (this.resistanceTracking.commandPending) {
+                    this.logInteraction(`DEBUG - [handleBikeData] Resistance change noted but change already processed for ${this.resistanceTracking.lastCommandType}`);
+                } else {
+                    this.logInteraction(`DEBUG - [handleBikeData] Resistance change with no pending command - automatic change`);
                 }
+                
                 this.lastResistanceLevel = newResistance;
             }
             this.testResults = updateDataField(this.testResults, 'resistance', data.resistanceLevel);
@@ -723,25 +724,48 @@ export class FTMSTester {
             this.testResults = updateDataField(this.testResults, 'heartRate', data.heartRate);
         }
     }
-    
-    private async runDataCollection(duration: number): Promise<void> {
+      private async runDataCollection(duration: number): Promise<void> {
         return new Promise((resolve) => {
-            this.logInteraction(`INFO - FTMSTester: Starting data collection phase for ${duration / 1000} seconds.`);
+            this.logInteraction(`INFO - [runDataCollection] Starting data collection phase for ${duration / 1000} seconds.`);
             this.testTimeoutId = setTimeout(() => {
-                this.logInteraction('INFO - FTMSTester: Data collection phase ended.');
-                // Check any pending resistance commands that didn't get a bike data confirmation
-                if (this.resistanceTracking.commandPending && !this.resistanceTracking.resistanceChangeNotedForLastCmd) {
+                this.logInteraction('INFO - [runDataCollection] Data collection phase ended - checking pending commands');
+                
+                // Check any pending resistance commands that didn't get confirmation
+                if (this.resistanceTracking.commandPending) {
                     const commandName = this.resistanceTracking.lastCommandType;
-                    if (this.testResults.controlTests[commandName] && this.testResults.controlTests[commandName].status !== "Failed") {
-                        this.testResults.controlTests[commandName] = {
-                            ...this.testResults.controlTests[commandName],
-                            status: "Failed",
-                            details: `${commandName} did not result in an observed resistance change within timeout.`
-                        };
-                        this.logInteraction(`WARN - FTMSTester: ${commandName} timed out waiting for resistance change confirmation from bike data.`);
+                    const timeFromCommand = Date.now() - this.resistanceTracking.commandSentTime;
+                    
+                    this.logInteraction(`WARN - [runDataCollection] Command ${commandName} still pending after ${timeFromCommand}ms - checking final status`);
+                    
+                    if (!this.resistanceTracking.resistanceChangeNotedForLastCmd) {
+                        const currentStatus = this.testResults.controlTests[commandName]?.status || 'Unknown';
+                        
+                        if (currentStatus === 'Success') {
+                            // CP was successful but no resistance change observed
+                            this.testResults.controlTests[commandName] = {
+                                ...this.testResults.controlTests[commandName],
+                                status: "Partial",
+                                details: `${this.testResults.controlTests[commandName]?.details || commandName}. CP Response: Success, but no resistance change observed within timeout (${timeFromCommand}ms).`
+                            };
+                            this.logInteraction(`WARN - [runDataCollection] ${commandName} status changed from ${currentStatus} to Partial - CP success but no resistance change`);
+                        } else if (currentStatus === 'Pending') {
+                            // No CP response and no resistance change
+                            this.testResults.controlTests[commandName] = {
+                                ...this.testResults.controlTests[commandName],
+                                status: "Failed",
+                                details: `${this.testResults.controlTests[commandName]?.details || commandName}. No CP response and no resistance change within timeout (${timeFromCommand}ms).`
+                            };
+                            this.logInteraction(`WARN - [runDataCollection] ${commandName} status changed from ${currentStatus} to Failed - no response within timeout`);
+                        }
+                    } else {
+                        this.logInteraction(`DEBUG - [runDataCollection] ${commandName} was completed successfully during data collection`);
                     }
+                    
+                    this.resistanceTracking.commandPending = false; // Clear pending state after timeout
+                    this.logInteraction(`DEBUG - [runDataCollection] Command pending cleared for ${commandName} after timeout`);
+                } else {
+                    this.logInteraction(`DEBUG - [runDataCollection] No pending commands at end of data collection phase`);
                 }
-                this.resistanceTracking.commandPending = false; // Clear pending state after timeout
 
                 resolve();
             }, duration);

@@ -327,12 +327,12 @@ export class FTMSManager {
         index += 2;
         parsed.flags = flags;
 
-        this.logInfo(`Bike Data Flags: 0x${flags.toString(16)}, Raw data: ${data.toString('hex')}`);
+        //this.logInfo(`Bike Data Flags: 0x${flags.toString(16)}, Raw data: ${data.toString('hex')}`);
 
         // Instantaneous Speed (bit 0 == 0 when present)
         if (!(flags & 0x0001)) { // More Data field, if 0, speed is present
             if (data.length >= index + 2) {                parsed.instantaneousSpeed = data.readUInt16LE(index) / 100; // km/h
-                this.logInfo(`바이크 데이터: 현재 속도 = ${parsed.instantaneousSpeed?.toFixed(2)} km/h`);
+                //this.logInfo(`바이크 데이터: 현재 속도 = ${parsed.instantaneousSpeed?.toFixed(2)} km/h`);
                 index += 2;
             }
         }
@@ -341,15 +341,16 @@ export class FTMSManager {
         if (flags & 0x0002) {
             if (data.length >= index + 2) {
                 parsed.averageSpeed = data.readUInt16LE(index) / 100; // km/h
-                this.logInfo(`바이크 데이터: 평균 속도 = ${parsed.averageSpeed?.toFixed(2)} km/h`);
+                //this.logInfo(`바이크 데이터: 평균 속도 = ${parsed.averageSpeed?.toFixed(2)} km/h`);
                 index += 2;
             }
         }
 
         // Instantaneous Cadence (bit 2 == 1)
         if (flags & 0x0004) {
-            if (data.length >= index + 2) {                parsed.instantaneousCadence = data.readUInt16LE(index) / 2; // rpm
-                this.logInfo(`바이크 데이터: 현재 케이던스 = ${parsed.instantaneousCadence?.toFixed(1)} rpm`);
+            if (data.length >= index + 2) {                
+                parsed.instantaneousCadence = data.readUInt16LE(index) / 2; // rpm
+                //this.logInfo(`바이크 데이터: 현재 케이던스 = ${parsed.instantaneousCadence?.toFixed(1)} rpm`);
                 index += 2;
             }
         }
@@ -358,7 +359,7 @@ export class FTMSManager {
         if (flags & 0x0008) {
             if (data.length >= index + 2) {
                 parsed.averageCadence = data.readUInt16LE(index) / 2; // rpm
-                this.logInfo(`바이크 데이터: 평균 케이던스 = ${parsed.averageCadence?.toFixed(1)} rpm`);
+                //this.logInfo(`바이크 데이터: 평균 케이던스 = ${parsed.averageCadence?.toFixed(1)} rpm`);
                 index += 2;
             }
         }
@@ -374,8 +375,9 @@ export class FTMSManager {
 
         // Resistance Level (bit 5 == 1)
         if (flags & 0x0020) {
-            if (data.length >= index + 2) {                parsed.resistanceLevel = data.readInt16LE(index);
-                this.logInfo(`바이크 데이터: 현재 저항 레벨 = ${parsed.resistanceLevel}`);
+            if (data.length >= index + 2) {                
+                parsed.resistanceLevel = data.readInt16LE(index);
+                //this.logInfo(`바이크 데이터: 현재 저항 레벨 = ${parsed.resistanceLevel}`);
                 index += 2;
             }
         }
@@ -384,7 +386,7 @@ export class FTMSManager {
         if (flags & 0x0040) {
             if (data.length >= index + 2) {
                 parsed.instantaneousPower = data.readInt16LE(index); // Watts
-                this.logInfo(`바이크 데이터: 현재 파워 = ${parsed.instantaneousPower} W`);
+                //this.logInfo(`바이크 데이터: 현재 파워 = ${parsed.instantaneousPower} W`);
                 index += 2;
             }
         }
@@ -501,6 +503,8 @@ export class FTMSManager {
         await this.writeControlPoint(SET_SIM_PARAMS(windSpeed, grade, crr, cw));
         await delay(500);
     }    // Example test sequence
+
+
     async runTestSequence(): Promise<void> {
         if (!this.connectedDevice) {
             this.logError("No device connected to run test sequence");
@@ -541,6 +545,8 @@ export class FTMSManager {
             this.logError(`Error during test sequence: ${error instanceof Error ? error.message : String(error)}`);
         }
     }// Initial connection sequence without running tests
+
+
     async connectSequence(): Promise<boolean> {
         if (!this.connectedDevice) {
             this.logError("No device connected to run connection sequence");
