@@ -269,23 +269,27 @@ const TestScreen: React.FC<TestScreenProps> = ({ device, ftmsManager, onClose })
           )}
 
           <View style={styles.buttonContainer}>
-            {!isRunning && !testCompleted && (
-              <TouchableOpacity
-                style={styles.startButton}
-                onPress={handleStartTest}>
-                <Text style={styles.startButtonText}>테스트 시작</Text>
-              </TouchableOpacity>
-            )}
+            <View style={styles.actionButtonContainer}>
+              {!isRunning && !testCompleted && (
+                <TouchableOpacity
+                  style={styles.startButton}
+                  onPress={handleStartTest}>
+                  <Text style={styles.startButtonText}>테스트 시작</Text>
+                </TouchableOpacity>
+              )}
 
-            {isRunning && (
-              <TouchableOpacity
-                style={styles.stopButton}
-                onPress={handleStopTest}>
-                <Text style={styles.stopButtonText}>테스트 중단</Text>
-              </TouchableOpacity>            )}
-            <TouchableOpacity              style={styles.backButton}
+              {isRunning && (
+                <TouchableOpacity
+                  style={styles.stopButton}
+                  onPress={handleStopTest}>
+                  <Text style={styles.stopButtonText}>테스트 중단</Text>
+                </TouchableOpacity>            )}
+            </View>
+            
+            <TouchableOpacity
+              style={styles.backButton}
               onPress={onClose}>
-            <Text style={styles.backButtonText}>돌아가기</Text>
+              <Text style={styles.backButtonText}>돌아가기</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -442,9 +446,10 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   buttonContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
     marginTop: 20,
+  },
+  actionButtonContainer: {
+    marginBottom: 12,
   },
   startButton: {
     backgroundColor: '#00c663',
@@ -452,8 +457,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     borderRadius: 8,
     alignItems: 'center',
-    flex: 1,
-    marginRight: 8,
   },
   startButtonText: {
     color: '#fff',
@@ -465,8 +468,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     borderRadius: 8,
     alignItems: 'center',
-    flex: 1,
-    marginRight: 8,
   },
   stopButtonText: {
     color: '#fff',
@@ -475,12 +476,16 @@ const styles = StyleSheet.create({
   backButton: {
     backgroundColor: '#2d3748',
     paddingVertical: 14,
-    paddingHorizontal: 24,    borderRadius: 8,
+    paddingHorizontal: 24,
+    borderRadius: 8,
     alignItems: 'center',
-    flex: 0.5,
+    alignSelf: 'center',
+    width: '50%',
   },
   backButtonText: {
     color: '#fff',
+    fontWeight: '600',
+    fontSize: 16,
   },
   toggleLogButton: {
     backgroundColor: '#2d3748',

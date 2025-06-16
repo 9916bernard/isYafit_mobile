@@ -1,18 +1,20 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { StyleSheet, View, Text, FlatList, TouchableOpacity, PermissionsAndroid, Platform, Linking, ScrollView, SafeAreaView, Modal } from 'react-native';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons'; // Import Icon
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import LinearGradient from 'react-native-linear-gradient';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { FTMSManager, LogEntry } from '../FtmsManager'; // Import LogEntry type from FtmsManager
+import { FTMSManager, LogEntry } from '../FtmsManager';
 import { BleError, Device, BleErrorCode, State } from 'react-native-ble-plx';
-import TestScreen from './TestScreen'; // Import the new TestScreen component
-import EnhancedTestScreen from './EnhancedTestScreen'; // Import the enhanced test screen with logs
-import ModeSelectionScreen from './ModeSelectionScreen'; // Import the mode selection screen
-import RealtimeDataScreen from './RealtimeDataScreen'; // Import the realtime data screen
-import LoadingScreen from './LoadingScreen'; // Import the loading screen
+import TestScreen from './TestScreen';
+import EnhancedTestScreen from './EnhancedTestScreen';
+import ModeSelectionScreen from './ModeSelectionScreen';
+import RealtimeDataScreen from './RealtimeDataScreen';
+import LoadingScreen from './LoadingScreen';
+import { Colors, ButtonStyles, CardStyles, TextStyles, Shadows } from '../styles/commonStyles';
 
 
 // 앱 버전 관리
-const APP_VERSION = 'v0.3.4';
+const APP_VERSION = 'v0.3.5';
 
 function App() {
   const ftmsManagerRef = useRef<FTMSManager | null>(null);
@@ -289,44 +291,67 @@ function App() {
   const handleCloseLogScreen = () => {
     setShowLogScreen(false);
   };
-
   const renderListHeader = () => (
-    // This View acts like the original styles.container for padding and alignment
-    // when FlatList is the main scroller.
-    <View style={{ paddingHorizontal: styles.container.paddingHorizontal, paddingTop: styles.container.paddingTop, paddingBottom: styles.container.paddingBottom }}>
+    <LinearGradient 
+      colors={[Colors.background, Colors.cardBackground]} 
+      style={styles.headerGradient}
+    >
       <View style={styles.headerContainer}>
         <View style={styles.titleVersionContainer}>
           <Text style={styles.title}>IsYafit</Text>
-          <Text style={styles.version}>{APP_VERSION}</Text>
+          <View style={styles.versionBadge}>
+            <Text style={styles.version}>{APP_VERSION}</Text>
+          </View>
         </View>
-        <View style={{ flexDirection: 'row' }}>
-          <TouchableOpacity style={styles.bluetoothIconContainer} onPress={checkAndEnableBluetooth}>
-            <Icon name="bluetooth" size={24} color="#00c663" />
-          </TouchableOpacity>
-        </View>
+        <TouchableOpacity style={styles.bluetoothIconContainer} onPress={checkAndEnableBluetooth}>
+          <Icon name="bluetooth" size={24} color={Colors.primary} />
+        </TouchableOpacity>
       </View>
       <Text style={styles.status}>{statusMessage}</Text>
       
-      {/* Removed Bluetooth status check button from here as it's moved to header */}
       <TouchableOpacity
-        style={[styles.buttonPrimary, (isScanning || !managerInitialized) && styles.buttonDisabled]}
+        style={[
+          styles.scanButton,
+          (isScanning || !managerInitialized) && styles.buttonDisabled
+        ]}
         onPress={handleScan}
         disabled={isScanning || !managerInitialized}
       >
-        <Text style={styles.buttonPrimaryText}>{isScanning ? "스캔 중..." : "FTMS 장치 스캔"}</Text>
+        <LinearGradient
+          colors={isScanning || !managerInitialized ? 
+            [Colors.disabled, Colors.disabled] : 
+            [Colors.primary, Colors.accent]
+          }
+          style={styles.scanButtonGradient}
+        >
+          {isScanning && <Icon name="radar" size={20} color={Colors.text} style={styles.scanIcon} />}
+          <Text style={styles.scanButtonText}>
+            {isScanning ? "스캔 중..." : "FTMS 장치 스캔"}
+          </Text>
+        </LinearGradient>
       </TouchableOpacity>
-      <Text style={styles.sectionTitle}>발견된 장치</Text>
-    </View>
-  );
-  const renderListFooter = () => (
+      
+      <View style={styles.sectionHeader}>
+        <Icon name="devices" size={20} color={Colors.primary} />
+        <Text style={styles.sectionTitle}>발견된 장치</Text>
+      </View>
+    </LinearGradient>
+  );  const renderListFooter = () => (
     selectedDevice && (
-      // This View also considers container's horizontal padding for alignment
-      <View style={{ alignItems: 'center', paddingHorizontal: styles.container.paddingHorizontal, paddingTop: 10, paddingBottom: styles.container.paddingBottom || 20 }}>
+      <View style={styles.connectButtonContainer}>
         <TouchableOpacity
-          style={styles.buttonConnect}
+          style={styles.scanButton}
           onPress={handleShowModeSelection}
         >
-          <Text style={styles.buttonConnectText}>{`'${selectedDevice.name || selectedDevice.id}' 모드 선택`}</Text>
+          <LinearGradient
+            colors={[Colors.primary, Colors.accent]}
+            style={styles.connectButtonGradient}
+          >
+            <Icon name="connection" size={20} color={Colors.text} style={{ marginRight: 8 }} />
+            <Text style={styles.scanButtonText}>
+              {`'${selectedDevice.name || 'Unknown'}' 연결`}
+            </Text>
+          </LinearGradient>
         </TouchableOpacity>
       </View>
     )
@@ -335,16 +360,40 @@ function App() {
   const renderDeviceItem = ({ item }: { item: Device }) => (
     <TouchableOpacity
       style={[
-        styles.deviceItem,
-        // Apply horizontal padding to device items to align with header/footer content
-        { marginHorizontal: styles.container.paddingHorizontal }, 
-        selectedDevice?.id === item.id && styles.selectedDeviceItem
+        styles.deviceItemCard,
+        selectedDevice?.id === item.id && styles.deviceItemSelected
       ]}
       onPress={() => handleSelectDevice(item)}
+      activeOpacity={0.7}
     >
-      <Text style={styles.deviceText}>{item.name || 'Unknown Device'}</Text>
-      <Text style={styles.deviceTextSmall}>{item.id}</Text>
-    </TouchableOpacity>  );
+      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+        <View style={{
+          width: 48,
+          height: 48,
+          borderRadius: 24,
+          backgroundColor: selectedDevice?.id === item.id ? Colors.primary : Colors.background,
+          alignItems: 'center',
+          justifyContent: 'center',
+          marginRight: 12,
+        }}>
+          <Icon 
+            name={selectedDevice?.id === item.id ? "check-circle" : "bluetooth"} 
+            size={24} 
+            color={selectedDevice?.id === item.id ? Colors.text : Colors.primary} 
+          />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={[styles.deviceText, { marginBottom: 4 }]}>
+            {item.name || 'Unknown Device'}
+          </Text>
+          <Text style={styles.deviceTextSmall}>{item.id.substring(0, 16)}...</Text>
+        </View>
+        {selectedDevice?.id === item.id && (
+          <Icon name="chevron-right" size={24} color={Colors.primary} />
+        )}
+      </View>
+    </TouchableOpacity>
+  );
   return (
     <SafeAreaView style={styles.safeArea}>
       {/* Show loading screen for compatibility test */}
@@ -398,58 +447,114 @@ function App() {
               ListFooterComponent={renderListFooter}
               showsVerticalScrollIndicator={false}
               // Removed direct contentContainerStyle for FlatList, padding handled in header/footer/items
-            />
-          ) : (
+            />          ) : (
             <ScrollView contentContainerStyle={styles.scrollViewContent}>
-              <View style={styles.container}>
+              <LinearGradient 
+                colors={[Colors.background, Colors.cardBackground]} 
+                style={styles.headerGradient}
+              >
                 <View style={styles.headerContainer}>
                   <View style={styles.titleVersionContainer}>
                     <Text style={styles.title}>IsYafit</Text>
-                    <Text style={styles.version}>{APP_VERSION}</Text>
+                    <View style={styles.versionBadge}>
+                      <Text style={styles.version}>{APP_VERSION}</Text>
+                    </View>
                   </View>
                   <TouchableOpacity style={styles.bluetoothIconContainer} onPress={checkAndEnableBluetooth}>
-                    <Icon name="bluetooth" size={24} color="#00c663" />
+                    <Icon name="bluetooth" size={24} color={Colors.primary} />
                   </TouchableOpacity>
                 </View>
                 <Text style={styles.status}>{statusMessage}</Text>
 
                 {!connectedDevice ? (
                   <>
-                    {/* Removed Bluetooth status check button from here as it's moved to header */}
                     <TouchableOpacity 
-                      style={[styles.buttonPrimary, (isScanning || !managerInitialized) && styles.buttonDisabled]}
+                      style={[
+                        styles.scanButton,
+                        (isScanning || !managerInitialized) && styles.buttonDisabled
+                      ]}
                       onPress={handleScan}
                       disabled={isScanning || !managerInitialized}
                     >
-                      <Text style={styles.buttonPrimaryText}>{isScanning ? "스캔 중..." : "FTMS 장치 스캔"}</Text>
-                    </TouchableOpacity>
-                    {/* Message when no devices are found after a scan, and not currently scanning */}
-                    {scannedDevices.length === 0 && !isScanning && statusMessage.includes("스캔 완료") && (
-                        <Text style={{color: 'white', marginTop: 20, textAlign: 'center'}}>발견된 장치가 없습니다.</Text>
-                    )}
-                    {selectedDevice && ( // This button appears if a device was selected, even if scannedDevices is now empty
-                      <TouchableOpacity 
-                        style={styles.buttonConnect} 
-                        onPress={handleShowModeSelection}
+                      <LinearGradient
+                        colors={isScanning || !managerInitialized ? 
+                          [Colors.disabled, Colors.disabled] : 
+                          [Colors.primary, Colors.accent]
+                        }
+                        style={styles.scanButtonGradient}
                       >
-                        <Text style={styles.buttonConnectText}>{`'${selectedDevice.name || selectedDevice.id}' 모드 선택`}</Text>
-                      </TouchableOpacity>
+                        {isScanning && <Icon name="radar" size={20} color={Colors.text} style={styles.scanIcon} />}
+                        <Text style={styles.scanButtonText}>
+                          {isScanning ? "스캔 중..." : "FTMS 장치 스캔"}
+                        </Text>
+                      </LinearGradient>
+                    </TouchableOpacity>
+                    
+                    {scannedDevices.length === 0 && !isScanning && statusMessage.includes("스캔 완료") && (
+                      <View style={{
+                        backgroundColor: Colors.secondary,
+                        padding: 20,
+                        borderRadius: 12,
+                        alignItems: 'center',
+                        marginTop: 20,
+                      }}>
+                        <Icon name="bluetooth-off" size={48} color={Colors.textSecondary} />
+                        <Text style={{
+                          color: Colors.textSecondary, 
+                          marginTop: 12, 
+                          textAlign: 'center',
+                          fontSize: 16,
+                        }}>
+                          발견된 장치가 없습니다.
+                        </Text>
+                        <Text style={{
+                          color: Colors.textSecondary, 
+                          marginTop: 8, 
+                          textAlign: 'center',
+                          fontSize: 14,
+                        }}>
+                          FTMS 장치가 켜져 있는지 확인해보세요.
+                        </Text>
+                      </View>
+                    )}
+                    
+                    {selectedDevice && (
+                      <View style={styles.connectButtonContainer}>
+                        <TouchableOpacity 
+                          style={styles.scanButton}
+                          onPress={handleShowModeSelection}
+                        >
+                          <LinearGradient
+                            colors={[Colors.primary, Colors.accent]}
+                            style={styles.connectButtonGradient}
+                          >
+                            <Icon name="connection" size={20} color={Colors.text} style={{ marginRight: 8 }} />
+                            <Text style={styles.scanButtonText}>
+                              {`'${selectedDevice.name || 'Unknown'}' 연결`}
+                            </Text>
+                          </LinearGradient>
+                        </TouchableOpacity>
+                      </View>
                     )}
                   </>
                 ) : (
                   <>
-                    <Text style={styles.connectedDeviceText}>연결된 장치: {connectedDevice.name || connectedDevice.id}</Text>
+                    <View style={[CardStyles.elevated, { alignItems: 'center' }]}>
+                      <Icon name="check-circle" size={48} color={Colors.success} />
+                      <Text style={[styles.connectedDeviceText, { marginTop: 12 }]}>
+                        연결된 장치: {connectedDevice.name || connectedDevice.id}
+                      </Text>
+                    </View>
                     <View style={styles.buttonGroup}>
                       <TouchableOpacity 
-                        style={styles.buttonDanger}
+                        style={[ButtonStyles.danger, { width: '48%' }]}
                         onPress={handleDisconnect}
                       >
                         <Text style={styles.buttonDangerText}>연결 해제</Text>
-                      </TouchableOpacity>
-                    </View>
+                      </TouchableOpacity>                    </View>
                   </>
                 )}
-              </View>
+              </LinearGradient>
             </ScrollView>
           )}
         </>
@@ -740,9 +845,79 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 3,
   },
-  buttonTestCompatibilityText: {    color: '#edf2f4',
+  buttonTestCompatibilityText: {
+    color: '#edf2f4',
     fontSize: 16,
-    fontWeight: '500',  }
+    fontWeight: '500',
+  },
+  // 새로운 UI 스타일들
+  headerGradient: {
+    paddingHorizontal: 20,
+    paddingTop: 40,
+    paddingBottom: 20,
+  },
+  versionBadge: {
+    backgroundColor: Colors.secondary,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: Colors.primary,
+    ...Shadows.small,
+  },
+  scanButton: {
+    marginVertical: 20,
+    borderRadius: 16,
+    overflow: 'hidden',
+    ...Shadows.medium,
+  },
+  scanButtonGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+  },
+  scanIcon: {
+    marginRight: 8,
+  },
+  scanButtonText: {
+    color: Colors.text,
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  deviceItemCard: {
+    backgroundColor: Colors.secondary,
+    marginHorizontal: 16,
+    marginVertical: 8,
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    ...Shadows.small,
+  },
+  deviceItemSelected: {
+    borderColor: Colors.primary,
+    borderWidth: 2,
+    backgroundColor: Colors.cardBackground,
+    ...Shadows.medium,
+  },
+  connectButtonContainer: {
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+  },
+  connectButtonGradient: {
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
 });
 
 // SafeAreaProvider로 감싸서 내보내기

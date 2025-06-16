@@ -284,25 +284,29 @@ const styles = StyleSheet.create({  safeArea: {
     fontSize: 14,
   },
   dataValueContainer: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
+    flexDirection: 'column',
+    alignItems: 'center',
+    flex: 1,
   },
   dataValue: {
     fontSize: 20, // Adjusted base size
     fontWeight: 'bold',
     color: '#ffffff',
-    marginRight: 6, // Adjusted
+    marginBottom: 2,
+    flexShrink: 1,
   },
   gridDataItemValue: { // Style for value in grid items
-    fontSize: 26, // Larger font for grid items
+    fontSize: 24, // Slightly reduced to prevent overflow
+    marginBottom: 2,
   },
   dataUnit: {
-    fontSize: 13, // Adjusted base size
+    fontSize: 12, // Reduced base size
     color: '#00c663',
     fontWeight: '600',
+    textAlign: 'center',
   },
   gridDataItemUnit: { // Style for unit in grid items
-    fontSize: 14, // Slightly larger for grid items
+    fontSize: 13, // Reduced for grid items
   },
   loadingContainer: {
     flex: 1,
@@ -317,3 +321,6 @@ const styles = StyleSheet.create({  safeArea: {
 });
 
 export default RealtimeDataScreen;
+
+
+
