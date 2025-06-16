@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { StyleSheet, View, Text, FlatList, TouchableOpacity, PermissionsAndroid, Platform, Linking, ScrollView, SafeAreaView, Modal } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import LinearGradient from 'react-native-linear-gradient';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { FTMSManager, LogEntry } from '../FtmsManager';
 import { BleError, Device, BleErrorCode, State } from 'react-native-ble-plx';
 import TestScreen from './TestScreen';
@@ -14,9 +14,10 @@ import { Colors, ButtonStyles, CardStyles, TextStyles, Shadows } from '../styles
 
 
 // 앱 버전 관리
-const APP_VERSION = 'v0.4.2';
+const APP_VERSION = 'v0.5.0';
 
 function App() {
+  const insets = useSafeAreaInsets();
   const ftmsManagerRef = useRef<FTMSManager | null>(null);
   const [managerInitialized, setManagerInitialized] = useState<boolean>(false);
   const [scannedDevices, setScannedDevices] = useState<Device[]>([]);  const [selectedDevice, setSelectedDevice] = useState<Device | null>(null);
@@ -318,8 +319,7 @@ function App() {
         style={[
           styles.scanButton,
           (isScanning || !managerInitialized) && styles.buttonDisabled
-        ]}
-        onPress={handleScan}
+        ]}        onPress={handleScan}
         disabled={isScanning || !managerInitialized}
       >
         <LinearGradient
@@ -329,19 +329,22 @@ function App() {
           }
           style={styles.scanButtonGradient}
         >
-          {isScanning && <Icon name="radar" size={20} color={Colors.text} style={styles.scanIcon} />}
-          <Text style={styles.scanButtonText}>
-            {isScanning ? "스캔 중..." : "FTMS 장치 스캔"}
-          </Text>
+          <View style={styles.scanButtonContent}>
+            {isScanning && <Icon name="radar" size={20} color={Colors.text} style={styles.scanIcon} />}
+            <Text style={styles.scanButtonText}>
+              {isScanning ? "스캔 중..." : "FTMS 장치 스캔"}
+            </Text>
+          </View>
         </LinearGradient>
-      </TouchableOpacity>      <View style={styles.sectionHeader}>
+      </TouchableOpacity>
+      <View style={styles.sectionHeader}>
         <Icon name="devices" size={20} color={Colors.primary} />
         <Text style={styles.sectionTitle}>발견된 장치</Text>
       </View>
     </LinearGradient>
-  );const renderListFooter = () => (
+  );  const renderListFooter = () => (
     selectedDevice && (
-      <View style={styles.connectButtonContainer}>
+      <View style={[styles.connectButtonContainer, { paddingBottom: Math.max(20, insets.bottom) }]}>
         <TouchableOpacity
           style={styles.scanButton}
           onPress={handleShowModeSelection}
@@ -475,8 +478,7 @@ function App() {
                       style={[
                         styles.scanButton,
                         (isScanning || !managerInitialized) && styles.buttonDisabled
-                      ]}
-                      onPress={handleScan}
+                      ]}                      onPress={handleScan}
                       disabled={isScanning || !managerInitialized}
                     >
                       <LinearGradient
@@ -486,10 +488,12 @@ function App() {
                         }
                         style={styles.scanButtonGradient}
                       >
-                        {isScanning && <Icon name="radar" size={20} color={Colors.text} style={styles.scanIcon} />}
-                        <Text style={styles.scanButtonText}>
-                          {isScanning ? "스캔 중..." : "FTMS 장치 스캔"}
-                        </Text>
+                        <View style={styles.scanButtonContent}>
+                          {isScanning && <Icon name="radar" size={20} color={Colors.text} style={styles.scanIcon} />}
+                          <Text style={styles.scanButtonText}>
+                            {isScanning ? "스캔 중..." : "FTMS 장치 스캔"}
+                          </Text>
+                        </View>
                       </LinearGradient>
                     </TouchableOpacity>
                     
@@ -554,7 +558,8 @@ function App() {
                         onPress={handleDisconnect}
                       >
                         <Text style={styles.buttonDangerText}>연결 해제</Text>
-                      </TouchableOpacity>                    </View>
+                      </TouchableOpacity>
+                    </View>
                   </>
                 )}
               </LinearGradient>
@@ -865,35 +870,41 @@ const styles = StyleSheet.create({
     ...Shadows.small,
   },
   scanButton: {
-    marginVertical: 20,
+    marginVertical: 15,
     borderRadius: 16,
     overflow: 'hidden',
     ...Shadows.medium,
-  },
-  scanButtonGradient: {
+  },  scanButtonGradient: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 16,
-    paddingHorizontal: 24,
+    paddingHorizontal: 24,  },
+  scanButtonContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flex: 1,
   },
   scanIcon: {
     marginRight: 8,
   },
-  scanButtonText: {
-    color: Colors.text,
+  scanButtonText: {    color: Colors.text,
     fontSize: 16,
     fontWeight: 'bold',
-  },  sectionHeader: {
+    textAlign: 'center',
+  },
+  sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 8,
     marginTop: 8,
   },
   deviceItemCard: {
+
     backgroundColor: Colors.secondary,
     marginHorizontal: 16,
-    marginVertical: 8,
+    marginTop: 15,
     borderRadius: 16,
     padding: 16,
     borderWidth: 1,
@@ -908,9 +919,7 @@ const styles = StyleSheet.create({
   },
   connectButtonContainer: {
     paddingHorizontal: 20,
-    paddingVertical: 0,
-  },
-  connectButtonGradient: {
+  },  connectButtonGradient: {
     paddingVertical: 10,
     paddingHorizontal: 24,
     borderRadius: 16,

@@ -254,12 +254,12 @@ ${results.issuesFound && results.issuesFound.length > 0 ? '\n발견된 문제점
             transform: [{ translateY: slideAnim }]
           }
         ]}
-      >
-        <ScrollView 
+      >        <ScrollView 
           style={styles.scrollViewContainer}
           showsVerticalScrollIndicator={false}
         >
-          <View style={styles.container}>            <View style={styles.header}>
+          <View style={styles.container}>
+            <View style={styles.header}>
               <View style={styles.titleContainer}>
                 <MaterialCommunityIcons name="file-chart" size={28} color="#00c663" />
                 <Text style={styles.title}>FTMS 테스트 보고서</Text>
@@ -268,13 +268,16 @@ ${results.issuesFound && results.issuesFound.length > 0 ? '\n발견된 문제점
                 <Icon name="close" size={20} color="#ffffff" />
               </TouchableOpacity>
             </View>
-
-            {/* Action Buttons */}            <View style={styles.actionButtonsContainer}>
+            {/* Action Buttons */}
+            <View style={styles.actionButtonsContainer}>
               <TouchableOpacity onPress={handleShare} style={styles.shareButton} activeOpacity={0.8}>
                 <Ionicons name="share-outline" size={20} color="#ffffff" />
                 <Text style={styles.shareButtonText}>보고서 공유</Text>
               </TouchableOpacity>
-            </View>{/* Device Info Section */}            <View style={styles.section}>
+            </View>
+
+            {/* Device Info Section */}
+            <View style={styles.section}>
               <View style={styles.sectionHeader}>
                 <MaterialCommunityIcons name="devices" size={24} color="#00c663" />
                 <Text style={styles.sectionTitle}>장치 정보</Text>
@@ -317,13 +320,17 @@ ${results.issuesFound && results.issuesFound.length > 0 ? '\n발견된 문제점
                   </View>
                 </View>
               </View>
-            </View>            {/* Compatibility Reasons */}
-            {results.reasons && results.reasons.length > 0 && (              <View style={styles.section}>
+            </View>
+
+            {/* Compatibility Reasons */}
+            {results.reasons && results.reasons.length > 0 && (
+              <View style={styles.section}>
                 <View style={styles.sectionHeader}>
                   <Icon name="lightbulb-outline" size={24} color="#00c663" />
                   <Text style={styles.sectionTitle}>호환성 판정 사유</Text>
                 </View>
-                <View style={styles.reasonsContainer}>                  {results.reasons.map((reason, index) => (
+                <View style={styles.reasonsContainer}>
+                  {results.reasons.map((reason, index) => (
                     <View key={index} style={styles.reasonItem}>
                       <View style={styles.reasonBullet} />
                       <Text style={styles.reasonText}>{reason}</Text>
@@ -331,7 +338,8 @@ ${results.issuesFound && results.issuesFound.length > 0 ? '\n발견된 문제점
                   ))}
                 </View>
               </View>
-            )}          {/* Issues Found */}
+            )}
+          {/* Issues Found */}
           {results.issuesFound && results.issuesFound.length > 0 && (
             <View style={styles.section}>
               <View style={styles.sectionHeader}>
@@ -378,10 +386,11 @@ ${results.issuesFound && results.issuesFound.length > 0 ? '\n발견된 문제점
                   </Text>
                 )}
               </View>
-            ) : (
-              <Text style={styles.noDataText}>지원 범위 데이터 없음</Text>
+            ) : (              <Text style={styles.noDataText}>지원 범위 데이터 없음</Text>
             )}
-          </View>          {/* Features */}
+          </View>
+
+          {/* Features */}
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <MaterialCommunityIcons name="feature-search-outline" size={24} color="#00c663" />
@@ -400,33 +409,38 @@ ${results.issuesFound && results.issuesFound.length > 0 ? '\n발견된 문제점
                   </View>
                 ))}
               </View>
-            ) : (
-              <Text style={styles.noDataText}>지원 기능 데이터 없음</Text>
+            ) : (              <Text style={styles.noDataText}>지원 기능 데이터 없음</Text>
             )}
-          </View>          {/* Data Fields */}
+          </View>
+
+          {/* Data Fields */}
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <MaterialCommunityIcons name="database-outline" size={24} color="#00c663" />
               <Text style={styles.sectionTitle}>감지된 데이터 필드</Text>
             </View>
             {renderDataFields()}
-          </View>          {/* Control Tests */}
+          </View>
+
+          {/* Control Tests */}
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <MaterialCommunityIcons name="test-tube" size={24} color="#00c663" />
               <Text style={styles.sectionTitle}>제어 테스트 결과</Text>
-            </View>
-            <View style={styles.controlTestsContainer}>
+            </View>            <View style={styles.controlTestsContainer}>
               {renderControlTests()}
             </View>
-          </View>          {/* Resistance Changes Log */}
+          </View>
+          {/* Resistance Changes Log */}
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <MaterialCommunityIcons name="chart-timeline-variant" size={24} color="#00c663" />
               <Text style={styles.sectionTitle}>저항 변화 로그</Text>
             </View>
             {renderResistanceChanges()}
-          </View>          {/* Interaction Logs Section */}
+          </View>
+
+          {/* Interaction Logs Section */}
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <MaterialCommunityIcons name="console" size={24} color="#00c663" />
@@ -485,10 +499,11 @@ ${results.issuesFound && results.issuesFound.length > 0 ? '\n발견된 문제점
                   </ScrollView>
                 )}
               </>
-            ) : (
-              <Text style={styles.noDataText}>상호작용 로그 없음</Text>
+            ) : (              <Text style={styles.noDataText}>상호작용 로그 없음</Text>
             )}
-          </View>          {/* Test Metadata */}
+          </View>
+
+          {/* Test Metadata */}
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <Icon name="info-outline" size={24} color="#00c663" />
@@ -517,7 +532,8 @@ ${results.issuesFound && results.issuesFound.length > 0 ? '\n발견된 문제점
                   <Text style={styles.infoLabel}>보고서 ID:</Text>
                   <Text style={styles.infoValue}>{results.reportId}</Text>
                 </View>
-              )}            </View>
+              )}
+            </View>
           </View>
         </View>
       </ScrollView>

@@ -237,7 +237,8 @@ const TestScreen: React.FC<TestScreenProps> = ({ device, ftmsManager, onClose })
                     ID: {device.id.substring(0, 8)}...
                   </Text>
                 </View>
-              </View>              <View style={styles.headerIcon}>
+              </View>
+              <View style={styles.headerIcon}>
                 <MaterialCommunityIcons name="test-tube" size={28} color="#ffffff" />
               </View>
             </View>
@@ -245,9 +246,9 @@ const TestScreen: React.FC<TestScreenProps> = ({ device, ftmsManager, onClose })
             {/* Toggle Logs Button */}
             <TouchableOpacity 
               style={[styles.toggleLogButton, showLogs && styles.toggleLogButtonActive]} 
-              onPress={toggleLogs}
-              activeOpacity={0.8}
-            >              <View style={styles.buttonContent}>
+              onPress={toggleLogs}              activeOpacity={0.8}
+            >
+              <View style={styles.buttonContent}>
                 <Ionicons 
                   name={showLogs ? "list" : "analytics"} 
                   size={18} 
@@ -289,7 +290,8 @@ const TestScreen: React.FC<TestScreenProps> = ({ device, ftmsManager, onClose })
                     />
                   )}
                 </View>
-              </View>              <View style={styles.statusContainer}>
+              </View>
+              <View style={styles.statusContainer}>
                 <Text style={styles.statusMessage}>{message}</Text>
                 {testCompleted && (
                   <View style={styles.completionBadgeContainer}>
@@ -298,7 +300,8 @@ const TestScreen: React.FC<TestScreenProps> = ({ device, ftmsManager, onClose })
                   </View>
                 )}
               </View>
-            </View>          {testCompleted && testResults && (
+            </View>
+          {testCompleted && testResults && (
             <Animated.View style={[styles.resultsSummary, { opacity: fadeAnim }]}>
               {renderCompatibilityBadge()}
 
@@ -315,15 +318,16 @@ const TestScreen: React.FC<TestScreenProps> = ({ device, ftmsManager, onClose })
                 </View>
               )}
 
-              <View style={styles.detailsContainer}>                <View style={styles.detailCard}>
+              <View style={styles.detailsContainer}>
+                <View style={styles.detailCard}>
                   <MaterialCommunityIcons name="connection" size={20} color="#00c663" />
                   <Text style={styles.detailLabel}>
                     지원 프로토콜: {testResults.supportedProtocols.join(', ')}
                   </Text>
                 </View>
-
                 {testResults.supportRanges && (
-                  <View style={styles.rangesCard}>                    <View style={styles.cardHeader}>
+                  <View style={styles.rangesCard}>
+                    <View style={styles.cardHeader}>
                       <Ionicons name="analytics" size={18} color="#00c663" />
                       <Text style={styles.detailSectionTitle}>지원 범위</Text>
                     </View>
@@ -337,8 +341,7 @@ const TestScreen: React.FC<TestScreenProps> = ({ device, ftmsManager, onClose })
                         <Text style={styles.rangeText}>
                           {formatRangeInfo(testResults.supportRanges.incline, 'incline')}
                         </Text>
-                      )}
-                      {testResults.supportRanges.resistance && (
+                      )}                      {testResults.supportRanges.resistance && (
                         <Text style={styles.rangeText}>
                           {formatRangeInfo(testResults.supportRanges.resistance, 'resistance')}
                         </Text>
@@ -351,9 +354,9 @@ const TestScreen: React.FC<TestScreenProps> = ({ device, ftmsManager, onClose })
                     </View>
                   </View>
                 )}
-
                 {testResults.dataFields && (
-                  <View style={styles.dataFieldsCard}>                    <View style={styles.cardHeader}>
+                  <View style={styles.dataFieldsCard}>
+                    <View style={styles.cardHeader}>
                       <MaterialCommunityIcons name="chart-line-variant" size={18} color="#00c663" />
                       <Text style={styles.detailSectionTitle}>감지된 데이터 필드</Text>
                     </View>
@@ -372,9 +375,9 @@ const TestScreen: React.FC<TestScreenProps> = ({ device, ftmsManager, onClose })
                           </View>
                         ))}
                     </View>
-                  </View>
-                )}
-              </View>              <TouchableOpacity
+                  </View>                )}
+              </View>
+              <TouchableOpacity
                 style={styles.viewReportButton}
                 onPress={handleViewReport}
                 activeOpacity={0.8}

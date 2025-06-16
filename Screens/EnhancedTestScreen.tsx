@@ -121,11 +121,11 @@ const EnhancedTestScreen: React.FC<EnhancedTestScreenProps> = ({
                     return log;
                   })()}
                 </Text>
-              ))
-            )}
+              ))            )}
           </ScrollView>
         </View>
-      )}      <TouchableOpacity
+      )}
+      <TouchableOpacity
         style={styles.backButton}
         onPress={onClose}
       >
