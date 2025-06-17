@@ -11,6 +11,7 @@ import ModeSelectionScreen from './ModeSelectionScreen';
 import RealtimeDataScreen from './RealtimeDataScreen';
 import LoadingScreen from './LoadingScreen';
 import { Colors, ButtonStyles, CardStyles, TextStyles, Shadows } from '../styles/commonStyles';
+import Toast from 'react-native-root-toast';
 
 
 // 앱 버전 관리
@@ -252,8 +253,7 @@ function App() {
         [{ text: '확인', style: 'default' }]
       );
     }
-  };
-  const handleBackFromModeSelection = async () => {
+  };  const handleBackFromModeSelection = async () => {
     // Disconnect the device when going back from mode selection
     if (!ftmsManagerRef.current) {
       setStatusMessage('FTMS Manager가 초기화되지 않았습니다.');
@@ -267,6 +267,18 @@ function App() {
       setSelectedDevice(null);
       setShowModeSelection(false);
       setStatusMessage('연결 해제됨.');
+      
+      // 토스트 메시지 표시
+      Toast.show('기기와의 연결이 해제되었습니다.', {
+        duration: Toast.durations.SHORT,
+        position: Toast.positions.BOTTOM,
+        shadow: true,
+        animation: true,
+        hideOnPress: true,
+        delay: 0,
+        backgroundColor: '#333',
+        textColor: '#fff',
+      });
     } catch (error) {
       console.error("Disconnect error:", error);
       setStatusMessage('연결 해제 중 오류 발생.');
@@ -289,7 +301,7 @@ function App() {
       [{ text: '확인', style: 'default' }]
     );
   };
-      const handleDisconnect = async () => {
+    const handleDisconnect = async () => {
     if (!ftmsManagerRef.current) {
       setStatusMessage('FTMS Manager가 초기화되지 않았습니다.');
       return;
@@ -303,6 +315,18 @@ function App() {
       setShowTestScreen(false);
       setShowRealtimeData(false);
       setStatusMessage('연결 해제됨.');
+      
+      // 토스트 메시지 표시
+      Toast.show('기기와의 연결이 해제되었습니다.', {
+        duration: Toast.durations.SHORT,
+        position: Toast.positions.BOTTOM,
+        shadow: true,
+        animation: true,
+        hideOnPress: true,
+        delay: 0,
+        backgroundColor: '#333',
+        textColor: '#fff',
+      });
     } catch (error) {
       console.error("Disconnect error:", error);
       setStatusMessage('연결 해제 중 오류 발생.');

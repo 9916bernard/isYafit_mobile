@@ -12,6 +12,7 @@ import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { FTMSManager } from '../FtmsManager'; 
 import { Device } from 'react-native-ble-plx';
 import { useSafeAreaStyles, Colors } from '../styles/commonStyles';
+import Toast from 'react-native-root-toast';
 
 interface EnhancedTestScreenProps {
   device: Device;
@@ -56,13 +57,24 @@ const EnhancedTestScreen: React.FC<EnhancedTestScreenProps> = ({
         }, 100);
       }
     });
-  }, [ftmsManager, showLogs]);
-  const handleClose = async () => {
+  }, [ftmsManager, showLogs]);  const handleClose = async () => {
     // 기기와 연결 해제 (연결된 상태에서만)
     if (deviceConnected) {
       try {
         await ftmsManager.disconnectDevice();
         setDeviceConnected(false);
+        
+        // 토스트 메시지 표시
+        Toast.show('기기와의 연결이 해제되었습니다.', {
+          duration: Toast.durations.SHORT,
+          position: Toast.positions.BOTTOM,
+          shadow: true,
+          animation: true,
+          hideOnPress: true,
+          delay: 0,
+          backgroundColor: '#333',
+          textColor: '#fff',
+        });
       } catch (error) {
         console.error('Disconnect error during close:', error);
       }

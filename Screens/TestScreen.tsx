@@ -22,6 +22,7 @@ import { FTMSManager } from '../FtmsManager'; // Your existing manager
 import TestReportScreen from './TestReportScreen';
 import LogDisplay from '../LogDisplay'; // Import the Log Display component
 import { useSafeAreaStyles, Colors } from '../styles/commonStyles';
+import Toast from 'react-native-root-toast';
 
 interface TestScreenProps {
   device: Device;
@@ -163,8 +164,7 @@ const TestScreen: React.FC<TestScreenProps> = ({ device, ftmsManager, onClose, i
       );
       setIsRunning(false);
     }
-  };
-  const handleStopTest = async () => {
+  };  const handleStopTest = async () => {
     if (testerRef.current) {
       testerRef.current.stopTest();
       setIsRunning(false);
@@ -175,12 +175,23 @@ const TestScreen: React.FC<TestScreenProps> = ({ device, ftmsManager, onClose, i
     try {
       await ftmsManager.disconnectDevice();
       setMessage('테스트가 중지되고 기기와 연결이 해제되었습니다.');
+      
+      // 토스트 메시지 표시
+      Toast.show('기기와의 연결이 해제되었습니다.', {
+        duration: Toast.durations.SHORT,
+        position: Toast.positions.BOTTOM,
+        shadow: true,
+        animation: true,
+        hideOnPress: true,
+        delay: 0,
+        backgroundColor: '#333',
+        textColor: '#fff',
+      });
     } catch (error) {
       console.error('Disconnect error during stop:', error);
       setMessage('테스트가 중지되었습니다. (연결 해제 중 오류 발생)');
     }
   };
-
   const handleBackPress = async () => {
     // 테스트가 실행 중이면 먼저 중지
     if (testerRef.current && isRunning) {
@@ -191,6 +202,18 @@ const TestScreen: React.FC<TestScreenProps> = ({ device, ftmsManager, onClose, i
     // 기기와 연결 해제
     try {
       await ftmsManager.disconnectDevice();
+      
+      // 토스트 메시지 표시
+      Toast.show('기기와의 연결이 해제되었습니다.', {
+        duration: Toast.durations.SHORT,
+        position: Toast.positions.BOTTOM,
+        shadow: true,
+        animation: true,
+        hideOnPress: true,
+        delay: 0,
+        backgroundColor: '#333',
+        textColor: '#fff',
+      });
     } catch (error) {
       console.error('Disconnect error during back:', error);
     }

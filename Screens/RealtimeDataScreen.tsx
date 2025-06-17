@@ -4,6 +4,7 @@ import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { Device } from 'react-native-ble-plx';
 import { FTMSManager } from '../FtmsManager';
 import { useSafeAreaStyles, Colors } from '../styles/commonStyles';
+import Toast from 'react-native-root-toast';
 
 interface RealtimeDataScreenProps {
   device: Device;
@@ -77,15 +78,42 @@ const RealtimeDataScreen: React.FC<RealtimeDataScreenProps> = ({
       }
     };
 
-    setupDeviceConnection();
-
-    return () => {
+    setupDeviceConnection();    return () => {
       // Cleanup
-      ftmsManager.disconnectDevice().catch(console.error);
+      ftmsManager.disconnectDevice().then(() => {
+        // 토스트 메시지 표시
+        Toast.show('기기와의 연결이 해제되었습니다.', {
+          duration: Toast.durations.SHORT,
+          position: Toast.positions.BOTTOM,
+          shadow: true,
+          animation: true,
+          hideOnPress: true,
+          delay: 0,
+          backgroundColor: '#333',
+          textColor: '#fff',
+        });
+      }).catch(console.error);
     };
   }, [device, ftmsManager, onConnectionError]);
-  
-  const handleBackPress = async () => {
+    const handleBackPress = async () => {
+    try {
+      await ftmsManager.disconnectDevice();
+      
+      // 토스트 메시지 표시
+      Toast.show('기기와의 연결이 해제되었습니다.', {
+        duration: Toast.durations.SHORT,
+        position: Toast.positions.BOTTOM,
+        shadow: true,
+        animation: true,
+        hideOnPress: true,
+        delay: 0,
+        backgroundColor: '#333',
+        textColor: '#fff',
+      });
+    } catch (error) {
+      console.error('Disconnect error:', error);
+    }
+    
     onBack();
   };
 
