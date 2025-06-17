@@ -504,9 +504,9 @@ const styles = StyleSheet.create({
     paddingBottom: 20,
   },  container: {
     flex: 1,
-    padding: 12,
+    padding: 8,
     backgroundColor: '#1a2029',
-  },  header: {
+  },header: {
     marginBottom: 24,
     backgroundColor: '#242c3b',
     borderRadius: 16,

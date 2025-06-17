@@ -181,7 +181,46 @@ ${results.issuesFound && results.issuesFound.length > 0 ? '\n발견된 문제점
         ))}
       </View>
     );
+  };  // Function to render range cards
+  const renderRangeCard = (range: any, type: string, label: string, unit: string, icon: string) => {
+    if (!range || (range.min === undefined && range.max === undefined)) {
+      return null;
+    }
+
+    const min = range.min || 0;
+    const max = range.max || 0;
+    const current = range.current;
+    
+    return (
+      <View style={styles.rangeCard}>
+        <View style={styles.rangeCardHeader}>
+          <MaterialCommunityIcons name={icon} size={20} color="#00c663" />
+          <Text style={styles.rangeCardTitle}>{label}</Text>
+        </View>
+        <View style={styles.rangeValues}>
+          <View style={styles.rangeValueItem}>
+            <Text style={styles.rangeValueLabel}>최소</Text>
+            <Text style={styles.rangeValueText}>{min}{unit}</Text>
+          </View>
+          <Text style={styles.rangeSeparator}>~</Text>
+          <View style={styles.rangeValueItem}>
+            <Text style={styles.rangeValueLabel}>최대</Text>
+            <Text style={styles.rangeValueText}>{max}{unit}</Text>
+          </View>
+          {current !== undefined && (
+            <>
+              <Text style={styles.rangeSeparator}>|</Text>
+              <View style={styles.rangeValueItem}>
+                <Text style={styles.rangeValueLabel}>현재</Text>
+                <Text style={[styles.rangeValueText, styles.currentValue]}>{current}{unit}</Text>
+              </View>
+            </>
+          )}
+        </View>
+      </View>
+    );
   };
+
   const renderResistanceChanges = () => {
     if (!results.resistanceChanges || results.resistanceChanges.length === 0) {
       return (
@@ -189,11 +228,9 @@ ${results.issuesFound && results.issuesFound.length > 0 ? '\n발견된 문제점
       );
     }
 
-    return (
-      <View style={styles.resistanceChangesTable}>
+    return (      <View style={styles.resistanceChangesTable}>
         <View style={styles.tableHeader}>
           <Text style={[styles.tableHeaderCell, { flex: 1.2 }]}>시간</Text>
-          <Text style={[styles.tableHeaderCell, { flex: 0.8 }]}>유형</Text>
           <Text style={[styles.tableHeaderCell, { flex: 0.8 }]}>이전값</Text>
           <Text style={[styles.tableHeaderCell, { flex: 0.8 }]}>현재값</Text>
           <Text style={[styles.tableHeaderCell, { flex: 2 }]}>변경 원인</Text>
@@ -205,8 +242,7 @@ ${results.issuesFound && results.issuesFound.length > 0 ? '\n발견된 문제점
           const textColor = isCommandChange ? '#00c663' : '#fff';
           const bgColor = isCommandChange ? 'rgba(0, 198, 99, 0.1)' : 'transparent';
           
-          return (
-            <View 
+          return (            <View 
               key={index} 
               style={[
                 styles.tableRow, 
@@ -216,7 +252,6 @@ ${results.issuesFound && results.issuesFound.length > 0 ? '\n발견된 문제점
               <Text style={[styles.tableCell, { flex: 1.2 }]}>
                 {new Date(change.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', fractionalSecondDigits: 3 })}
               </Text>
-              <Text style={[styles.tableCell, { flex: 0.8 }]}>{change.paramType}</Text>
               <Text style={[styles.tableCell, { flex: 0.8 }]}>
                 {change.oldValue !== undefined ? change.oldValue.toString() : '-'}
               </Text>
@@ -355,36 +390,26 @@ ${results.issuesFound && results.issuesFound.length > 0 ? '\n발견된 문제점
                 ))}
               </View>
             </View>
-          )}
-
-          {/* Support Ranges */}
+          )}          {/* Support Ranges */}
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <Ionicons name="speedometer-outline" size={24} color="#00c663" />
               <Text style={styles.sectionTitle}>지원 범위</Text>
             </View>
             {results.supportRanges && Object.keys(results.supportRanges).length > 0 ? (
-              <View style={styles.rangesContainer}>
-                {results.supportRanges.speed && (
-                  <Text style={styles.rangeText}>
-                    {formatRangeInfo(results.supportRanges.speed, 'speed')}
-                  </Text>
-                )}
-                {results.supportRanges.incline && (
-                  <Text style={styles.rangeText}>
-                    {formatRangeInfo(results.supportRanges.incline, 'incline')}
-                  </Text>
-                )}
-                {results.supportRanges.resistance && (
-                  <Text style={styles.rangeText}>
-                    {formatRangeInfo(results.supportRanges.resistance, 'resistance')}
-                  </Text>
-                )}
-                {results.supportRanges.power && (
-                  <Text style={styles.rangeText}>
-                    {formatRangeInfo(results.supportRanges.power, 'power')}
-                  </Text>
-                )}
+              <View style={styles.rangesGrid}>
+                {results.supportRanges.speed && 
+                  renderRangeCard(results.supportRanges.speed, 'speed', '속도', ' km/h', 'speedometer')
+                }
+                {results.supportRanges.incline && 
+                  renderRangeCard(results.supportRanges.incline, 'incline', '경사도', '%', 'slope-uphill')
+                }
+                {results.supportRanges.resistance && 
+                  renderRangeCard(results.supportRanges.resistance, 'resistance', '저항', ' 레벨', 'dumbbell')
+                }
+                {results.supportRanges.power && 
+                  renderRangeCard(results.supportRanges.power, 'power', '파워', 'W', 'flash')
+                }
               </View>
             ) : (              <Text style={styles.noDataText}>지원 범위 데이터 없음</Text>
             )}
@@ -438,13 +463,16 @@ ${results.issuesFound && results.issuesFound.length > 0 ? '\n발견된 문제점
               <Text style={styles.sectionTitle}>저항 변화 로그</Text>
             </View>
             {renderResistanceChanges()}
-          </View>
-
-          {/* Interaction Logs Section */}
+          </View>          {/* Interaction Logs Section */}
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <MaterialCommunityIcons name="console" size={24} color="#00c663" />
               <Text style={styles.sectionTitle}>상호작용 로그</Text>
+              {results.interactionLogs && results.interactionLogs.length > 0 && (
+                <View style={styles.logCountBadge}>
+                  <Text style={styles.logCountText}>{results.interactionLogs.length}</Text>
+                </View>
+              )}
             </View>
             {results.interactionLogs && results.interactionLogs.length > 0 ? (
               <>
@@ -454,7 +482,7 @@ ${results.issuesFound && results.issuesFound.length > 0 ? '\n발견된 문제점
                     onPress={() => setShowFullLog(!showFullLog)}
                   >
                     <Text style={styles.toggleLogButtonText}>
-                      {showFullLog ? '로그 숨기기' : `전체 로그 보기 (${results.interactionLogs.length} 항목)`}
+                      {showFullLog ? '로그 숨기기' : '전체 로그 보기'}
                     </Text>
                   </TouchableOpacity>
                   <TouchableOpacity
@@ -463,38 +491,31 @@ ${results.issuesFound && results.issuesFound.length > 0 ? '\n발견된 문제점
                   >
                     <Text style={styles.copyLogButtonText}>로그 복사</Text>
                   </TouchableOpacity>
-                </View>
-                {showFullLog && (
+                </View>                {showFullLog && (
                   <ScrollView style={styles.logScrollContainer} nestedScrollEnabled={true}>
                     <View style={styles.logContainer}>
-                      {results.interactionLogs.map((log, index) => (
-                        <Text key={index} style={styles.logEntry}>
-                          {(() => {
-                            // 명령 전송 로그 (파란색)
-                            if (log.includes('명령 전송:')) {
-                              return <Text style={{fontWeight: 'bold', color: '#2196F3'}}>{log}</Text>;
-                            }
-                            // 명령 응답 성공 로그 (녹색)
-                            else if (log.includes('명령 응답 [성공]') || log.includes('SUCCESS')) {
-                              return <Text style={{fontWeight: 'bold', color: '#00c663'}}>{log}</Text>;
-                            }
-                            // 명령 응답 실패 로그 (빨간색)
-                            else if (log.includes('명령 응답 [실패]') || log.includes('FAIL')) {
-                              return <Text style={{fontWeight: 'bold', color: '#F44336'}}>{log}</Text>;
-                            }
-                            // 바이크 데이터 로그 (하늘색)
-                            else if (log.includes('바이크 데이터:')) {
-                              return <Text style={{color: '#03A9F4'}}>{log}</Text>;
-                            }
-                            // 저항 변경 로그 (보라색)
-                            else if (log.includes('Resistance changed')) {
-                              return <Text style={{fontWeight: 'bold', color: '#9C27B0'}}>{log}</Text>;
-                            }
-                            // 일반 로그 (기본 색상)
-                            return log;
-                          })()}
-                        </Text>
-                      ))}
+                      {results.interactionLogs.map((log, index) => {
+                        // 로그 타입에 따른 스타일 결정
+                        let additionalStyle = {};
+                        
+                        if (log.includes('명령 전송:')) {
+                          additionalStyle = styles.logEntryCommand;
+                        } else if (log.includes('명령 응답 [성공]') || log.includes('SUCCESS')) {
+                          additionalStyle = styles.logEntrySuccess;
+                        } else if (log.includes('명령 응답 [실패]') || log.includes('FAIL')) {
+                          additionalStyle = styles.logEntryError;
+                        } else if (log.includes('바이크 데이터:')) {
+                          additionalStyle = styles.logEntryBikeData;
+                        } else if (log.includes('Resistance changed')) {
+                          additionalStyle = styles.logEntryResistance;
+                        }
+                        
+                        return (
+                          <View key={index} style={styles.logEntryContainer}>
+                            <Text style={[styles.logEntry, additionalStyle]}>{log}</Text>
+                          </View>
+                        );
+                      })}
                     </View>
                   </ScrollView>
                 )}
@@ -552,9 +573,8 @@ const styles = StyleSheet.create({
   },
   scrollViewContainer: {
     flex: 1,
-  },
-  container: {
-    padding: 15,
+  },  container: {
+    padding: 10,
     backgroundColor: '#1a2029',
   },
   header: {
@@ -995,11 +1015,97 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 4,
     elevation: 4,
-  },
-  copyLogButtonText: {
+  },  copyLogButtonText: {
     color: '#ffffff',
     fontSize: 15,
     fontWeight: '600',
+  },
+  // Range cards styles
+  rangesGrid: {
+    gap: 12,
+  },
+  rangeCard: {
+    backgroundColor: '#1a2029',
+    borderRadius: 12,
+    padding: 16,
+    borderLeftWidth: 4,
+    borderLeftColor: '#00c663',
+    marginBottom: 8,
+  },
+  rangeCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  rangeCardTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#ffffff',
+    marginLeft: 8,
+  },
+  rangeValues: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-around',
+  },
+  rangeValueItem: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  rangeValueLabel: {
+    fontSize: 12,
+    color: '#9ca3af',
+    marginBottom: 4,
+    textTransform: 'uppercase',
+    fontWeight: '500',
+  },
+  rangeValueText: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#ffffff',
+  },
+  currentValue: {
+    color: '#00c663',
+  },  rangeSeparator: {
+    fontSize: 16,
+    color: '#9ca3af',
+    marginHorizontal: 8,
+  },
+  // Log count badge styles
+  logCountBadge: {
+    backgroundColor: '#00c663',
+    borderRadius: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    marginLeft: 12,
+  },
+  logCountText: {
+    color: '#ffffff',
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
+  // Log entry styles (similar to TestScreen)
+  logEntryContainer: {
+    marginBottom: 4,
+  },
+  logEntryCommand: {
+    fontWeight: 'bold',
+    color: '#2196F3',
+  },
+  logEntrySuccess: {
+    fontWeight: 'bold',
+    color: '#00c663',
+  },
+  logEntryError: {
+    fontWeight: 'bold',
+    color: '#F44336',
+  },
+  logEntryBikeData: {
+    color: '#03A9F4',
+  },
+  logEntryResistance: {
+    fontWeight: 'bold',
+    color: '#9C27B0',
   },
 });
 
