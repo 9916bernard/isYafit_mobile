@@ -58,11 +58,9 @@ const ModeSelectionScreen: React.FC<ModeSelectionScreenProps> = ({
               FTMS 프로토콜 지원 여부와{'\n'}Yafit 앱과의 호환성을 테스트합니다          
             </Text>
           </TouchableOpacity>
-        </View>
-
-        <TouchableOpacity style={styles.disconnectButton} onPress={onDisconnect}>
-          <Icon name="bluetooth-off" size={20} color="#ef4444" />
-          <Text style={styles.disconnectButtonText}>연결 해제</Text>
+        </View>        <TouchableOpacity style={styles.backButton} onPress={onDisconnect}>
+          <Icon name="arrow-left" size={20} color="#fff" />
+          <Text style={styles.backButtonText}>돌아가기</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -81,29 +79,21 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginBottom: 20,
     paddingTop: 0, 
-  },
-  backButton: {
-    padding: 10,
-    borderRadius: 20,
-    backgroundColor: Colors.secondary,
-  },
-  disconnectButton: {
+  },  backButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 12, 
+    padding: 14,
     borderRadius: 12,
-    backgroundColor: 'rgba(239, 68, 68, 0.15)',
-    borderWidth: 1,
-    borderColor: Colors.error,
+    backgroundColor: '#00c663',
     marginTop: 24,
     marginBottom: 10,
+    gap: 8,
   },
-  disconnectButtonText: {
-    color: Colors.error,
-    fontSize: 14,
-    fontWeight: '600',
-    marginLeft: 8,
+  backButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
   },
   title: {
     fontSize: 22,

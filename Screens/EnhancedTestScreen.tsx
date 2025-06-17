@@ -8,6 +8,7 @@ import {
   TouchableOpacity,
   Modal,
 } from 'react-native';
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { FTMSManager } from '../FtmsManager'; 
 import { Device } from 'react-native-ble-plx';
 import { useSafeAreaStyles, Colors } from '../styles/commonStyles';
@@ -16,15 +17,18 @@ interface EnhancedTestScreenProps {
   device: Device;
   ftmsManager: FTMSManager;
   onClose: () => void;
+  isDeviceConnected?: boolean;
 }
 
 const EnhancedTestScreen: React.FC<EnhancedTestScreenProps> = ({ 
   device, 
   ftmsManager, 
-  onClose 
+  onClose,
+  isDeviceConnected = true
 }) => {
   const [logs, setLogs] = useState<string[]>([]);
   const [showLogs, setShowLogs] = useState(false);
+  const [deviceConnected, setDeviceConnected] = useState(isDeviceConnected);
   const scrollViewRef = useRef<ScrollView>(null);
   const safeAreaStyles = useSafeAreaStyles();
   
@@ -53,6 +57,19 @@ const EnhancedTestScreen: React.FC<EnhancedTestScreenProps> = ({
       }
     });
   }, [ftmsManager, showLogs]);
+  const handleClose = async () => {
+    // 기기와 연결 해제 (연결된 상태에서만)
+    if (deviceConnected) {
+      try {
+        await ftmsManager.disconnectDevice();
+        setDeviceConnected(false);
+      } catch (error) {
+        console.error('Disconnect error during close:', error);
+      }
+    }
+    
+    onClose();
+  };
 
   const toggleLogs = () => {
     setShowLogs(!showLogs);
@@ -124,12 +141,18 @@ const EnhancedTestScreen: React.FC<EnhancedTestScreenProps> = ({
               ))            )}
           </ScrollView>
         </View>
-      )}
-      <TouchableOpacity
-        style={styles.backButton}
-        onPress={onClose}
+      )}      <TouchableOpacity
+        style={deviceConnected ? styles.disconnectButton : styles.backButton}
+        onPress={handleClose}
       >
-        <Text style={styles.backButtonText}>돌아가기</Text>
+        <Icon 
+          name={deviceConnected ? "bluetooth-off" : "arrow-left"} 
+          size={20} 
+          color={deviceConnected ? "#ef4444" : "#fff"} 
+        />
+        <Text style={deviceConnected ? styles.disconnectButtonText : styles.backButtonText}>
+          {deviceConnected ? "연결 해제" : "돌아가기"}
+        </Text>
       </TouchableOpacity>
       </View>
     </View>
@@ -226,17 +249,36 @@ const styles = StyleSheet.create({
   rawDataLog: {
     color: '#9E9E9E',
     fontSize: 11,
-  },
-  backButton: {
+  },  backButton: {
     backgroundColor: '#00c663',
     padding: 14,
     borderRadius: 8,
     alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 8,
   },
   backButtonText: {
     color: '#fff',
     fontWeight: 'bold',
     fontSize: 16,
+  },
+  disconnectButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 12, 
+    borderRadius: 12,
+    backgroundColor: 'rgba(239, 68, 68, 0.15)',
+    borderWidth: 1,
+    borderColor: '#ef4444',
+    marginTop: 8,
+  },
+  disconnectButtonText: {
+    color: '#ef4444',
+    fontSize: 14,
+    fontWeight: '600',
+    marginLeft: 8,
   },
 });
 

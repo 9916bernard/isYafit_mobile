@@ -27,9 +27,10 @@ interface TestScreenProps {
   device: Device;
   ftmsManager: FTMSManager;
   onClose: () => void;
+  isDeviceConnected: boolean;
 }
 
-const TestScreen: React.FC<TestScreenProps> = ({ device, ftmsManager, onClose }) => {
+const TestScreen: React.FC<TestScreenProps> = ({ device, ftmsManager, onClose, isDeviceConnected }) => {
   const [progress, setProgress] = useState(0);
   const [message, setMessage] = useState('테스트 준비 완료');
   const [isRunning, setIsRunning] = useState(false);

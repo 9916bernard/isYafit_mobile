@@ -338,9 +338,21 @@ function App() {
     setIsLoadingCompatibilityTest(false);
     setStatusMessage('테스트가 완료되었습니다.');
   };
-  
-  // Close log screen
-  const handleCloseLogScreen = () => {
+    // Close log screen
+  const handleCloseLogScreen = async () => {
+    // EnhancedTestScreen에서 연결 해제 버튼을 눌렀을 때의 처리
+    if (connectedDevice && ftmsManagerRef.current) {
+      try {
+        await ftmsManagerRef.current.disconnectDevice();
+        setConnectedDevice(null);
+        setSelectedDevice(null);
+        setShowRealtimeData(false);
+        setStatusMessage('연결 해제됨.');
+      } catch (error) {
+        console.error("Disconnect error:", error);
+        setStatusMessage('연결 해제 중 오류 발생.');
+      }
+    }
     setShowLogScreen(false);
   };
   const renderListHeader = () => (
@@ -390,7 +402,7 @@ function App() {
     </LinearGradient>
   );  const renderListFooter = () => (
     selectedDevice && (
-      <View style={[styles.connectButtonContainer, { paddingBottom: Math.max(20, insets.bottom) }]}>
+      <View style={styles.connectButtonContainer}>
         <TouchableOpacity
           style={styles.scanButton}
           onPress={handleShowModeSelection}
@@ -447,12 +459,10 @@ function App() {
     </TouchableOpacity>
   );
   return (
-    <SafeAreaView style={styles.safeArea}>
-      {/* Show loading screen for compatibility test */}
+    <SafeAreaView style={styles.safeArea}>      {/* Show loading screen for compatibility test */}
       {isLoadingCompatibilityTest && selectedDevice ? (
         <LoadingScreen
           device={selectedDevice}
-          statusMessage={statusMessage}
         />
       ) :
       /* Show mode selection screen */
@@ -471,25 +481,24 @@ function App() {
           onBack={handleBackFromRealtimeData}
           onConnectionError={handleRealtimeDataConnectionError}
         />
-      ) : 
-      /* Show the test screen when a device is connected and test is requested */
+      ) :      /* Show the test screen when a device is connected and test is requested */
       showTestScreen && connectedDevice && ftmsManagerRef.current ? (
         <TestScreen
           device={connectedDevice}
           ftmsManager={ftmsManagerRef.current}
           onClose={handleCloseTestScreen}
+          isDeviceConnected={!!connectedDevice}
         />
-      ) : 
-      /* Show the enhanced log screen */
+      ) :/* Show the enhanced log screen */
       showLogScreen && connectedDevice && ftmsManagerRef.current ? (
         <EnhancedTestScreen
           device={connectedDevice}
           ftmsManager={ftmsManagerRef.current}
           onClose={handleCloseLogScreen}
+          isDeviceConnected={!!connectedDevice}
         />
       ) : (
-        <>
-          {!connectedDevice && scannedDevices.length > 0 ? (
+        <>          {!connectedDevice && scannedDevices.length > 0 ? (
             <FlatList
               style={{ flex: 1 }}
               data={scannedDevices}
@@ -498,9 +507,17 @@ function App() {
               ListHeaderComponent={renderListHeader}
               ListFooterComponent={renderListFooter}
               showsVerticalScrollIndicator={false}
-              // Removed direct contentContainerStyle for FlatList, padding handled in header/footer/items
-            />          ) : (
-            <ScrollView contentContainerStyle={styles.scrollViewContent}>
+              contentContainerStyle={{ 
+                paddingBottom: Math.max(20, insets.bottom),
+                flexGrow: 1 
+              }}
+            />) : (
+            <ScrollView 
+              contentContainerStyle={[
+                styles.scrollViewContent,
+                { paddingBottom: Math.max(20, insets.bottom) }
+              ]}
+            >
               <LinearGradient 
                 colors={[Colors.background, Colors.cardBackground]} 
                 style={styles.headerGradient}
