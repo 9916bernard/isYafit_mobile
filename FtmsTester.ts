@@ -36,7 +36,24 @@ export class FTMSTester {
         this.ftmsManager = ftmsManager;
         this.testResults = initTestResults();
         // this.ftmsManager.setLogCallback(this.logInteraction.bind(this)); // Remove this line
-    }    // Add this new method to log interactions
+    }    // Check if device is still connected
+    private isDeviceConnected(): boolean {
+        const connectedDevice = this.ftmsManager.getConnectedDevice();
+        return connectedDevice !== null && connectedDevice !== undefined;
+    }
+
+    // Check connection and stop test if disconnected
+    private checkConnectionAndStopIfNeeded(): boolean {
+        if (!this.isDeviceConnected()) {
+            this.logInteraction('ERROR - Test: Device connection lost, stopping test.');
+            this.testResults.issuesFound.push('테스트 중 기기 연결이 끊어졌습니다.');
+            this.stopTest();
+            return false;
+        }
+        return true;
+    }
+
+    // Add this new method to log interactions
     private logInteraction(message: string) {
         const timestamp = new Date().toISOString().replace('T', ' ').substring(0, 23);
         const logEntry = `${timestamp} - ${message}`;
@@ -520,14 +537,17 @@ export class FTMSTester {
             this.testResults.issuesFound.push(`CSC 알림 오류: ${error instanceof Error ? error.message : String(error)}`);
             throw error;
         }
-    }
-      private async testControlPoints(): Promise<void> {
+    }    private async testControlPoints(): Promise<void> {
         try {
+            if (!this.checkConnectionAndStopIfNeeded()) return;
+            
             if (!this.testResults.controlTests) {
                 this.testResults.controlTests = {};
-            }            this.logInteraction('INFO - [testControlPoints] Control point testing started. Testing order: SET_SIM_PARAMS -> SET_TARGET_POWER -> SET_RESISTANCE_LEVEL (to return to normal mode)');
+            }
+            this.logInteraction('INFO - [testControlPoints] Control point testing started. Testing order: SET_SIM_PARAMS -> SET_TARGET_POWER -> SET_RESISTANCE_LEVEL (to return to normal mode)');
 
             // Test SET_SIM_PARAMS first
+            if (!this.checkConnectionAndStopIfNeeded()) return;
             await this.testSingleControlCommand('SET_SIM_PARAMS', async () => {
                 const grade = 10;
                 const windSpeed = 0;
@@ -539,6 +559,7 @@ export class FTMSTester {
             });
               
             // Test SET_TARGET_POWER second
+            if (!this.checkConnectionAndStopIfNeeded()) return;
             await this.testSingleControlCommand('SET_TARGET_POWER', async () => {
                 const targetPower = 100;
                 this.logInteraction(`INFO - [testControlPoints] Executing SET_TARGET_POWER with value: ${targetPower}W (will demonstrate continuous resistance changes)`);
@@ -547,10 +568,12 @@ export class FTMSTester {
             });
 
             // Wait for SET_TARGET_POWER to show its effects
+            if (!this.checkConnectionAndStopIfNeeded()) return;
             this.logInteraction('INFO - [testControlPoints] Waiting for SET_TARGET_POWER to demonstrate continuous resistance changes...');
             await new Promise(resolve => setTimeout(resolve, 8000));
 
             // Return to normal mode by setting a fixed resistance level
+            if (!this.checkConnectionAndStopIfNeeded()) return;
             this.logInteraction('INFO - [testControlPoints] Returning to normal mode with fixed resistance level');
             await this.testSingleControlCommand('SET_RESISTANCE_LEVEL', async () => {
                 const finalResistance = 15; // Set to a moderate level
@@ -566,7 +589,7 @@ export class FTMSTester {
             this.testResults.issuesFound.push(`제어 포인트 테스트 오류: ${error instanceof Error ? error.message : String(error)}`);
             // Don't throw here to allow the test to continue
         }
-    }    private async testSingleControlCommand(commandName: string, commandExecutor: () => Promise<string>): Promise<void> {
+    }private async testSingleControlCommand(commandName: string, commandExecutor: () => Promise<string>): Promise<void> {
         try {
             // Clear previous command state and set new command
             this.logInteraction(`INFO - [testSingleControlCommand] Starting ${commandName} test`);
@@ -802,12 +825,28 @@ export class FTMSTester {
         if (data.heartRate !== undefined) {
             this.testResults = updateDataField(this.testResults, 'heartRate', data.heartRate);
         }
-    }
-
-    private async runDataCollection(duration: number): Promise<void> {
+    }    private async runDataCollection(duration: number): Promise<void> {
         return new Promise((resolve) => {
+            if (!this.checkConnectionAndStopIfNeeded()) {
+                resolve();
+                return;
+            }
+            
             this.logInteraction(`INFO - [runDataCollection] Starting data collection phase for ${duration / 1000} seconds.`);
+            
+            // Set up periodic connection checks during data collection
+            const connectionCheckInterval = setInterval(() => {
+                if (!this.checkConnectionAndStopIfNeeded()) {
+                    clearInterval(connectionCheckInterval);
+                    if (this.testTimeoutId) {
+                        clearTimeout(this.testTimeoutId);
+                    }
+                    resolve();
+                }
+            }, 2000); // Check every 2 seconds
+            
             this.testTimeoutId = setTimeout(() => {
+                clearInterval(connectionCheckInterval);
                 this.logInteraction('INFO - [runDataCollection] Data collection phase ended - checking pending commands');
                 
                 // Check any pending resistance commands that didn't get confirmation
@@ -860,8 +899,12 @@ export class FTMSTester {
             }, duration);
         });
     }
-    
-    private updateProgress(progress: number, message: string): void {
+      private updateProgress(progress: number, message: string): void {
+        // Check connection before updating progress
+        if (this.isTestRunning && !this.checkConnectionAndStopIfNeeded()) {
+            return; // Test was stopped due to connection loss
+        }
+        
         if (this.onProgressUpdate) {
             this.onProgressUpdate(progress, message);
         }

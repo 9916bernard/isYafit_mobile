@@ -9,12 +9,14 @@ interface RealtimeDataScreenProps {
   device: Device;
   ftmsManager: FTMSManager;
   onBack: () => void;
+  onConnectionError?: () => void;
 }
 
 const RealtimeDataScreen: React.FC<RealtimeDataScreenProps> = ({ 
   device, 
   ftmsManager, 
-  onBack 
+  onBack,
+  onConnectionError
 }) => {
   const [bikeData, setBikeData] = useState<any>(null);
   const [isConnected, setIsConnected] = useState(false);
@@ -37,14 +39,9 @@ const RealtimeDataScreen: React.FC<RealtimeDataScreenProps> = ({
     
     spin();
   }, [spinValue]);
-
   useEffect(() => {
-    const connectToDevice = async () => {
+    const setupDeviceConnection = async () => {
       try {
-        setStatusMessage('기기에 연결 중...');
-        // await ftmsManager.disconnectDevice(); // Consider if this is needed here or if connectToDevice handles it
-        const connectedDevice = await ftmsManager.connectToDevice(device.id);
-        
         setStatusMessage('알림 구독 중...');
         await ftmsManager.subscribeToNotifications(
           (cpResponse) => {
@@ -70,18 +67,23 @@ const RealtimeDataScreen: React.FC<RealtimeDataScreenProps> = ({
           setStatusMessage('연결 시퀀스 실패. 다시 시도해주세요.');
         }
       } catch (error) {
-        console.error("Connection error:", error);
-        setStatusMessage(`연결 오류: ${error instanceof Error ? error.message : String(error)}`);
+        console.error("Setup error:", error);
+        setStatusMessage(`설정 오류: ${error instanceof Error ? error.message : String(error)}`);
+        
+        // 설정 오류 시 콜백 호출
+        if (onConnectionError) {
+          onConnectionError();
+        }
       }
     };
 
-    connectToDevice();
+    setupDeviceConnection();
 
     return () => {
       // Cleanup
       ftmsManager.disconnectDevice().catch(console.error);
     };
-  }, [device, ftmsManager]);
+  }, [device, ftmsManager, onConnectionError]);
   
   const handleBackPress = async () => {
     onBack();

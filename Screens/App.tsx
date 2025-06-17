@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { StyleSheet, View, Text, FlatList, TouchableOpacity, PermissionsAndroid, Platform, Linking, ScrollView, SafeAreaView, Modal } from 'react-native';
+import { StyleSheet, View, Text, FlatList, TouchableOpacity, PermissionsAndroid, Platform, Linking, ScrollView, SafeAreaView, Modal, Alert } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import LinearGradient from 'react-native-linear-gradient';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -14,7 +14,7 @@ import { Colors, ButtonStyles, CardStyles, TextStyles, Shadows } from '../styles
 
 
 // 앱 버전 관리
-const APP_VERSION = 'v0.5.0';
+const APP_VERSION = 'v0.5.3';
 
 function App() {
   const insets = useSafeAreaInsets();
@@ -185,11 +185,40 @@ function App() {
       return;
     }
     setShowModeSelection(true);
-  };
-  // Handle mode selection
-  const handleSelectRealtimeData = () => {
+  };  // Handle mode selection
+  const handleSelectRealtimeData = async () => {
     setShowModeSelection(false);
-    setShowRealtimeData(true);
+    setIsLoadingCompatibilityTest(true); // 로딩 화면 표시 (이름은 호환성 테스트용이지만 재사용)
+    
+    if (!ftmsManagerRef.current || !selectedDevice) {
+      setStatusMessage('FTMS Manager 또는 선택된 장치가 없습니다.');
+      setIsLoadingCompatibilityTest(false);
+      setShowModeSelection(true);
+      return;
+    }
+
+    setStatusMessage(`'${selectedDevice.name || selectedDevice.id}'에 연결 중...`);
+    try {
+      await ftmsManagerRef.current.disconnectDevice(); // 이전 연결 해제
+      const device = await ftmsManagerRef.current.connectToDevice(selectedDevice.id);
+      setConnectedDevice(device);
+      setStatusMessage(`'${device.name}'에 연결됨. 실시간 데이터를 시작합니다.`);      setIsLoadingCompatibilityTest(false);
+      setShowRealtimeData(true);
+    } catch (error) {
+      console.error("Connection error:", error);
+      const bleError = error as BleError;
+      setStatusMessage(`연결 오류: ${bleError.message}`);
+      setConnectedDevice(null);
+      setIsLoadingCompatibilityTest(false);
+      setShowModeSelection(true);
+      
+      // 연결 실패 알림 표시
+      Alert.alert(
+        '연결 실패',
+        '기기와 연결에 실패했습니다. 블루투스 상태를 확인해주세요.',
+        [{ text: '확인', style: 'default' }]
+      );
+    }
   };
   const handleSelectCompatibilityTest = async () => {
     setShowModeSelection(false);
@@ -208,14 +237,20 @@ function App() {
       const device = await ftmsManagerRef.current.connectToDevice(selectedDevice.id);
       setConnectedDevice(device);
       setStatusMessage(`'${device.name}'에 연결됨. 호환성 테스트를 시작합니다.`);
-      setIsLoadingCompatibilityTest(false);
-      setShowTestScreen(true);    } catch (error) {
+      setIsLoadingCompatibilityTest(false);      setShowTestScreen(true);    } catch (error) {
       console.error("Connection error:", error);
       const bleError = error as BleError;
       setStatusMessage(`연결 오류: ${bleError.message}`);
       setConnectedDevice(null);
       setIsLoadingCompatibilityTest(false);
       setShowModeSelection(true);
+      
+      // 연결 실패 알림 표시
+      Alert.alert(
+        '연결 실패',
+        '기기와 연결에 실패했습니다. 블루투스 상태를 확인해주세요.',
+        [{ text: '확인', style: 'default' }]
+      );
     }
   };
   const handleBackFromModeSelection = async () => {
@@ -242,6 +277,17 @@ function App() {
   const handleBackFromRealtimeData = () => {
     setShowRealtimeData(false);
     setShowModeSelection(true); // 모드 선택 화면으로 돌아가기
+  };
+    const handleRealtimeDataConnectionError = () => {
+    setShowRealtimeData(false);
+    setShowModeSelection(true);
+    
+    // 연결 실패 알림 표시
+    Alert.alert(
+      '연결 실패',
+      '기기와 연결에 실패했습니다. 블루투스 상태를 확인해주세요.',
+      [{ text: '확인', style: 'default' }]
+    );
   };
       const handleDisconnect = async () => {
     if (!ftmsManagerRef.current) {
@@ -417,13 +463,13 @@ function App() {
           onSelectCompatibilityTest={handleSelectCompatibilityTest}
           onDisconnect={handleBackFromModeSelection}
         />
-      ) :
-      /* Show realtime data screen */
-      showRealtimeData && selectedDevice && ftmsManagerRef.current ? (
+      ) :      /* Show realtime data screen */
+      showRealtimeData && connectedDevice && ftmsManagerRef.current ? (
         <RealtimeDataScreen
-          device={selectedDevice}
+          device={connectedDevice}
           ftmsManager={ftmsManagerRef.current}
           onBack={handleBackFromRealtimeData}
+          onConnectionError={handleRealtimeDataConnectionError}
         />
       ) : 
       /* Show the test screen when a device is connected and test is requested */

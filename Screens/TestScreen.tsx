@@ -31,7 +31,7 @@ interface TestScreenProps {
 
 const TestScreen: React.FC<TestScreenProps> = ({ device, ftmsManager, onClose }) => {
   const [progress, setProgress] = useState(0);
-  const [message, setMessage] = useState('테스트 준비 중...');
+  const [message, setMessage] = useState('테스트 준비 완료');
   const [isRunning, setIsRunning] = useState(false);
   const [testCompleted, setTestCompleted] = useState(false);
   const [testResults, setTestResults] = useState<TestResults | null>(null);
@@ -163,13 +163,39 @@ const TestScreen: React.FC<TestScreenProps> = ({ device, ftmsManager, onClose })
       setIsRunning(false);
     }
   };
-
-  const handleStopTest = () => {
+  const handleStopTest = async () => {
     if (testerRef.current) {
       testerRef.current.stopTest();
       setIsRunning(false);
       setMessage('테스트가 중지되었습니다.');
     }
+    
+    // 기기와 연결 해제
+    try {
+      await ftmsManager.disconnectDevice();
+      setMessage('테스트가 중지되고 기기와 연결이 해제되었습니다.');
+    } catch (error) {
+      console.error('Disconnect error during stop:', error);
+      setMessage('테스트가 중지되었습니다. (연결 해제 중 오류 발생)');
+    }
+  };
+
+  const handleBackPress = async () => {
+    // 테스트가 실행 중이면 먼저 중지
+    if (testerRef.current && isRunning) {
+      testerRef.current.stopTest();
+      setIsRunning(false);
+    }
+    
+    // 기기와 연결 해제
+    try {
+      await ftmsManager.disconnectDevice();
+    } catch (error) {
+      console.error('Disconnect error during back:', error);
+    }
+    
+    // 모드 선택 화면으로 돌아가기
+    onClose();
   };
 
   const handleViewReport = () => {
@@ -409,10 +435,9 @@ const TestScreen: React.FC<TestScreenProps> = ({ device, ftmsManager, onClose })
                   <Text style={styles.stopButtonText}>테스트 중단</Text>
                 </TouchableOpacity>
               )}
-            </View>
-              <TouchableOpacity
+            </View>              <TouchableOpacity
               style={styles.backButton}
-              onPress={onClose}
+              onPress={handleBackPress}
               activeOpacity={0.8}
             >
               <Ionicons name="arrow-back" size={20} color="#ffffff" />

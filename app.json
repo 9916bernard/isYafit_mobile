@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "IsYafit_app",
-    "slug": "IsYafit_app",
+    "name": "IsYafit",
+    "slug": "IsYafit",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
