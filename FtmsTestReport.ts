@@ -318,44 +318,74 @@ function generateDetailedReasons(reasonCodes: string[], compatLevel: string, res
     // Remove duplicates from reason codes
     const uniqueCodes = [...new Set(reasonCodes)];
     
-    for (const code of uniqueCodes) {
-        switch (code) {
-            case '중지':
-                detailedReasons.push('검사가 중간에 중단되었습니다');
-                break;
-            case 'RPM':
-                detailedReasons.push('Cadence가 검출된 데이터에 없습니다');
-                break;
-            case '프로토콜':
-                detailedReasons.push('UUID가 지원하는 프로토콜에 없습니다');
-                break;
-            case '기어':
-                if (!results.dataFields?.resistance?.detected) {
-                    detailedReasons.push('Resistance가 검출된 데이터에 없어 기본 기어값으로 설정됩니다');
-                } else {
-                    detailedReasons.push('기어 변경이 불가능합니다');
-                }
-                break;
-            case 'ERG':
-                detailedReasons.push('ERG 모드 사용이 불가능합니다');
-                break;
-            case 'SIM':
-                detailedReasons.push('SIM 모드 사용이 불가능합니다');
-                break;
-            case '자동변화':
-                detailedReasons.push('저항값이 명령 없이 변화합니다. 기본 상태에 SIM이나 ERG mode가 적용되어있는지 확인해주세요');
-                break;
-            case '기본기능':
-                detailedReasons.push('CSC 프로토콜로 기본 기능만 사용 가능합니다');
-                break;
-            default:
-                break;
+    // Generate comprehensive result message based on compatibility level and reasons
+    let resultMessage = "";
+    
+    if (compatLevel === "불가능") {
+        if (uniqueCodes.includes('중지')) {
+            resultMessage = "테스트가 도중에 중단되었습니다. 다시 시도해주세요.";
+        } else if (uniqueCodes.includes('RPM')) {
+            resultMessage = "필수 요소인 cadence가 검출되지 않았습니다. Yafit과 호환되지 않습니다.";
+        } else if (uniqueCodes.includes('프로토콜')) {
+            resultMessage = "Yafit에서 지원하지 않는 프로토콜입니다. Yafit과 호환되지 않습니다.";
         }
+    } else if (compatLevel === "부분 호환") {
+        let reasons = [];
+        let baseMessage = "Yafit에 연결과 플레이가 가능합니다.";
+        
+        if (uniqueCodes.includes('기어')) {
+            if (!results.dataFields?.resistance?.detected) {
+                reasons.push("gear 값이 default로 계산됩니다");
+            } else {
+                reasons.push("유저가 기어 변경을 할 수 없습니다");
+            }
+        }
+        if (uniqueCodes.includes('ERG')) {
+            reasons.push("ERG 모드는 플레이 하실 수 없습니다");
+        }
+        if (uniqueCodes.includes('SIM')) {
+            reasons.push("SIM 모드는 플레이 하실 수 없습니다");
+        }
+        
+        if (reasons.length > 0) {
+            resultMessage = baseMessage + " " + reasons.join(", ") + ".";
+        } else {
+            resultMessage = baseMessage;
+        }
+    } else if (compatLevel === "수정 필요") {
+        let baseMessage = "Yafit에 연결과 플레이가 가능합니다.";
+        let issues = [];
+        
+        if (uniqueCodes.includes('자동변화')) {
+            issues.push("기어 수정이 필요합니다. 유저가 의도치 않은 저항을 느낄 수 있습니다");
+        }
+        
+        // Add any partial compatibility issues
+        if (uniqueCodes.includes('기어')) {
+            if (!results.dataFields?.resistance?.detected) {
+                issues.push("gear 값이 default로 계산됩니다");
+            } else {
+                issues.push("유저가 기어 변경을 할 수 없습니다");
+            }
+        }
+        if (uniqueCodes.includes('ERG')) {
+            issues.push("ERG 모드는 플레이 하실 수 없습니다");
+        }
+        if (uniqueCodes.includes('SIM')) {
+            issues.push("SIM 모드는 플레이 하실 수 없습니다");
+        }
+        
+        if (issues.length > 0) {
+            resultMessage = baseMessage + " 하지만 " + issues.join(", ") + ".";
+        } else {
+            resultMessage = baseMessage;
+        }
+    } else if (compatLevel === "완전 호환") {
+        resultMessage = "Yafit에 연결과 모든 모드 플레이가 가능합니다.";
     }
     
-    // Add default message if no specific reasons but full compatibility
-    if (detailedReasons.length === 0 && compatLevel === "완전 호환") {
-        detailedReasons.push('모든 기능이 정상적으로 작동합니다');
+    if (resultMessage) {
+        detailedReasons.push(resultMessage);
     }
     
     return detailedReasons;

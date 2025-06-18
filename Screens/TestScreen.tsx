@@ -349,24 +349,24 @@ const TestScreen: React.FC<TestScreenProps> = ({ device, ftmsManager, onClose, i
                   </View>
                 )}
               </View>
-            </View>
-          {testCompleted && testResults && (
+            </View>          {testCompleted && testResults && (
             <Animated.View style={[styles.resultsSummary, { opacity: fadeAnim }]}>
               {renderCompatibilityBadge()}
 
-              <Text style={styles.sectionTitle}>테스트 요약</Text>              {testResults.reasons && testResults.reasons.length > 0 && (
-                <View style={styles.reasonsContainer}>
-                  {testResults.reasons.map((reason, index) => (
-                    <View key={index} style={styles.reasonItem}>
-                      <View style={[
-                        styles.reasonBullet, 
-                        { backgroundColor: getCompatibilityColor(testResults.compatibilityLevel) }
-                      ]} />
-                      <Text style={styles.reasonText}>{reason}</Text>
-                    </View>
-                  ))}
+              {/* 결과 메시지를 맨 위에 표시 */}
+              {testResults.reasons && testResults.reasons.length > 0 && (
+                <View style={styles.resultMessageContainer}>
+                  <View style={styles.resultMessageHeader}>
+                    <MaterialCommunityIcons name="information" size={20} color="#00c663" />
+                    <Text style={styles.resultMessageTitle}>테스트 결과</Text>
+                  </View>
+                  <View style={styles.resultMessageContent}>
+                    <Text style={styles.resultMessageText}>{testResults.reasons[0]}</Text>
+                  </View>
                 </View>
               )}
+
+              <Text style={styles.sectionTitle}>테스트 상세 정보</Text>
 
               <View style={styles.detailsContainer}>
                 <View style={styles.detailCard}>
@@ -686,12 +686,40 @@ const styles = StyleSheet.create({
   compatibilityText: {
     fontWeight: 'bold',
     fontSize: 14,
-  },
-  sectionTitle: {
+  },  sectionTitle: {
     fontSize: 20,
     fontWeight: 'bold',
     color: '#fff',
     marginBottom: 16,
+  },
+  // 새로운 결과 메시지 스타일
+  resultMessageContainer: {
+    backgroundColor: '#1a2029',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 20,
+    borderLeftWidth: 4,
+    borderLeftColor: '#00c663',
+  },
+  resultMessageHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  resultMessageTitle: {
+    color: '#00c663',
+    fontSize: 16,
+    fontWeight: '600',
+    marginLeft: 8,
+  },
+  resultMessageContent: {
+    paddingLeft: 4,
+  },
+  resultMessageText: {
+    color: '#fff',
+    fontSize: 16,
+    lineHeight: 24,
+    fontWeight: '500',
   },
   reasonsContainer: {
     backgroundColor: '#1a2029',

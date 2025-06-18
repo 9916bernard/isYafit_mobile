@@ -342,14 +342,26 @@ const getCompatibilityColor = (compatibilityLevel?: string): string => {
               <TouchableOpacity onPress={onClose} style={styles.closeButton} activeOpacity={0.8}>
                 <Icon name="close" size={20} color="#ffffff" />
               </TouchableOpacity>
-            </View>
-            {/* Action Buttons */}
+            </View>            {/* Action Buttons */}
             <View style={styles.actionButtonsContainer}>
               <TouchableOpacity onPress={handleShare} style={styles.shareButton} activeOpacity={0.8}>
                 <Ionicons name="share-outline" size={20} color="#ffffff" />
                 <Text style={styles.shareButtonText}>보고서 공유</Text>
               </TouchableOpacity>
             </View>
+
+            {/* 테스트 결과 메시지를 상단에 표시 */}
+            {results.reasons && results.reasons.length > 0 && (
+              <View style={styles.resultMessageSection}>
+                <View style={styles.resultMessageHeader}>
+                  <MaterialCommunityIcons name="information" size={24} color="#00c663" />
+                  <Text style={styles.resultMessageTitle}>테스트 결과</Text>
+                </View>
+                <View style={styles.resultMessageContent}>
+                  <Text style={styles.resultMessageText}>{results.reasons[0]}</Text>
+                </View>
+              </View>
+            )}
 
             {/* Device Info Section */}
             <View style={styles.section}>
@@ -821,13 +833,46 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     fontWeight: 'bold',
     fontSize: 14,
-  },
-  compatibilityReasonCodes: {
+  },  compatibilityReasonCodes: {
     color: '#ffffff',
     fontSize: 10,
     fontWeight: '400',
     marginTop: 2,
     opacity: 0.8,
+  },
+  // 새로운 결과 메시지 스타일
+  resultMessageSection: {
+    backgroundColor: '#242c3b',
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 20,
+    borderLeftWidth: 5,
+    borderLeftColor: '#00c663',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  resultMessageHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  resultMessageTitle: {
+    color: '#00c663',
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginLeft: 12,
+  },
+  resultMessageContent: {
+    paddingLeft: 8,
+  },
+  resultMessageText: {
+    color: '#ffffff',
+    fontSize: 18,
+    lineHeight: 28,
+    fontWeight: '500',
   },
   reasonsContainer: {
     backgroundColor: '#1a2029',
