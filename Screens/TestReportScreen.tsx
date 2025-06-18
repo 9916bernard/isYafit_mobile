@@ -23,9 +23,9 @@ interface TestReportScreenProps {
   onClose: () => void;
 }
 
-const TestReportScreen: React.FC<TestReportScreenProps> = ({ results, onClose }) => {
-  const safeAreaStyles = useSafeAreaStyles();
+const TestReportScreen: React.FC<TestReportScreenProps> = ({ results, onClose }) => {  const safeAreaStyles = useSafeAreaStyles();
   const [showFullLog, setShowFullLog] = React.useState(false);
+  const [showFullReasons, setShowFullReasons] = React.useState(true);
   
   // Animation values
   const fadeAnim = React.useRef(new Animated.Value(0)).current;
@@ -279,7 +279,47 @@ ${results.issuesFound && results.issuesFound.length > 0 ? '\n발견된 문제점
     } else {
       Alert.alert("정보", "복사할 로그가 없습니다.");
     }
-  };  return (
+  };  // Helper function to get compatibility color based on level
+const getCompatibilityColor = (compatibilityLevel?: string): string => {
+  switch (compatibilityLevel) {
+    case '완전 호환':
+      return '#4CAF50';
+    case '부분 호환':
+      return '#FF9800';
+    case '수정 필요':
+      return '#2196F3';
+    case '불가능':
+      return '#F44336';
+    default:
+      return '#666';
+  }
+};
+
+  // Helper function to extract reason codes from detailed reasons
+  const extractReasonCodes = (reasons: string[]): string[] => {
+    const codeMap: { [key: string]: string } = {
+      '검사가 중간에 중단되었습니다': '중지',
+      'Cadence가 검출된 데이터에 없습니다': 'RPM',
+      'UUID가 지원하는 프로토콜에 없습니다': '프로토콜',
+      'Resistance가 검출된 데이터에 없어 기본 기어값으로 설정됩니다': '기어',
+      '기어 변경이 불가능합니다': '기어',
+      'ERG 모드 사용이 불가능합니다': 'ERG',
+      'SIM 모드 사용이 불가능합니다': 'SIM',
+      '저항값이 명령 없이 변화합니다. 기본 상태에 SIM이나 ERG mode가 적용되어있는지 확인해주세요': '자동변화',
+      'CSC 프로토콜로 기본 기능만 사용 가능합니다': '기본기능'
+    };
+    
+    const codes: string[] = [];
+    for (const reason of reasons) {
+      const code = codeMap[reason];
+      if (code && !codes.includes(code)) {
+        codes.push(code);
+      }
+    }
+    return codes;
+  };
+
+  return (
     <View style={safeAreaStyles.safeContainerMinPadding}>
       <Animated.View 
         style={[
@@ -324,16 +364,20 @@ ${results.issuesFound && results.issuesFound.length > 0 ? '\n발견된 문제점
                   </Text>
                   <View style={[
                     styles.compatibilityBadge,
-                    {
-                      backgroundColor: 
+                    {                      backgroundColor: 
                         results.compatibilityLevel === '완전 호환' ? '#4CAF50' :
-                        results.compatibilityLevel === '제한적 호환' ? '#FF9800' :
+                        results.compatibilityLevel === '부분 호환' ? '#FF9800' :
                         results.compatibilityLevel === '수정 필요' ? '#2196F3' : '#F44336'
                     }
-                  ]}>
-                    <Text style={styles.compatibilityText}>
+                  ]}>                    <Text style={styles.compatibilityText}>
                       {results.compatibilityLevel || '평가 불가'}
                     </Text>
+                    {/* Show reason codes as small text */}
+                    {results.reasons && results.reasons.length > 0 && (
+                      <Text style={styles.compatibilityReasonCodes}>
+                        ({extractReasonCodes(results.reasons).join(', ')})
+                      </Text>
+                    )}
                   </View>
                 </View>
                 
@@ -355,23 +399,33 @@ ${results.issuesFound && results.issuesFound.length > 0 ? '\n발견된 문제점
                   </View>
                 </View>
               </View>
-            </View>
-
-            {/* Compatibility Reasons */}
+            </View>            {/* Compatibility Reasons - Collapsible */}
             {results.reasons && results.reasons.length > 0 && (
               <View style={styles.section}>
-                <View style={styles.sectionHeader}>
+                <TouchableOpacity 
+                  style={styles.sectionHeader}
+                  onPress={() => setShowFullReasons(!showFullReasons)}
+                >
                   <Icon name="lightbulb-outline" size={24} color="#00c663" />
-                  <Text style={styles.sectionTitle}>호환성 판정 사유</Text>
-                </View>
-                <View style={styles.reasonsContainer}>
-                  {results.reasons.map((reason, index) => (
-                    <View key={index} style={styles.reasonItem}>
-                      <View style={styles.reasonBullet} />
-                      <Text style={styles.reasonText}>{reason}</Text>
-                    </View>
-                  ))}
-                </View>
+                  <Text style={styles.sectionTitle}>호환성 판정 세부사유</Text>
+                  <Icon 
+                    name={showFullReasons ? "expand-less" : "expand-more"} 
+                    size={24} 
+                    color="#666" 
+                  />
+                </TouchableOpacity>
+                {showFullReasons && (
+                  <View style={styles.reasonsContainer}>                    {results.reasons.map((reason, index) => (
+                      <View key={index} style={styles.reasonItem}>
+                        <View style={[
+                          styles.reasonBullet, 
+                          { backgroundColor: getCompatibilityColor(results.compatibilityLevel) }
+                        ]} />
+                        <Text style={styles.reasonText}>{reason}</Text>
+                      </View>
+                    ))}
+                  </View>
+                )}
               </View>
             )}
           {/* Issues Found */}
@@ -763,11 +817,17 @@ const styles = StyleSheet.create({
     elevation: 4,
     borderWidth: 2,
     borderColor: 'rgba(255, 255, 255, 0.2)',
-  },
-  compatibilityText: {
+  },  compatibilityText: {
     color: '#ffffff',
     fontWeight: 'bold',
     fontSize: 14,
+  },
+  compatibilityReasonCodes: {
+    color: '#ffffff',
+    fontSize: 10,
+    fontWeight: '400',
+    marginTop: 2,
+    opacity: 0.8,
   },
   reasonsContainer: {
     backgroundColor: '#1a2029',
@@ -781,10 +841,9 @@ const styles = StyleSheet.create({
   },  reasonBullet: {
     width: 8,
     height: 8,
-    backgroundColor: '#00c663',
     borderRadius: 4,
     marginRight: 12,
-    marginTop: 6,
+    marginTop: 5,
   },
   reasonText: {
     fontSize: 14,

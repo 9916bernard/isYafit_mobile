@@ -63,7 +63,7 @@ export interface TestResults {
         }
     };
     resistanceChanges?: DataChangeEvent[];
-    compatibilityLevel?: "완전 호환" | "제한적 호환" | "수정 필요" | "불가능";
+    compatibilityLevel?: "완전 호환" | "부분 호환" | "수정 필요" | "불가능";
     reasons?: string[];
     issuesFound?: string[];
     testCompleted: boolean;
@@ -215,83 +215,150 @@ export function verifyControlTestSuccessFromLogs(results: TestResults): TestResu
     return updatedResults;
 }
 
-// Function to generate a compatibility rating based on test results
+// Function to generate a compatibility rating based on test results with detailed reasons
 export function determineCompatibility(results: TestResults): TestResults {
     const updatedResults = { ...results };
     
-    // Default compatibility level
-    let compatLevel: "완전 호환" | "제한적 호환" | "수정 필요" | "불가능" = "불가능";
+    // Initialize arrays for detailed compatibility analysis
+    const impossibleReasons: string[] = [];
+    const partialReasons: string[] = [];
+    const warningReasons: string[] = [];
     
-    // Not connected
-    if (!results.connection.status) {
-        compatLevel = "불가능";
-        if (!updatedResults.reasons.includes("기기에 연결할 수 없습니다.")) {
-            updatedResults.reasons.push("기기에 연결할 수 없습니다.");
-        }
-        updatedResults.compatibilityLevel = compatLevel;
-        return updatedResults;
+    // 1. Check if test was interrupted (불가능(중지))
+    if (results.issuesFound?.some(issue => issue.includes('연결이 끊어졌습니다') || issue.includes('테스트 중단'))) {
+        impossibleReasons.push('중지');
     }
     
-    // Check protocol support
+    // 2. Check cadence detection (불가능(RPM))
+    if (!results.dataFields?.cadence?.detected) {
+        impossibleReasons.push('RPM');
+    }
+    
+    // 3. Check protocol support (불가능(프로토콜))
     const hasFTMS = results.supportedProtocols.includes("FTMS");
     const hasCSC = results.supportedProtocols.includes("CSC");
     
     if (!hasFTMS && !hasCSC) {
-        compatLevel = "불가능";
-        if (!updatedResults.reasons.includes("지원되는 프로토콜(FTMS, CSC)을 찾을 수 없습니다.")) {
-            updatedResults.reasons.push("지원되는 프로토콜(FTMS, CSC)을 찾을 수 없습니다.");
-        }
-        updatedResults.compatibilityLevel = compatLevel;
-        return updatedResults;
+        impossibleReasons.push('프로토콜');
+    } else if (!hasFTMS && hasCSC) {
+        // CSC only case - add specific reason
+        partialReasons.push('기본기능');
     }
     
-    // CSC only - limited compatibility
-    if (!hasFTMS && hasCSC) {
-        compatLevel = "제한적 호환";
-        if (!updatedResults.reasons.includes("CSC 프로토콜로 속도/캐던스 데이터만 사용 가능합니다. 저항 제어는 지원하지 않습니다.")) {
-            updatedResults.reasons.push("CSC 프로토콜로 속도/캐던스 데이터만 사용 가능합니다. 저항 제어는 지원하지 않습니다.");
-        }
-        updatedResults.compatibilityLevel = compatLevel;
-        return updatedResults;
+    // 4. Check resistance detection (부분 호환(기어))
+    if (!results.dataFields?.resistance?.detected) {
+        partialReasons.push('기어');
     }
     
-    // FTMS - Check for required data fields and control support
+    // Only check control tests if we have FTMS protocol
     if (hasFTMS) {
-        // Check for data field detection
-        const hasSpeed = results.dataFields?.speed?.detected;
-        const hasCadence = results.dataFields?.cadence?.detected;
-        const hasPower = results.dataFields?.power?.detected;
-        const hasResistance = results.dataFields?.resistance?.detected;
-        
-        // Check for control test success
         const controlTests = results.controlTests || {};
-        const resistanceControlOk = controlTests["SET_RESISTANCE_LEVEL"]?.status === "OK";
-        const simParamsOk = controlTests["SET_SIM_PARAMS"]?.status === "OK";
         
-        if ((hasSpeed && hasPower) && (resistanceControlOk || simParamsOk)) {
-            compatLevel = "완전 호환";
-            // Check for any issues that might reduce compatibility
-            if (results.issuesFound && results.issuesFound.length > 0) {
-                compatLevel = "제한적 호환";
-                if (!updatedResults.reasons.includes("일부 테스트에서 문제가 발견되었습니다. 기본 기능은 작동하지만 일부 기능에 제한이 있을 수 있습니다.")) {
-                    updatedResults.reasons.push("일부 테스트에서 문제가 발견되었습니다. 기본 기능은 작동하지만 일부 기능에 제한이 있을 수 있습니다.");
-                }
-            }
-        } else if (hasSpeed && !resistanceControlOk && !simParamsOk) {
-            compatLevel = "수정 필요";
-            if (!updatedResults.reasons.includes("속도 데이터는 수신되지만 저항 제어 기능이 작동하지 않습니다. 펌웨어 업데이트나 추가 개발이 필요할 수 있습니다.")) {
-                updatedResults.reasons.push("속도 데이터는 수신되지만 저항 제어 기능이 작동하지 않습니다. 펌웨어 업데이트나 추가 개발이 필요할 수 있습니다.");
-            }
-        } else {
-            compatLevel = "제한적 호환";
-            if (!updatedResults.reasons.includes("FTMS 프로토콜을 지원하지만 일부 필요한 데이터나 제어 기능이 작동하지 않습니다.")) {
-                updatedResults.reasons.push("FTMS 프로토콜을 지원하지만 일부 필요한 데이터나 제어 기능이 작동하지 않습니다.");
-            }
+        // 5. Check SET_RESISTANCE_LEVEL (부분 호환(기어))
+        const resistanceTest = controlTests["SET_RESISTANCE_LEVEL"];
+        if (resistanceTest && (resistanceTest.status === "Failed" || resistanceTest.status === "Pending")) {
+            partialReasons.push('기어');
+        }
+        
+        // 6. Check SET_TARGET_POWER (부분 호환(ERG))
+        const powerTest = controlTests["SET_TARGET_POWER"];
+        if (powerTest && (powerTest.status === "Failed" || powerTest.status === "Pending")) {
+            partialReasons.push('ERG');
+        }
+        
+        // 7. Check SET_SIM_PARAMS (부분 호환(SIM))
+        const simTest = controlTests["SET_SIM_PARAMS"];
+        if (simTest && (simTest.status === "Failed" || simTest.status === "Pending")) {
+            partialReasons.push('SIM');
         }
     }
     
+    // 8. Check for automatic resistance changes (수정 필요)
+    if (results.resistanceChanges) {
+        const automaticChanges = results.resistanceChanges.filter(change => !change.command);
+        if (automaticChanges.length >= 5) {
+            warningReasons.push('자동변화');
+        }
+    }
+    
+    // Determine final compatibility level based on priority: 불가능 > 부분호환 > 완전호환
+    let compatLevel: "완전 호환" | "부분 호환" | "수정 필요" | "불가능";
+    let displayReasons: string[] = [];
+    
+    if (impossibleReasons.length > 0) {
+        compatLevel = "불가능";
+        displayReasons = impossibleReasons;
+    } else if (partialReasons.length > 0 || warningReasons.length > 0) {
+        if (warningReasons.length > 0) {
+            compatLevel = "수정 필요";
+            displayReasons = [...partialReasons, ...warningReasons];
+        } else {
+            compatLevel = "부분 호환";
+            displayReasons = partialReasons;
+        }
+    } else if (hasFTMS) {
+        compatLevel = "완전 호환";
+        displayReasons = [];
+    } else {
+        compatLevel = "불가능";
+        displayReasons = ['프로토콜'];
+    }
+    
+    // Update results with new compatibility system
     updatedResults.compatibilityLevel = compatLevel;
+    updatedResults.reasons = generateDetailedReasons(displayReasons, compatLevel, results);
+    
     return updatedResults;
+}
+
+// Helper function to generate detailed reasons based on codes
+function generateDetailedReasons(reasonCodes: string[], compatLevel: string, results: TestResults): string[] {
+    const detailedReasons: string[] = [];
+    
+    // Remove duplicates from reason codes
+    const uniqueCodes = [...new Set(reasonCodes)];
+    
+    for (const code of uniqueCodes) {
+        switch (code) {
+            case '중지':
+                detailedReasons.push('검사가 중간에 중단되었습니다');
+                break;
+            case 'RPM':
+                detailedReasons.push('Cadence가 검출된 데이터에 없습니다');
+                break;
+            case '프로토콜':
+                detailedReasons.push('UUID가 지원하는 프로토콜에 없습니다');
+                break;
+            case '기어':
+                if (!results.dataFields?.resistance?.detected) {
+                    detailedReasons.push('Resistance가 검출된 데이터에 없어 기본 기어값으로 설정됩니다');
+                } else {
+                    detailedReasons.push('기어 변경이 불가능합니다');
+                }
+                break;
+            case 'ERG':
+                detailedReasons.push('ERG 모드 사용이 불가능합니다');
+                break;
+            case 'SIM':
+                detailedReasons.push('SIM 모드 사용이 불가능합니다');
+                break;
+            case '자동변화':
+                detailedReasons.push('저항값이 명령 없이 변화합니다. 기본 상태에 SIM이나 ERG mode가 적용되어있는지 확인해주세요');
+                break;
+            case '기본기능':
+                detailedReasons.push('CSC 프로토콜로 기본 기능만 사용 가능합니다');
+                break;
+            default:
+                break;
+        }
+    }
+    
+    // Add default message if no specific reasons but full compatibility
+    if (detailedReasons.length === 0 && compatLevel === "완전 호환") {
+        detailedReasons.push('모든 기능이 정상적으로 작동합니다');
+    }
+    
+    return detailedReasons;
 }
 
 // Function to finalize and save the test report

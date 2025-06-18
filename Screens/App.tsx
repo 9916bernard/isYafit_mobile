@@ -15,7 +15,7 @@ import Toast from 'react-native-root-toast';
 
 
 // 앱 버전 관리
-const APP_VERSION = 'v0.5.3';
+const APP_VERSION = 'v0.5.4';
 
 function App() {
   const insets = useSafeAreaInsets();

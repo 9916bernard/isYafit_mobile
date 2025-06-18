@@ -24,6 +24,22 @@ import LogDisplay from '../LogDisplay'; // Import the Log Display component
 import { useSafeAreaStyles, Colors } from '../styles/commonStyles';
 import Toast from 'react-native-root-toast';
 
+// Helper function to get compatibility color based on level
+const getCompatibilityColor = (compatibilityLevel?: string): string => {
+  switch (compatibilityLevel) {
+    case '완전 호환':
+      return '#4CAF50';
+    case '부분 호환':
+      return '#FF9800';
+    case '수정 필요':
+      return '#2196F3';
+    case '불가능':
+      return '#F44336';
+    default:
+      return '#666666';
+  }
+};
+
 interface TestScreenProps {
   device: Device;
   ftmsManager: FTMSManager;
@@ -231,30 +247,13 @@ const TestScreen: React.FC<TestScreenProps> = ({ device, ftmsManager, onClose, i
   };
 
   // Render the compatibility badge
-  const renderCompatibilityBadge = () => {
-    if (!testResults || !testResults.compatibilityLevel) return null;
+  const renderCompatibilityBadge = () => {    if (!testResults || !testResults.compatibilityLevel) return null;
 
-    let badgeColor = '#4CAF50'; // Green for full compatibility
-    let textColor = '#FFFFFF';
-
-    switch (testResults.compatibilityLevel) {
-      case '완전 호환':
-        badgeColor = '#4CAF50'; // Green
-        break;
-      case '제한적 호환':
-        badgeColor = '#FF9800'; // Orange
-        break;
-      case '수정 필요':
-        badgeColor = '#2196F3'; // Blue
-        break;
-      case '불가능':
-        badgeColor = '#F44336'; // Red
-        break;
-    }
+    const badgeColor = getCompatibilityColor(testResults.compatibilityLevel);
 
     return (
       <View style={[styles.compatibilityBadge, { backgroundColor: badgeColor }]}>
-        <Text style={[styles.compatibilityText, { color: textColor }]}>
+        <Text style={[styles.compatibilityText, { color: '#FFFFFF' }]}>
           {testResults.compatibilityLevel}
         </Text>
       </View>
@@ -355,13 +354,14 @@ const TestScreen: React.FC<TestScreenProps> = ({ device, ftmsManager, onClose, i
             <Animated.View style={[styles.resultsSummary, { opacity: fadeAnim }]}>
               {renderCompatibilityBadge()}
 
-              <Text style={styles.sectionTitle}>테스트 요약</Text>
-
-              {testResults.reasons && testResults.reasons.length > 0 && (
+              <Text style={styles.sectionTitle}>테스트 요약</Text>              {testResults.reasons && testResults.reasons.length > 0 && (
                 <View style={styles.reasonsContainer}>
                   {testResults.reasons.map((reason, index) => (
                     <View key={index} style={styles.reasonItem}>
-                      <Text style={styles.reasonBullet}>•</Text>
+                      <View style={[
+                        styles.reasonBullet, 
+                        { backgroundColor: getCompatibilityColor(testResults.compatibilityLevel) }
+                      ]} />
                       <Text style={styles.reasonText}>{reason}</Text>
                     </View>
                   ))}
@@ -703,13 +703,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'flex-start',
     marginBottom: 8,
-  },
-  reasonBullet: {
-    color: '#00c663',
-    fontSize: 16,
-    fontWeight: 'bold',
-    marginRight: 8,
-    marginTop: 2,
+  },  reasonBullet: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    marginRight: 12,
+    marginTop: 5,
   },
   reasonText: {
     color: '#fff',
