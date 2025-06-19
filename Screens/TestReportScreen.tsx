@@ -72,51 +72,48 @@ const TestReportScreen: React.FC<TestReportScreenProps> = ({ results, onClose })
           controlTestsSection += `- ${commandLabel}: ${statusText}\n`;
         });
       }
-      
-      // 제한사항 정리
+        // 제한사항 정리 - 새로운 기준에 맞게 수정
       let limitationsSection = '';
       const limitations: string[] = [];
       
-      // issuesFound에서 제한사항 추가
+      // 호환성 레벨에 따른 제한사항 추가
+      if (results.compatibilityLevel === '불가능') {
+        if (!results.dataFields?.cadence?.detected) {
+          limitations.push('Cadence가 검출되지 않음 (RPM)');
+        }
+        if (!results.supportedProtocols.includes('FTMS') && !results.supportedProtocols.includes('CSC')) {
+          limitations.push('지원하지 않는 프로토콜');
+        }
+        if (results.issuesFound?.some(issue => issue.includes('중단'))) {
+          limitations.push('검사가 중단됨');
+        }
+      } else if (results.compatibilityLevel === '부분 호환' || results.compatibilityLevel === '수정 필요') {
+        if (!results.dataFields?.resistance?.detected) {
+          limitations.push('Resistance가 검출되지 않아 기본 기어값으로 설정');
+        }
+        if (results.controlTests?.SET_RESISTANCE_LEVEL?.status === 'Failed') {
+          limitations.push('기어 변경 불가능');
+        }
+        if (results.controlTests?.SET_TARGET_POWER?.status === 'Failed') {
+          limitations.push('ERG 모드 사용 불가능');
+        }
+        if (results.controlTests?.SET_SIM_PARAMS?.status === 'Failed') {
+          limitations.push('SIM 모드 사용 불가능');
+        }
+        if (results.resistanceChanges && results.resistanceChanges.filter(change => !change.command).length >= 5) {
+          limitations.push('저항값이 명령 없이 자동 변화함');
+        }
+      }
+      
+      // issuesFound에서 추가 제한사항
       if (results.issuesFound && results.issuesFound.length > 0) {
         limitations.push(...results.issuesFound);
       }
       
-      // controlTests 실패에서 제한사항 추가
-      if (results.controlTests) {
-        Object.entries(results.controlTests)
-          .filter(([_, test]) => test.status !== 'OK')
-          .forEach(([name, _]) => {
-            const limitationText = name === 'SET_RESISTANCE_LEVEL' ? '유저가 기어 조절 불가' :
-                                  name === 'SET_TARGET_POWER' ? 'ERG 모드 사용 불가' :
-                                  name === 'SET_SIM_PARAMS' ? 'SIM 모드 사용 불가' : name;
-            limitations.push(limitationText);
-          });
-      }
-      
       if (limitations.length > 0) {
-        limitationsSection = '\n⚠️ 제한사항:\n' + limitations.map(l => `- ${l}`).join('\n');
-      }
-      
-      // 제한 사유 정리
-      let limitationReasonsSection = '';
-      if (results.controlTests) {
-        const failedTests = Object.entries(results.controlTests).filter(([_, test]) => test.status !== 'OK');
-        if (failedTests.length > 0) {
-          limitationReasonsSection = '\n🔍 제한 사유:\n';
-          failedTests.forEach(([name, test]) => {
-            const commandLabels = {
-              'SET_RESISTANCE_LEVEL': '유저가 기어 조절 불가',
-              'SET_TARGET_POWER': 'ERG 모드 사용 불가',
-              'SET_SIM_PARAMS': 'SIM 모드 사용 불가'
-            };
-            const commandLabel = commandLabels[name as keyof typeof commandLabels] || name;
-            const statusReason = test.status === 'Failed' ? '미작동' : '미지원';
-            limitationReasonsSection += `- ${commandLabel} ⇒ ${name.toLowerCase()} ${statusReason}\n`;
-          });
-        }
-      }
-      
+        const sectionTitle = results.compatibilityLevel === '불가능' ? '⚠️ 불가능 사유:' : '⚠️ 제한사항:';
+        limitationsSection = '\n' + sectionTitle + '\n' + limitations.map(l => `- ${l}`).join('\n');
+      }      
       // 지원 범위 정리
       let supportRangesSection = '';
       if (results.supportRanges && Object.keys(results.supportRanges).length > 0) {
@@ -160,9 +157,9 @@ const TestReportScreen: React.FC<TestReportScreenProps> = ({ results, onClose })
 
 🎯 호환성 판정: ${compatibility}
 
-✅ 테스트 결과: Yafit 연결과 플레이가 가능합니다
+✅ 테스트 결과: ${results.reasons && results.reasons.length > 0 ? results.reasons[0] : '판정 결과 없음'}
 
-📅 테스트 일시: ${testDate}${controlTestsSection}${limitationsSection}${limitationReasonsSection}${supportRangesSection}${dataFieldsSection}
+📅 테스트 일시: ${testDate}${controlTestsSection}${limitationsSection}${supportRangesSection}${dataFieldsSection}
 
 📋 상세 보고서는 앱에서 확인하실 수 있습니다.
       `;
@@ -422,45 +419,7 @@ const getCompatibilityColor = (compatibilityLevel?: string): string => {
                 <Ionicons name="share-outline" size={20} color="#ffffff" />
                 <Text style={styles.shareButtonText}>보고서 공유</Text>
               </TouchableOpacity>
-            </View>            {/* 테스트 결과 메시지를 상단에 표시 - 판정과 제한사항으로 분리 */}
-            {results.reasons && results.reasons.length > 0 && (
-              <View style={styles.resultMessageSection}>
-                <View style={styles.resultMessageHeader}>
-                  <MaterialCommunityIcons name="information" size={24} color="#00c663" />
-                  <Text style={styles.resultMessageTitle}>테스트 결과</Text>
-                </View>
-                <View style={styles.resultMessageContent}>                  {/* 판정 섹션 */}
-                  <View style={styles.judgmentSection}>
-                    <Text style={styles.judgmentText}>
-                      Yafit 연결과 플레이가 가능합니다
-                    </Text>
-                  </View>
-                  
-                  {/* 제한사항 섹션 */}
-                  {(results.issuesFound && results.issuesFound.length > 0) || 
-                   (results.controlTests && Object.entries(results.controlTests).some(([_, test]) => test.status !== 'OK')) && (
-                    <View style={styles.limitationSection}>
-                      <Text style={styles.limitationTitle}>제한사항:</Text>
-                      {results.issuesFound && results.issuesFound.map((issue, index) => (
-                        <Text key={`issue-${index}`} style={styles.limitationText}>
-                          • {issue}
-                        </Text>
-                      ))}                      {results.controlTests && Object.entries(results.controlTests)
-                        .filter(([_, test]) => test.status !== 'OK')
-                        .map(([name, test], index) => (
-                          <Text key={`control-${index}`} style={styles.limitationText}>
-                            • {name === 'SET_RESISTANCE_LEVEL' ? '유저가 기어 조절 불가' : 
-                               name === 'SET_TARGET_POWER' ? 'ERG 모드 사용 불가' : 
-                               name === 'SET_SIM_PARAMS' ? 'SIM 모드 사용 불가' : name}
-                          </Text>
-                        ))}
-                    </View>
-                  )}
-                </View>
-              </View>
-            )}
-
-            {/* Device Info Section */}
+            </View>            {/* Device Info Section */}
             <View style={styles.section}>
               <View style={styles.sectionHeader}>
                 <MaterialCommunityIcons name="devices" size={24} color="#00c663" />
@@ -502,7 +461,60 @@ const getCompatibilityColor = (compatibilityLevel?: string): string => {
                   </View>
                 </View>
               </View>
-            </View>            {/* Compatibility Reasons - Collapsible */}
+            </View>
+
+            {/* 테스트 결과 메시지를 장치 정보 아래로 이동 */}
+            {results.reasons && results.reasons.length > 0 && (
+              <View style={styles.resultMessageSection}>
+                <View style={styles.resultMessageHeader}>
+                  <MaterialCommunityIcons name="information" size={24} color="#00c663" />
+                  <Text style={styles.resultMessageTitle}>테스트 결과</Text>
+                </View>
+                <View style={styles.resultMessageContent}>                  {/* 판정 섹션 */}
+                  <View style={styles.judgmentSection}>
+                    <Text style={styles.judgmentText}>
+                      {results.reasons && results.reasons.length > 0 ? results.reasons[0] : '판정 결과 없음'}
+                    </Text>
+                  </View>                  
+                  {/* 제한사항 섹션 - 불가능한 경우 제외하고 표시 */}
+                  {results.compatibilityLevel && 
+                   results.compatibilityLevel !== '완전 호환' && 
+                   results.compatibilityLevel !== '불가능' && (
+                    <View style={styles.limitationSection}>
+                      <Text style={styles.limitationTitle}>제한사항:</Text>
+                      
+                      {(results.compatibilityLevel === '부분 호환' || results.compatibilityLevel === '수정 필요') && (
+                        <>
+                          {!results.dataFields?.resistance?.detected && (
+                            <Text style={styles.limitationText}>• Resistance가 검출되지 않아 기본 기어값으로 설정</Text>
+                          )}
+                          {results.controlTests?.SET_RESISTANCE_LEVEL?.status === 'Failed' && (
+                            <Text style={styles.limitationText}>• 기어 변경 불가능</Text>
+                          )}
+                          {results.controlTests?.SET_TARGET_POWER?.status === 'Failed' && (
+                            <Text style={styles.limitationText}>• ERG 모드 사용 불가능</Text>
+                          )}
+                          {results.controlTests?.SET_SIM_PARAMS?.status === 'Failed' && (
+                            <Text style={styles.limitationText}>• SIM 모드 사용 불가능</Text>
+                          )}
+                          {results.resistanceChanges && results.resistanceChanges.filter(change => !change.command).length >= 5 && (
+                            <Text style={styles.limitationText}>• 저항값이 명령 없이 자동 변화함</Text>
+                          )}
+                        </>
+                      )}
+                      
+                      {/* 기존 issuesFound 표시 (불가능이 아닌 경우에만) */}
+                      {results.issuesFound && results.issuesFound.map((issue, index) => (
+                        <Text key={`issue-${index}`} style={styles.limitationText}>
+                          • {issue}
+                        </Text>
+                      ))}
+                    </View>
+                  )}
+                </View>
+              </View>
+            )}
+            {/* Compatibility Reasons - Collapsible */}
             {false && results.reasons && results.reasons.length > 0 && (
               <View style={styles.section}>                <TouchableOpacity 
                   style={styles.sectionHeader}
@@ -546,10 +558,10 @@ const getCompatibilityColor = (compatibilityLevel?: string): string => {
                 ))}
               </View>
             </View>
-          )}
-
-          {/* Limitation Reasons - 제한 사유 */}
-          {results.controlTests && Object.entries(results.controlTests).some(([_, test]) => test.status !== 'OK') && (
+          )}          {/* Limitation Reasons - 제한 사유 (불가능한 경우 제외) */}
+          {results.compatibilityLevel !== '불가능' && 
+           results.controlTests && 
+           Object.entries(results.controlTests).some(([_, test]) => test.status !== 'OK') && (
             <View style={styles.section}>
               <View style={styles.sectionHeader}>
                 <Icon name="block" size={24} color="#FF9800" />

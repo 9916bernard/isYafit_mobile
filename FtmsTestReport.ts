@@ -272,30 +272,8 @@ function generateDetailedReasons(reasonCodes: string[], compatLevel: string, res
             resultMessage = "필수 요소인 cadence가 검출되지 않았습니다. Yafit과 호환되지 않습니다.";
         } else if (uniqueCodes.includes('프로토콜')) {
             resultMessage = "Yafit에서 지원하지 않는 프로토콜입니다. Yafit과 호환되지 않습니다.";
-        }
-    } else if (compatLevel === "부분 호환") {
-        let reasons = [];
-        let baseMessage = "Yafit에 연결과 플레이가 가능합니다.";
-        
-        if (uniqueCodes.includes('기어')) {
-            if (!results.dataFields?.resistance?.detected) {
-                reasons.push("gear 값이 default로 계산됩니다");
-            } else {
-                reasons.push("유저가 기어 변경을 할 수 없습니다");
-            }
-        }
-        if (uniqueCodes.includes('ERG')) {
-            reasons.push("ERG 모드는 플레이 하실 수 없습니다");
-        }
-        if (uniqueCodes.includes('SIM')) {
-            reasons.push("SIM 모드는 플레이 하실 수 없습니다");
-        }
-        
-        if (reasons.length > 0) {
-            resultMessage = baseMessage + " " + reasons.join(", ") + ".";
-        } else {
-            resultMessage = baseMessage;
-        }
+        }    } else if (compatLevel === "부분 호환") {
+        resultMessage = "Yafit 연결과 플레이가 가능합니다.";
     } else if (compatLevel === "수정 필요") {
         let baseMessage = "Yafit에 연결과 플레이가 가능합니다.";
         let issues = [];

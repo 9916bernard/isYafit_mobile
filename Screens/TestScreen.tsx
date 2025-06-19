@@ -361,28 +361,43 @@ const TestScreen: React.FC<TestScreenProps> = ({ device, ftmsManager, onClose, i
                   <View style={styles.resultMessageContent}>                    {/* 판정 섹션 */}
                     <View style={styles.judgmentSection}>
                       <Text style={styles.judgmentText}>
-                        Yafit 연결과 플레이가 가능합니다
+                        {testResults.reasons && testResults.reasons.length > 0 ? testResults.reasons[0] : '판정 결과 없음'}
                       </Text>
                     </View>
                     
-                    {/* 제한사항 섹션 */}
-                    {(testResults.issuesFound && testResults.issuesFound.length > 0) || 
-                     (testResults.controlTests && Object.entries(testResults.controlTests).some(([_, test]) => test.status !== 'OK')) && (
+                    {/* 제한사항 섹션 - 불가능한 경우 제외하고 표시 */}
+                    {testResults.compatibilityLevel && 
+                     testResults.compatibilityLevel !== '완전 호환' && 
+                     testResults.compatibilityLevel !== '불가능' && (
                       <View style={styles.limitationSection}>
                         <Text style={styles.limitationTitle}>제한사항:</Text>
+                        
+                        {(testResults.compatibilityLevel === '부분 호환' || testResults.compatibilityLevel === '수정 필요') && (
+                          <>
+                            {!testResults.dataFields?.resistance?.detected && (
+                              <Text style={styles.limitationText}>• Resistance가 검출되지 않아 기본 기어값으로 설정</Text>
+                            )}
+                            {testResults.controlTests?.SET_RESISTANCE_LEVEL?.status === 'Failed' && (
+                              <Text style={styles.limitationText}>• 기어 변경 불가능</Text>
+                            )}
+                            {testResults.controlTests?.SET_TARGET_POWER?.status === 'Failed' && (
+                              <Text style={styles.limitationText}>• ERG 모드 사용 불가능</Text>
+                            )}
+                            {testResults.controlTests?.SET_SIM_PARAMS?.status === 'Failed' && (
+                              <Text style={styles.limitationText}>• SIM 모드 사용 불가능</Text>
+                            )}
+                            {testResults.resistanceChanges && testResults.resistanceChanges.filter(change => !change.command).length >= 5 && (
+                              <Text style={styles.limitationText}>• 저항값이 명령 없이 자동 변화함</Text>
+                            )}
+                          </>
+                        )}
+                        
+                        {/* 기존 issuesFound 표시 (불가능이 아닌 경우에만) */}
                         {testResults.issuesFound && testResults.issuesFound.map((issue, index) => (
                           <Text key={`issue-${index}`} style={styles.limitationText}>
                             • {issue}
                           </Text>
-                        ))}                        {testResults.controlTests && Object.entries(testResults.controlTests)
-                          .filter(([_, test]) => test.status !== 'OK')
-                          .map(([name, test], index) => (
-                            <Text key={`control-${index}`} style={styles.limitationText}>
-                              • {name === 'SET_RESISTANCE_LEVEL' ? '유저가 기어 조절 불가' : 
-                                 name === 'SET_TARGET_POWER' ? 'ERG 모드 사용 불가' : 
-                                 name === 'SET_SIM_PARAMS' ? 'SIM 모드 사용 불가' : name}
-                            </Text>
-                          ))}
+                        ))}
                       </View>
                     )}
                   </View>
