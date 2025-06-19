@@ -691,15 +691,12 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#fff',
     marginBottom: 16,
-  },
-  // 새로운 결과 메시지 스타일
+  },  // 새로운 결과 메시지 스타일
   resultMessageContainer: {
     backgroundColor: '#1a2029',
     borderRadius: 12,
     padding: 16,
     marginBottom: 20,
-    borderLeftWidth: 4,
-    borderLeftColor: '#00c663',
   },
   resultMessageHeader: {
     flexDirection: 'row',
@@ -800,15 +797,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     marginTop: 8,
-  },
-  dataFieldItem: {
+  },  dataFieldItem: {
     backgroundColor: '#242c3b',
     borderRadius: 8,
     padding: 12,
     margin: 4,
     minWidth: '45%',
-    borderLeftWidth: 3,
-    borderLeftColor: '#00c663',
   },
   dataFieldName: {
     color: '#00c663',

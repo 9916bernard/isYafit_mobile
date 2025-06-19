@@ -745,15 +745,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 12,
-  },
-  infoCard: {
+  },  infoCard: {
     backgroundColor: '#1a2029',
     borderRadius: 12,
     padding: 16,
     flex: 1,
     minWidth: '45%',
-    borderLeftWidth: 4,
-    borderLeftColor: '#00c663',
   },
   infoCardLabel: {
     fontSize: 12,
@@ -803,15 +800,12 @@ const styles = StyleSheet.create({
   },  compatibilityText: {
     color: '#ffffff',    fontWeight: 'bold',
     fontSize: 14,
-  },
-  // 새로운 결과 메시지 스타일
+  },  // 새로운 결과 메시지 스타일
   resultMessageSection: {
     backgroundColor: '#242c3b',
     borderRadius: 16,
     padding: 20,
     marginBottom: 20,
-    borderLeftWidth: 5,
-    borderLeftColor: '#00c663',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
@@ -943,14 +937,11 @@ const styles = StyleSheet.create({
   },
   controlTestsContainer: {
     marginTop: 5,
-  },
-  controlTestItem: {
+  },  controlTestItem: {
     backgroundColor: '#1a2029',
     padding: 16,
     borderRadius: 12,
     marginBottom: 12,
-    borderLeftWidth: 4,
-    borderLeftColor: '#00c663',
   },
   controlTestHeader: {
     flexDirection: 'row',
@@ -1091,13 +1082,10 @@ const styles = StyleSheet.create({
   // Range cards styles
   rangesGrid: {
     gap: 12,
-  },
-  rangeCard: {
+  },  rangeCard: {
     backgroundColor: '#1a2029',
     borderRadius: 12,
     padding: 16,
-    borderLeftWidth: 4,
-    borderLeftColor: '#00c663',
     marginBottom: 8,
   },
   rangeCardHeader: {
