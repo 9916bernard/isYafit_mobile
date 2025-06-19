@@ -427,13 +427,15 @@ function App() {
         <View style={styles.sectionTitleContainer}>
           <Icon name="devices" size={20} color={Colors.primary} />
           <Text style={styles.sectionTitle}>발견된 장치</Text>
-        </View>        <TouchableOpacity 
-          onPress={showHelpPopup}
-          style={styles.helpIconContainer}
-          activeOpacity={0.7}
-        >
-          <Icon name="help-circle-outline" size={20} color={Colors.primary} />
-        </TouchableOpacity>
+        </View>        <View style={styles.helpIconWrapper}>
+          <TouchableOpacity 
+            onPress={showHelpPopup}
+            style={styles.helpIconContainer}
+            activeOpacity={0.7}
+          >
+            <Icon name="help-circle-outline" size={20} color={Colors.primary} />
+          </TouchableOpacity>
+        </View>
       </View>
     </LinearGradient>
   );  const renderListFooter = () => (
@@ -662,34 +664,42 @@ function App() {
               </LinearGradient>
             </ScrollView>
           )}        </>
-      )}
-        {/* Help Popup Modal */}
-      {isHelpPopupVisible && (
-        <View style={styles.helpBubbleContainer}>
-          <View style={styles.helpBubble}>
-            <View style={styles.helpBubbleArrow} />
-            <View style={styles.helpBubbleContent}>
-              <View style={styles.helpBubbleHeader}>
-                <Icon name="help-circle" size={20} color={Colors.primary} />
-                <Text style={styles.helpBubbleTitle}>기기 호환성 안내</Text>
-                <TouchableOpacity onPress={hideHelpPopup}>
-                  <Icon name="close" size={16} color={Colors.textSecondary} />
-                </TouchableOpacity>
+      )}        {/* Help Popup Modal */}
+        <Modal
+          transparent={true}
+          visible={isHelpPopupVisible}
+          animationType="fade"
+          onRequestClose={hideHelpPopup}
+        >
+          <TouchableWithoutFeedback onPress={hideHelpPopup}>
+            <View style={styles.modalOverlay}>              <View style={styles.helpBubbleContainer}>
+                <View style={styles.helpBubble}>
+                  <View style={styles.helpBubbleContent}>
+                    <View style={styles.helpBubbleHeader}>
+                      <Icon name="help-circle" size={20} color={Colors.primary} />
+                      <Text style={styles.helpBubbleTitle}>기기 호환성 안내</Text>
+                      <TouchableOpacity onPress={hideHelpPopup}>
+                        <Icon name="close" size={16} color={Colors.textSecondary} />
+                      </TouchableOpacity>
+                    </View>
+                    <Text style={styles.helpBubbleText}>
+                      기기가 스캔되지 않는다면 기기의 UUID가 아래의 프로토콜 혹은 센서에 포함되는지 확인해주세요.
+                    </Text>
+                    <Text style={styles.helpBubbleText}>
+                      만약 포함되지 않는다면 이는 Yafit 에 호환되지 않는 기기입니다. 관계자에게 문의해주세요.
+                    </Text>
+                    <View style={styles.helpBubbleProtocols}>
+                      <Text style={styles.helpBubbleSubtitle}>프로토콜:</Text>
+                      <Text style={styles.helpBubbleProtocolText}>FTMS, Mobi, Reborn, Tacx</Text>
+                      <Text style={styles.helpBubbleSubtitle}>센서:</Text>
+                      <Text style={styles.helpBubbleProtocolText}>CSC, FitShow, YAFIT, R1</Text>
+                    </View>
+                  </View>
+                </View>
               </View>
-              <Text style={styles.helpBubbleText}>
-                기기가 스캔되지 않는다면 기기의 UUID가 아래의 프로토콜 혹은 센서에 포함되는지 확인해주세요.
-              </Text>
-              <Text style={styles.helpBubbleText}>
-                만약 포함되지 않는다면 이는 Yafit 에 호환되지 않는 기기입니다. 관계자에게 문의해주세요.
-              </Text>
-              <View style={styles.helpBubbleProtocols}>
-                <Text style={styles.helpBubbleSubtitle}>프로토콜:</Text>
-                <Text style={styles.helpBubbleProtocolText}>FTMS, Mobi, Reborn, Tacx</Text>
-                <Text style={styles.helpBubbleSubtitle}>센서:</Text>
-                <Text style={styles.helpBubbleProtocolText}>CSC, FitShow, YAFIT, R1</Text>              </View>            </View>
-          </View>
-        </View>
-      )}
+            </View>
+          </TouchableWithoutFeedback>
+        </Modal>
     </SafeAreaView>
     </TouchableWithoutFeedback>
   );
@@ -699,8 +709,7 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: '#1a2029',
-  },
-  scrollViewContent: {
+  },  scrollViewContent: {
     flexGrow: 1,
     // justifyContent: 'flex-start', // Content within ScrollView will determine its own alignment
     // alignItems: 'center', // Content within ScrollView will determine its own alignment
@@ -1052,37 +1061,28 @@ const styles = StyleSheet.create({
   helpIcon: {
     padding: 4,
     marginLeft: 8,
-  },  helpBubbleContainer: {
-    position: 'absolute',
-    top: Dimensions.get('window').height * 0.4, // 화면 높이의 2/5 지점
-    right: 20,
-    zIndex: 1000,
-    maxWidth: 260,
+  },  helpIconContainer: {
+    padding: 4,
+    borderRadius: 12,
+    backgroundColor: 'transparent',
   },
+  helpIconWrapper: {
+    position: 'relative',  },
   helpBubble: {
-    backgroundColor: Colors.cardBackground,
+    backgroundColor: '#1a2029', // 더 진한 배경색으로 변경
     borderRadius: 10,
+    borderWidth: 1,
+    borderColor: Colors.border,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 6,
-    elevation: 6,
-    position: 'relative',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 100, // Android에서 최고 레벨
+    width: '100%', // 컨테이너 전체 너비 사용
   },
-  helpBubbleArrow: {
-    position: 'absolute',
-    top: -8,
-    right: 16,
-    width: 0,
-    height: 0,
-    borderLeftWidth: 8,
-    borderRightWidth: 8,
-    borderBottomWidth: 8,
-    borderLeftColor: 'transparent',
-    borderRightColor: 'transparent',
-    borderBottomColor: Colors.cardBackground,
-  },  helpBubbleContent: {
+  helpBubbleContent: {
     padding: 12,
+    minHeight: 100, // 최소 높이 설정
   },
   helpBubbleHeader: {
     flexDirection: 'row',
@@ -1101,13 +1101,15 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
     lineHeight: 16,
     marginBottom: 8,
+    textAlign: 'left', // 텍스트 정렬 명시
   },
   helpBubbleProtocols: {
     marginTop: 4,
     padding: 8,
-    backgroundColor: Colors.background,
+    backgroundColor: '#242c3b', // 프로토콜 영역도 더 진한 색상으로 변경
     borderRadius: 6,
-  },  helpBubbleSubtitle: {
+  },
+  helpBubbleSubtitle: {
     fontSize: 12,
     fontWeight: 'bold',
     color: Colors.text,
@@ -1123,10 +1125,15 @@ const styles = StyleSheet.create({
   sectionTitleContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-  },  helpIconContainer: {
-    padding: 4,
-    borderRadius: 12,
-    backgroundColor: 'transparent',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'transparent', // 투명한 배경
+  },  helpBubbleContainer: {
+    position: 'absolute',
+    top: Dimensions.get('window').height / 3, // 화면 높이의 1/3 지점
+    right: 20,
+    width: 260,
   },
 });
 
