@@ -351,17 +351,40 @@ const TestScreen: React.FC<TestScreenProps> = ({ device, ftmsManager, onClose, i
               </View>
             </View>          {testCompleted && testResults && (
             <Animated.View style={[styles.resultsSummary, { opacity: fadeAnim }]}>
-              {renderCompatibilityBadge()}
-
-              {/* 결과 메시지를 맨 위에 표시 */}
+              {renderCompatibilityBadge()}              {/* 결과 메시지를 맨 위에 표시 - 판정과 제한사항으로 분리 */}
               {testResults.reasons && testResults.reasons.length > 0 && (
                 <View style={styles.resultMessageContainer}>
                   <View style={styles.resultMessageHeader}>
                     <MaterialCommunityIcons name="information" size={20} color="#00c663" />
                     <Text style={styles.resultMessageTitle}>테스트 결과</Text>
                   </View>
-                  <View style={styles.resultMessageContent}>
-                    <Text style={styles.resultMessageText}>{testResults.reasons[0]}</Text>
+                  <View style={styles.resultMessageContent}>                    {/* 판정 섹션 */}
+                    <View style={styles.judgmentSection}>
+                      <Text style={styles.judgmentText}>
+                        Yafit 연결과 플레이가 가능합니다
+                      </Text>
+                    </View>
+                    
+                    {/* 제한사항 섹션 */}
+                    {(testResults.issuesFound && testResults.issuesFound.length > 0) || 
+                     (testResults.controlTests && Object.entries(testResults.controlTests).some(([_, test]) => test.status !== 'OK')) && (
+                      <View style={styles.limitationSection}>
+                        <Text style={styles.limitationTitle}>제한사항:</Text>
+                        {testResults.issuesFound && testResults.issuesFound.map((issue, index) => (
+                          <Text key={`issue-${index}`} style={styles.limitationText}>
+                            • {issue}
+                          </Text>
+                        ))}                        {testResults.controlTests && Object.entries(testResults.controlTests)
+                          .filter(([_, test]) => test.status !== 'OK')
+                          .map(([name, test], index) => (
+                            <Text key={`control-${index}`} style={styles.limitationText}>
+                              • {name === 'SET_RESISTANCE_LEVEL' ? '유저가 기어 조절 불가' : 
+                                 name === 'SET_TARGET_POWER' ? 'ERG 모드 사용 불가' : 
+                                 name === 'SET_SIM_PARAMS' ? 'SIM 모드 사용 불가' : name}
+                            </Text>
+                          ))}
+                      </View>
+                    )}
                   </View>
                 </View>
               )}
@@ -375,7 +398,7 @@ const TestScreen: React.FC<TestScreenProps> = ({ device, ftmsManager, onClose, i
                     지원 프로토콜: {testResults.supportedProtocols.join(', ')}
                   </Text>
                 </View>
-                {testResults.supportRanges && (
+                {false && testResults.supportRanges && (
                   <View style={styles.rangesCard}>
                     <View style={styles.cardHeader}>
                       <Ionicons name="analytics" size={18} color="#00c663" />
@@ -401,6 +424,57 @@ const TestScreen: React.FC<TestScreenProps> = ({ device, ftmsManager, onClose, i
                           {formatRangeInfo(testResults.supportRanges.power, 'power')}
                         </Text>
                       )}
+                    </View>
+                  </View>                )}
+                {testResults.controlTests && Object.keys(testResults.controlTests).length > 0 && (
+                  <View style={styles.rangesCard}>
+                    <View style={styles.cardHeader}>
+                      <MaterialCommunityIcons name="test-tube" size={18} color="#00c663" />
+                      <Text style={styles.detailSectionTitle}>제어 테스트 결과</Text>
+                    </View>
+                    <View style={styles.controlTestsContainer}>
+                      {Object.entries(testResults.controlTests).map(([name, test]) => {
+                        const getStatusColor = (status: string) => {
+                          switch (status) {
+                            case 'OK': return '#4CAF50';
+                            case 'Failed': return '#F44336';
+                            case 'Not Supported': return '#FF9800';
+                            default: return '#666666';
+                          }
+                        };
+                          const getStatusIcon = (status: string) => {
+                          switch (status) {
+                            case 'OK': return 'circle';
+                            case 'Failed': return 'circle';
+                            case 'Not Supported': return 'circle';
+                            default: return 'circle';
+                          }
+                        };
+                        
+                        const getCommandLabel = (command: string) => {
+                          switch (command) {
+                            case 'SET_RESISTANCE_LEVEL': return '저항 레벨';
+                            case 'SET_TARGET_POWER': return '목표 파워';
+                            case 'SET_SIM_PARAMS': return '경사도 시뮬레이션';
+                            default: return command;
+                          }
+                        };
+                        
+                        return (
+                          <View key={name} style={styles.controlTestItem}>                            <MaterialCommunityIcons 
+                              name={getStatusIcon(test.status)} 
+                              size={12} 
+                              color={getStatusColor(test.status)} 
+                            />
+                            <Text style={styles.controlTestLabel}>
+                              {getCommandLabel(name)}
+                            </Text>
+                            <Text style={[styles.controlTestStatus, { color: getStatusColor(test.status) }]}>
+                              {test.status === 'OK' ? '성공' : test.status === 'Failed' ? '실패' : '미지원'}
+                            </Text>
+                          </View>
+                        );
+                      })}
                     </View>
                   </View>
                 )}
@@ -955,10 +1029,54 @@ const styles = StyleSheet.create({
   },
   logEntryBikeData: {
     color: '#03A9F4',
-  },
-  logEntryResistance: {
+  },  logEntryResistance: {
     fontWeight: 'bold',
     color: '#9C27B0',
+  },
+  controlTestsContainer: {
+    paddingLeft: 8,
+  },
+  controlTestItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 6,
+    paddingHorizontal: 8,
+    marginBottom: 4,
+    backgroundColor: '#242c3b',
+    borderRadius: 8,
+  },
+  controlTestLabel: {
+    color: '#fff',
+    fontSize: 14,
+    marginLeft: 8,
+    flex: 1,
+  },  controlTestStatus: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  judgmentSection: {
+    marginBottom: 12,
+  },  judgmentText: {
+    color: '#ffffff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  limitationSection: {
+    marginTop: 8,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#374151',
+  },
+  limitationTitle: {
+    color: '#FF9800',
+    fontSize: 14,
+    fontWeight: '600',
+    marginBottom: 6,
+  },  limitationText: {
+    color: '#9ca3af',
+    fontSize: 14,
+    lineHeight: 20,
+    marginBottom: 4,
   },
 });
 

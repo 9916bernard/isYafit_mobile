@@ -325,17 +325,40 @@ const getCompatibilityColor = (compatibilityLevel?: string): string => {
                 <Ionicons name="share-outline" size={20} color="#ffffff" />
                 <Text style={styles.shareButtonText}>보고서 공유</Text>
               </TouchableOpacity>
-            </View>
-
-            {/* 테스트 결과 메시지를 상단에 표시 */}
+            </View>            {/* 테스트 결과 메시지를 상단에 표시 - 판정과 제한사항으로 분리 */}
             {results.reasons && results.reasons.length > 0 && (
               <View style={styles.resultMessageSection}>
                 <View style={styles.resultMessageHeader}>
                   <MaterialCommunityIcons name="information" size={24} color="#00c663" />
                   <Text style={styles.resultMessageTitle}>테스트 결과</Text>
                 </View>
-                <View style={styles.resultMessageContent}>
-                  <Text style={styles.resultMessageText}>{results.reasons[0]}</Text>
+                <View style={styles.resultMessageContent}>                  {/* 판정 섹션 */}
+                  <View style={styles.judgmentSection}>
+                    <Text style={styles.judgmentText}>
+                      Yafit 연결과 플레이가 가능합니다
+                    </Text>
+                  </View>
+                  
+                  {/* 제한사항 섹션 */}
+                  {(results.issuesFound && results.issuesFound.length > 0) || 
+                   (results.controlTests && Object.entries(results.controlTests).some(([_, test]) => test.status !== 'OK')) && (
+                    <View style={styles.limitationSection}>
+                      <Text style={styles.limitationTitle}>제한사항:</Text>
+                      {results.issuesFound && results.issuesFound.map((issue, index) => (
+                        <Text key={`issue-${index}`} style={styles.limitationText}>
+                          • {issue}
+                        </Text>
+                      ))}                      {results.controlTests && Object.entries(results.controlTests)
+                        .filter(([_, test]) => test.status !== 'OK')
+                        .map(([name, test], index) => (
+                          <Text key={`control-${index}`} style={styles.limitationText}>
+                            • {name === 'SET_RESISTANCE_LEVEL' ? '유저가 기어 조절 불가' : 
+                               name === 'SET_TARGET_POWER' ? 'ERG 모드 사용 불가' : 
+                               name === 'SET_SIM_PARAMS' ? 'SIM 모드 사용 불가' : name}
+                          </Text>
+                        ))}
+                    </View>
+                  )}
                 </View>
               </View>
             )}
@@ -383,9 +406,8 @@ const getCompatibilityColor = (compatibilityLevel?: string): string => {
                 </View>
               </View>
             </View>            {/* Compatibility Reasons - Collapsible */}
-            {results.reasons && results.reasons.length > 0 && (
-              <View style={styles.section}>
-                <TouchableOpacity 
+            {false && results.reasons && results.reasons.length > 0 && (
+              <View style={styles.section}>                <TouchableOpacity 
                   style={styles.sectionHeader}
                   onPress={() => setShowFullReasons(!showFullReasons)}
                 >
@@ -427,7 +449,45 @@ const getCompatibilityColor = (compatibilityLevel?: string): string => {
                 ))}
               </View>
             </View>
-          )}          {/* Support Ranges */}
+          )}
+
+          {/* Limitation Reasons - 제한 사유 */}
+          {results.controlTests && Object.entries(results.controlTests).some(([_, test]) => test.status !== 'OK') && (
+            <View style={styles.section}>
+              <View style={styles.sectionHeader}>
+                <Icon name="block" size={24} color="#FF9800" />
+                <Text style={styles.sectionTitle}>제한 사유</Text>
+              </View>
+              <View style={styles.limitationReasonsContainer}>
+                {Object.entries(results.controlTests)
+                  .filter(([_, test]) => test.status !== 'OK')
+                  .map(([name, test], index) => {                    const getReasonText = (commandName: string, status: string) => {
+                      const commandLabels = {
+                        'SET_RESISTANCE_LEVEL': '유저가 기어 조절 불가',
+                        'SET_TARGET_POWER': 'ERG 모드 사용 불가', 
+                        'SET_SIM_PARAMS': 'SIM 모드 사용 불가'
+                      };
+                      
+                      const commandLabel = commandLabels[commandName as keyof typeof commandLabels] || commandName;
+                      const statusReason = status === 'Failed' ? '미작동' : '미지원';
+                      
+                      return `${commandLabel} ⇒ ${commandName.toLowerCase()} ${statusReason}`;
+                    };
+                    
+                    return (
+                      <View key={index} style={styles.limitationReasonItem}>
+                        <View style={styles.limitationReasonBullet} />
+                        <Text style={styles.limitationReasonText}>
+                          {getReasonText(name, test.status)}
+                        </Text>
+                      </View>
+                    );
+                  })}
+              </View>
+            </View>
+          )}
+
+          {/* Support Ranges */}
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <Ionicons name="speedometer-outline" size={24} color="#00c663" />
@@ -1158,10 +1218,57 @@ const styles = StyleSheet.create({
   },
   logEntryBikeData: {
     color: '#03A9F4',
-  },
-  logEntryResistance: {
+  },  logEntryResistance: {
     fontWeight: 'bold',
     color: '#9C27B0',
+  },
+  judgmentSection: {
+    marginBottom: 12,
+  },  judgmentText: {
+    color: '#ffffff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  limitationSection: {
+    marginTop: 8,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#374151',
+  },
+  limitationTitle: {
+    color: '#FF9800',
+    fontSize: 14,
+    fontWeight: '600',
+    marginBottom: 6,
+  },  limitationText: {
+    color: '#9ca3af',
+    fontSize: 14,
+    lineHeight: 20,
+    marginBottom: 4,
+  },
+  limitationReasonsContainer: {
+    backgroundColor: '#1a2029',
+    borderRadius: 12,
+    padding: 16,
+  },
+  limitationReasonItem: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 8,
+  },
+  limitationReasonBullet: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#FF9800',
+    marginRight: 12,
+    marginTop: 5,
+  },
+  limitationReasonText: {
+    color: '#ffffff',
+    fontSize: 14,
+    flex: 1,
+    lineHeight: 20,
   },
 });
 
