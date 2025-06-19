@@ -8,6 +8,10 @@ const FTMS_CONTROL_POINT_CHAR_UUID = "00002ad9-0000-1000-8000-00805f9b34fb";
 // const FTMS_STATUS_CHAR_UUID = "00002ada-0000-1000-8000-00805f9b34fb"; // Optional
 const FTMS_INDOOR_BIKE_DATA_CHAR_UUID = "00002ad2-0000-1000-8000-00805f9b34fb";
 
+// Mobi UUIDs
+const MOBI_SERVICE_UUID = "0000ffe0-0000-1000-8000-00805f9b34fb";
+const MOBI_DATA_CHAR_UUID = "0000ffe4-0000-1000-8000-00805f9b34fb";
+
 // FTMS Control Point Commands
 const REQUEST_CONTROL = Buffer.from([0x00]);
 const RESET = Buffer.from([0x01]);
@@ -65,6 +69,16 @@ interface IndoorBikeData {
     remainingTime?: number;
     raw?: string;
     flags?: number;
+    // Mobi specific fields
+    gearLevel?: number;
+    batteryLevel?: number;
+}
+
+// Protocol type enum
+export enum ProtocolType {
+    FTMS = 'FTMS',
+    CSC = 'CSC',
+    MOBI = 'MOBI'
 }
 
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
@@ -86,10 +100,11 @@ export class FTMSManager {
 
     private ftmsFeatureBits: number = 0;
     private isDeviceActive: boolean = false; // Track if device is active (started)
+    private detectedProtocol: ProtocolType | null = null; // Track detected protocol
     
     // Logging system
     private logs: LogEntry[] = [];
-    private logCallback: ((logs: LogEntry[]) => void) | null = null;    constructor() {
+    private logCallback: ((logs: LogEntry[]) => void) | null = null;constructor() {
         this.bleManager = new BleManager();
         this.monitorBluetoothState();
         this.clearLogs();
@@ -109,12 +124,11 @@ export class FTMSManager {
         this.currentState = state;
         return state === State.PoweredOn;
     }
-    
-    async scanForFTMSDevices(
+      async scanForFTMSDevices(
         scanDuration: number = 10000,
         onDeviceFound: (device: Device) => void
     ): Promise<void> {
-        console.log("Scanning for FTMS devices...");
+        console.log("Scanning for fitness devices (FTMS, CSC, Mobi)...");
         
         // Check Bluetooth state before scanning
         const isBluetoothOn = await this.checkBluetoothState();
@@ -125,7 +139,14 @@ export class FTMSManager {
         
         return new Promise((resolve, reject) => {
             try {
-                this.bleManager.startDeviceScan([FTMS_SERVICE_UUID], null, (error, device) => {
+                // Scan for multiple protocol UUIDs
+                const serviceUUIDs = [
+                    FTMS_SERVICE_UUID,
+                    "00001816-0000-1000-8000-00805f9b34fb", // CSC Service UUID
+                    MOBI_SERVICE_UUID
+                ];
+                
+                this.bleManager.startDeviceScan(serviceUUIDs, null, (error, device) => {
                     if (error) {
                         console.error("Scan error:", error);
                         this.bleManager.stopDeviceScan();
@@ -133,7 +154,7 @@ export class FTMSManager {
                         return;
                     }
                     if (device) {
-                        console.log(`Found FTMS device: ${device.name} (${device.id})`);
+                        console.log(`Found fitness device: ${device.name} (${device.id})`);
                         onDeviceFound(device);
                     }
                 });
@@ -161,17 +182,33 @@ export class FTMSManager {
             await device.discoverAllServicesAndCharacteristics();
             this.logInfo("Services and characteristics discovered");
 
-            // Read FTMS Features
-            await this.readFTMSFeatures();
+            // Detect protocol and perform protocol-specific initialization
+            await this.detectProtocol();
+            
+            // Protocol-specific initialization
+            switch (this.detectedProtocol) {
+                case ProtocolType.FTMS:
+                    await this.readFTMSFeatures();
+                    break;
+                case ProtocolType.CSC:
+                    this.logInfo("CSC protocol detected - no specific initialization needed");
+                    break;
+                case ProtocolType.MOBI:
+                    this.logInfo("Mobi protocol detected - read-only protocol");
+                    break;
+                default:
+                    this.logWarning("Unknown protocol detected");
+            }
 
             return device;
         } catch (error) {
             this.logError(`Connection error: ${error instanceof Error ? error.message : String(error)}`);
             this.connectedDevice = null;
             this.isDeviceActive = false;
+            this.detectedProtocol = null;
             throw error;
         }
-    }    async disconnectDevice(): Promise<void> {
+    }async disconnectDevice(): Promise<void> {
         if (this.connectedDevice) {
             try {
                 this.logInfo(`Disconnecting from ${this.connectedDevice.name}...`);
@@ -235,8 +272,6 @@ export class FTMSManager {
             throw error;
         }
     }
-
-
     async subscribeToNotifications(
         onControlPointResponse: (data: Buffer) => void,
         onIndoorBikeData: (data: IndoorBikeData) => void
@@ -245,8 +280,33 @@ export class FTMSManager {
             throw new Error("Device not connected.");
         }
 
+        // First detect protocol if not already detected
+        if (!this.detectedProtocol) {
+            await this.detectProtocol();
+        }
+
+        // Subscribe based on detected protocol
+        switch (this.detectedProtocol) {
+            case ProtocolType.FTMS:
+                await this.subscribeToFTMSNotifications(onControlPointResponse, onIndoorBikeData);
+                break;
+            case ProtocolType.CSC:
+                await this.subscribeToCSCNotifications(onIndoorBikeData);
+                break;
+            case ProtocolType.MOBI:
+                await this.subscribeToMobiNotifications(onIndoorBikeData);
+                break;
+            default:
+                throw new Error("Unsupported protocol for notifications");
+        }
+    }
+
+    private async subscribeToFTMSNotifications(
+        onControlPointResponse: (data: Buffer) => void,
+        onIndoorBikeData: (data: IndoorBikeData) => void
+    ): Promise<void> {
         // Control Point Notifications
-        this.controlPointSubscription = this.connectedDevice.monitorCharacteristicForService(
+        this.controlPointSubscription = this.connectedDevice!.monitorCharacteristicForService(
             FTMS_SERVICE_UUID,
             FTMS_CONTROL_POINT_CHAR_UUID,
             (error, characteristic) => {
@@ -262,10 +322,10 @@ export class FTMSManager {
                 }
             }
         );
-        console.log("Subscribed to Control Point notifications");
+        console.log("Subscribed to FTMS Control Point notifications");
 
         // Indoor Bike Data Notifications
-        this.indoorBikeDataSubscription = this.connectedDevice.monitorCharacteristicForService(
+        this.indoorBikeDataSubscription = this.connectedDevice!.monitorCharacteristicForService(
             FTMS_SERVICE_UUID,
             FTMS_INDOOR_BIKE_DATA_CHAR_UUID,
             (error, characteristic) => {
@@ -275,14 +335,57 @@ export class FTMSManager {
                 }
                 if (characteristic?.value) {
                     const buffer = Buffer.from(characteristic.value, 'base64');
-                    // console.log(`Indoor Bike Data: ${buffer.toString('hex')}`);
                     const parsedData = this.parseIndoorBikeData(buffer);
                     onIndoorBikeData(parsedData);
                 }
             }
         );
-        console.log("Subscribed to Indoor Bike Data notifications");
-    }    parseControlPointResponse(data: Buffer): void {
+        console.log("Subscribed to FTMS Indoor Bike Data notifications");
+    }
+
+    private async subscribeToCSCNotifications(
+        onIndoorBikeData: (data: IndoorBikeData) => void
+    ): Promise<void> {
+        // CSC Measurement Notifications
+        this.indoorBikeDataSubscription = this.connectedDevice!.monitorCharacteristicForService(
+            "00001816-0000-1000-8000-00805f9b34fb", // CSC Service UUID
+            "00002a5b-0000-1000-8000-00805f9b34fb", // CSC Measurement Characteristic
+            (error, characteristic) => {
+                if (error) {
+                    console.error("CSC Measurement Notification error:", error);
+                    return;
+                }
+                if (characteristic?.value) {
+                    const buffer = Buffer.from(characteristic.value, 'base64');
+                    const parsedData = this.parseCSCData(buffer);
+                    onIndoorBikeData(parsedData);
+                }
+            }
+        );
+        console.log("Subscribed to CSC Measurement notifications");
+    }
+
+    private async subscribeToMobiNotifications(
+        onIndoorBikeData: (data: IndoorBikeData) => void
+    ): Promise<void> {
+        // Mobi Data Notifications
+        this.indoorBikeDataSubscription = this.connectedDevice!.monitorCharacteristicForService(
+            MOBI_SERVICE_UUID,
+            MOBI_DATA_CHAR_UUID,
+            (error, characteristic) => {
+                if (error) {
+                    console.error("Mobi Data Notification error:", error);
+                    return;
+                }
+                if (characteristic?.value) {
+                    const buffer = Buffer.from(characteristic.value, 'base64');
+                    const parsedData = this.parseMobiData(buffer);
+                    onIndoorBikeData(parsedData);
+                }
+            }
+        );
+        console.log("Subscribed to Mobi Data notifications");
+    }parseControlPointResponse(data: Buffer): void {
         if (data.length >= 3) {
             const responseOpCode = data[0]; // Should be 0x80 for response
             const requestOpCode = data[1];
@@ -453,18 +556,30 @@ export class FTMSManager {
         return parsed;
     }    // --- Control Commands ---
     async requestControl(): Promise<void> {
+        if (this.detectedProtocol !== ProtocolType.FTMS) {
+            this.logWarning(`Control commands not supported for ${this.detectedProtocol} protocol`);
+            throw new Error(`Control commands not supported for ${this.detectedProtocol} protocol`);
+        }
         this.logInfo("명령 전송: REQUEST_CONTROL (0x00) - 제어 권한 요청");
         await this.writeControlPoint(REQUEST_CONTROL);
         await delay(500); // Time for device to respond
     }
 
     async resetMachine(): Promise<void> {
+        if (this.detectedProtocol !== ProtocolType.FTMS) {
+            this.logWarning(`Control commands not supported for ${this.detectedProtocol} protocol`);
+            throw new Error(`Control commands not supported for ${this.detectedProtocol} protocol`);
+        }
         this.logInfo("명령 전송: RESET (0x01) - 기기 리셋");
         await this.writeControlPoint(RESET);
         await delay(1000);
     }    
     
     async startMachine(): Promise<void> {
+        if (this.detectedProtocol !== ProtocolType.FTMS) {
+            this.logWarning(`Control commands not supported for ${this.detectedProtocol} protocol`);
+            throw new Error(`Control commands not supported for ${this.detectedProtocol} protocol`);
+        }
         this.logInfo("명령 전송: START (0x07) - 기기 시작");
         await this.writeControlPoint(START);
         this.isDeviceActive = true; // Set device as active
@@ -472,6 +587,10 @@ export class FTMSManager {
     }
 
     async stopMachine(): Promise<void> {
+        if (this.detectedProtocol !== ProtocolType.FTMS) {
+            this.logWarning(`Control commands not supported for ${this.detectedProtocol} protocol`);
+            throw new Error(`Control commands not supported for ${this.detectedProtocol} protocol`);
+        }
         this.logInfo("명령 전송: STOP (0x08) - 기기 정지");
         await this.writeControlPoint(STOP); // Stop command might have parameters for pause etc.
         this.isDeviceActive = false; // Set device as inactive
@@ -479,12 +598,20 @@ export class FTMSManager {
     }
 
     async setResistance(level: number): Promise<void> {
+        if (this.detectedProtocol !== ProtocolType.FTMS) {
+            this.logWarning(`Control commands not supported for ${this.detectedProtocol} protocol`);
+            throw new Error(`Control commands not supported for ${this.detectedProtocol} protocol`);
+        }
         console.log(`Sending Set Resistance Level command (${level})`);
         await this.writeControlPoint(SET_RESISTANCE_LEVEL(level));
         await delay(500);
     }
 
     async setTargetPower(watts: number): Promise<void> {
+        if (this.detectedProtocol !== ProtocolType.FTMS) {
+            this.logWarning(`Control commands not supported for ${this.detectedProtocol} protocol`);
+            throw new Error(`Control commands not supported for ${this.detectedProtocol} protocol`);
+        }
         // Check if Target Power setting is supported via FTMS Feature bits (Target Setting Features, bit 2)
         // const targetSettingFeatures = ... (read from 2nd part of FTMS_FEATURE_CHAR_UUID)
         // if (!(targetSettingFeatures & (1 << 2))) {
@@ -496,13 +623,17 @@ export class FTMSManager {
     }
 
     async setSimulationParameters(windSpeed: number = 0, grade: number = 0, crr: number = 0.004, cw: number = 0.5): Promise<void> {
+        if (this.detectedProtocol !== ProtocolType.FTMS) {
+            this.logWarning(`Control commands not supported for ${this.detectedProtocol} protocol`);
+            throw new Error(`Control commands not supported for ${this.detectedProtocol} protocol`);
+        }
         // Check if Simulation Parameters setting is supported (Target Setting Features, bit 5)
         console.log(`Sending Set Simulation Parameters command (Wind: ${windSpeed}, Grade: ${grade}%, CRR: ${crr}, CW: ${cw})`);
         // Using the default fixed values from Python for simplicity here, or the dynamic one:
         // await this.writeControlPoint(DEFAULT_SIM_PARAMS);
         await this.writeControlPoint(SET_SIM_PARAMS(windSpeed, grade, crr, cw));
         await delay(500);
-    }    // Example test sequence
+    }// Example test sequence
 
 
     async runTestSequence(): Promise<void> {
@@ -665,6 +796,134 @@ export class FTMSManager {
             // destroy 후에는 bleManager를 null로 설정하여 중복 호출 방지
             (this as any).bleManager = null;
         }
+    }
+
+    // Protocol detection method
+    async detectProtocol(): Promise<ProtocolType> {
+        if (!this.connectedDevice) {
+            throw new Error("Device not connected");
+        }        try {
+            this.logInfo("Detecting device protocol (Priority: FTMS > CSC > MOBI)...");
+            const services = await this.connectedDevice.services();
+            
+            // First pass: Check for FTMS (highest priority)
+            for (const service of services) {
+                this.logInfo(`Found service: ${service.uuid}`);
+                
+                if (service.uuid.toLowerCase() === FTMS_SERVICE_UUID.toLowerCase()) {
+                    this.detectedProtocol = ProtocolType.FTMS;
+                    this.logSuccess("Detected FTMS protocol (highest priority) - will use FTMS");
+                    return ProtocolType.FTMS;
+                }
+            }
+            
+            // Second pass: Check for CSC only if FTMS not found
+            for (const service of services) {
+                if (service.uuid.toLowerCase() === "00001816-0000-1000-8000-00805f9b34fb") {
+                    this.detectedProtocol = ProtocolType.CSC;
+                    this.logSuccess("Detected CSC protocol (FTMS not found) - will use CSC");
+                    return ProtocolType.CSC;
+                }
+            }
+            
+            // Third pass: Check for Mobi only if FTMS and CSC not found
+            for (const service of services) {
+                if (service.uuid.toLowerCase() === MOBI_SERVICE_UUID.toLowerCase()) {
+                    this.detectedProtocol = ProtocolType.MOBI;
+                    this.logSuccess("Detected Mobi protocol (FTMS and CSC not found) - will use Mobi");
+                    return ProtocolType.MOBI;
+                }
+            }
+            
+            throw new Error("No supported protocol detected");
+        } catch (error) {
+            this.logError(`Protocol detection error: ${error instanceof Error ? error.message : String(error)}`);
+            throw error;
+        }
+    }
+
+    getDetectedProtocol(): ProtocolType | null {
+        return this.detectedProtocol;
+    }
+
+    // Parse Mobi protocol data
+    parseMobiData(data: Buffer): IndoorBikeData {
+        const parsed: IndoorBikeData = {
+            raw: data.toString('hex')
+        };
+
+        try {
+            // Mobi parsing logic based on C# code
+            if (data.length > 14) {
+                // RPM 데이터 (bytes[9], bytes[10]) - Little Endian
+                if (data.length >= 11) {
+                    const rpmLow = data[10];
+                    const rpmHigh = data[9];
+                    const rpm = (rpmHigh << 8) | rpmLow;
+                    parsed.instantaneousCadence = rpm;
+                    this.logInfo(`Mobi 데이터: RPM = ${rpm}`);
+                }
+
+                // 기어 데이터 (bytes[13])
+                if (data.length >= 14) {
+                    const gearLevel = data[13];
+                    parsed.gearLevel = gearLevel;
+                    parsed.resistanceLevel = gearLevel; // Use gear as resistance level
+                    this.logInfo(`Mobi 데이터: 기어 레벨 = ${gearLevel}`);
+                }
+
+                // 배터리 (항상 100%로 고정)
+                parsed.batteryLevel = 100;
+            }
+        } catch (error) {
+            this.logError(`Mobi data parsing error: ${error instanceof Error ? error.message : String(error)}`);
+        }
+
+        return parsed;
+    }
+
+    // Parse CSC (Cycling Speed and Cadence) protocol data
+    parseCSCData(data: Buffer): IndoorBikeData {
+        const parsed: IndoorBikeData = {
+            raw: data.toString('hex')
+        };
+
+        try {
+            if (data.length >= 1) {
+                const flags = data[0];
+                let index = 1;
+
+                // Wheel Revolution Data Present (bit 0)
+                if (flags & 0x01) {
+                    if (data.length >= index + 6) {
+                        const wheelRevolutions = data.readUInt32LE(index);
+                        const lastWheelEventTime = data.readUInt16LE(index + 4);
+                        // Calculate speed from wheel revolutions if wheel circumference is known
+                        // For now, just log the raw values
+                        this.logInfo(`CSC 데이터: Wheel Revolutions = ${wheelRevolutions}, Time = ${lastWheelEventTime}`);
+                        index += 6;
+                    }
+                }
+
+                // Crank Revolution Data Present (bit 1)
+                if (flags & 0x02) {
+                    if (data.length >= index + 4) {
+                        const crankRevolutions = data.readUInt16LE(index);
+                        const lastCrankEventTime = data.readUInt16LE(index + 2);
+                        
+                        // Calculate cadence (RPM) from crank revolutions
+                        // This is a simplified calculation - in reality you'd need to track previous values
+                        parsed.instantaneousCadence = crankRevolutions; // Placeholder
+                        this.logInfo(`CSC 데이터: Crank Revolutions = ${crankRevolutions}, Time = ${lastCrankEventTime}`);
+                        index += 4;
+                    }
+                }
+            }
+        } catch (error) {
+            this.logError(`CSC data parsing error: ${error instanceof Error ? error.message : String(error)}`);
+        }
+
+        return parsed;
     }
 }
 

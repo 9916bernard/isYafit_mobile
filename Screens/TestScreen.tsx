@@ -54,9 +54,9 @@ const TestScreen: React.FC<TestScreenProps> = ({ device, ftmsManager, onClose, i
   const [isRunning, setIsRunning] = useState(false);
   const [testCompleted, setTestCompleted] = useState(false);
   const [testResults, setTestResults] = useState<TestResults | null>(null);
-  const [showReport, setShowReport] = useState(false);
-  const [realtimeLogs, setRealtimeLogs] = useState<string[]>([]);
+  const [showReport, setShowReport] = useState(false);  const [realtimeLogs, setRealtimeLogs] = useState<string[]>([]);
   const [showLogs, setShowLogs] = useState(false);
+  const [detectedProtocol, setDetectedProtocol] = useState<string | null>(null);
   const logScrollViewRef = useRef<ScrollView>(null);
   const testerRef = useRef<FTMSTester | null>(null);
   const safeAreaStyles = useSafeAreaStyles();
@@ -66,9 +66,13 @@ const TestScreen: React.FC<TestScreenProps> = ({ device, ftmsManager, onClose, i
   const scaleAnim = useRef(new Animated.Value(0.9)).current;
   const slideAnim = useRef(new Animated.Value(50)).current;
   const animationContainerHeight = useRef(new Animated.Value(0)).current;
-  const animationOpacity = useRef(new Animated.Value(0)).current;useEffect(() => {
+  const animationOpacity = useRef(new Animated.Value(0)).current;  useEffect(() => {
     // Initialize the FTMSTester
     testerRef.current = new FTMSTester(ftmsManager);
+    
+    // Check detected protocol
+    const protocol = ftmsManager.getDetectedProtocol();
+    setDetectedProtocol(protocol);
     
     // Entrance animations
     Animated.parallel([
@@ -583,9 +587,27 @@ const TestScreen: React.FC<TestScreenProps> = ({ device, ftmsManager, onClose, i
                 <Text style={styles.viewReportButtonText}>전체 보고서 보기</Text>
               </TouchableOpacity>
             </Animated.View>
-          )}
-
-          <View style={styles.buttonContainer}>
+          )}          <View style={styles.buttonContainer}>
+            {/* Mobi Protocol Instruction */}
+            {detectedProtocol === 'MOBI' && !testCompleted && (
+              <View style={styles.mobiInstructionCard}>
+                <View style={styles.mobiInstructionHeader}>
+                  <MaterialCommunityIcons name="bike" size={24} color="#FF9800" />
+                  <Text style={styles.mobiInstructionTitle}>Mobi 프로토콜 안내</Text>
+                </View>
+                <Text style={styles.mobiInstructionText}>
+                  Mobi 기기는 페달을 돌려야 데이터가 전송됩니다.{'\n'}
+                  테스트 진행 중 지속적으로 페달을 돌려주세요.
+                </Text>
+                <View style={styles.mobiInstructionNote}>
+                  <MaterialCommunityIcons name="information" size={16} color="#666" />
+                  <Text style={styles.mobiInstructionNoteText}>
+                    이 프로토콜은 읽기 전용으로 케이던스 데이터만 확인됩니다.
+                  </Text>
+                </View>
+              </View>
+            )}
+            
             <View style={styles.actionButtonContainer}>
               {!isRunning && !testCompleted && (                <TouchableOpacity
                   style={styles.startButton}
@@ -1153,12 +1175,51 @@ const styles = StyleSheet.create({
     color: '#FF9800',
     fontSize: 14,
     fontWeight: '600',
-    marginBottom: 6,
-  },  limitationText: {
+    marginBottom: 6,  },  limitationText: {
     color: '#9ca3af',
     fontSize: 14,
     lineHeight: 20,
     marginBottom: 4,
+  },
+  // Mobi instruction styles
+  mobiInstructionCard: {
+    backgroundColor: '#2d3748',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+    borderLeftWidth: 4,
+    borderLeftColor: '#FF9800',
+  },
+  mobiInstructionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  mobiInstructionTitle: {
+    color: '#FF9800',
+    fontSize: 16,
+    fontWeight: '600',
+    marginLeft: 8,
+  },
+  mobiInstructionText: {
+    color: '#ffffff',
+    fontSize: 14,
+    lineHeight: 20,
+    marginBottom: 12,
+  },
+  mobiInstructionNote: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: '#374151',
+    padding: 8,
+    borderRadius: 8,
+  },
+  mobiInstructionNoteText: {
+    color: '#9ca3af',
+    fontSize: 12,
+    lineHeight: 16,
+    marginLeft: 6,
+    flex: 1,
   },
 });
 

@@ -1,7 +1,7 @@
 // FtmsTester.ts - FTMS testing functionality for IsYafit app
 import { Device } from 'react-native-ble-plx';
 import { Buffer } from 'buffer';
-import { FTMSManager } from './FtmsManager';
+import { FTMSManager, ProtocolType } from './FtmsManager';
 import { 
     RANGE_CHAR_UUIDS, 
     TestResults, 
@@ -120,8 +120,7 @@ export class FTMSTester {
             this.updateProgress(10, "서비스 확인 중...");
             this.logInteraction('INFO - Test: Discovering services and characteristics.');
             await this.identifyProtocols();
-            
-            this.logInteraction(`INFO - Test: Identified protocols: ${this.testResults.supportedProtocols.join(', ') || 'None'}.`);
+              this.logInteraction(`INFO - Test: Identified protocols: ${this.testResults.supportedProtocols.join(', ') || 'None'}.`);
             
             // Step 2: Read supported ranges if FTMS protocol is available
             if (this.testResults.supportedProtocols.includes("FTMS")) {
@@ -181,13 +180,34 @@ export class FTMSTester {
                 // Finalize CSC test
                 this.mergeFtmsManagerLogs(); // Merge logs before finalizing
                 this.testResults = finalizeTestReport(this.testResults);
-                this.updateProgress(100, "CSC 테스트 완료 (제한된 기능)");
+                this.updateProgress(100, "CSC 테스트 완료 (제한된 기능)");                if (this.onTestComplete) {
+                    this.onTestComplete(this.testResults);
+                }
+            } else if (this.testResults.supportedProtocols.includes("MOBI")) {
+                // Limited Mobi protocol testing (read-only)
+                this.updateProgress(30, "Mobi 데이터 모니터링 중...");
+                this.logInteraction('INFO - Test: Starting limited Mobi protocol testing (read-only).');
+                await this.monitorMobiData();
+                
+                // Let it run for a while to collect data
+                const elapsed = Date.now() - this.startTime;
+                const remainingTime = Math.max(0, this.testDuration - elapsed);
+                
+                if (remainingTime > 0) {
+                    this.updateProgress(50, "Mobi 데이터 수집 중... (페달을 계속 돌려주세요)");
+                    await new Promise(resolve => setTimeout(resolve, remainingTime));
+                }
+                
+                // Finalize Mobi test
+                this.mergeFtmsManagerLogs(); // Merge logs before finalizing
+                this.testResults = finalizeTestReport(this.testResults);
+                this.updateProgress(100, "Mobi 테스트 완료 (읽기 전용)");
                 if (this.onTestComplete) {
                     this.onTestComplete(this.testResults);
                 }
             } else {
                 // No supported protocols
-                this.testResults.reasons.push("지원되는 프로토콜(FTMS, CSC)을 찾을 수 없습니다.");
+                this.testResults.reasons.push("지원되는 프로토콜(FTMS, CSC, MOBI)을 찾을 수 없습니다.");
                 this.mergeFtmsManagerLogs(); // Merge logs before finalizing
                 this.testResults = finalizeTestReport(this.testResults);
                 this.updateProgress(100, "호환 불가능한 프로토콜");
@@ -293,27 +313,41 @@ export class FTMSTester {
             if (serviceUUIDs.includes("00001826-0000-1000-8000-00805f9b34fb")) {
                 supportedProtocols.push("FTMS");
             }
-            
-            // CSC (Cycling Speed and Cadence)
+              // CSC (Cycling Speed and Cadence)
             if (serviceUUIDs.includes("00001816-0000-1000-8000-00805f9b34fb")) {
                 supportedProtocols.push("CSC");
             }
             
+            // Mobi protocol
+            if (serviceUUIDs.includes("0000ffe0-0000-1000-8000-00805f9b34fb")) {
+                supportedProtocols.push("MOBI");
+            }
+            
             // Custom protocols can be added here if needed
-            
-            this.testResults.supportedProtocols = supportedProtocols;
-            
-            // Set primary protocol
+              // Protocol priority: FTMS > CSC > MOBI
+            // If both FTMS and CSC are detected, prioritize FTMS
+            // If only CSC is detected, use CSC
+            const prioritizedProtocols = [];
             if (supportedProtocols.includes("FTMS")) {
+                prioritizedProtocols.push("FTMS");
                 this.testResults.deviceInfo.protocol = "FTMS (표준)";
             } else if (supportedProtocols.includes("CSC")) {
+                prioritizedProtocols.push("CSC");
                 this.testResults.deviceInfo.protocol = "CSC (표준)";
+            } else if (supportedProtocols.includes("MOBI")) {
+                prioritizedProtocols.push("MOBI");
+                this.testResults.deviceInfo.protocol = "MOBI (커스텀)";
             } else if (supportedProtocols.length > 0) {
+                prioritizedProtocols.push(supportedProtocols[0]);
                 this.testResults.deviceInfo.protocol = `${supportedProtocols[0]} (커스텀)`;
             } else {
                 this.testResults.deviceInfo.protocol = "알 수 없음";
                 this.testResults.issuesFound.push("지원되는 프로토콜을 식별할 수 없습니다.");
-            }
+            }            // Set the prioritized protocol list (only the highest priority one)
+            this.testResults.supportedProtocols = prioritizedProtocols;
+            
+            this.logInteraction(`INFO - FTMSTester: All detected protocols: ${supportedProtocols.join(', ') || 'None'}.`);
+            this.logInteraction(`INFO - FTMSTester: Selected protocol: ${prioritizedProtocols[0] || 'None'} (Priority: FTMS > CSC > MOBI).`);
             
             // Read FTMS features if available
             if (supportedProtocols.includes("FTMS")) {
@@ -527,19 +561,47 @@ export class FTMSTester {
             throw error;
         }
     }
-    
-    private async monitorCscData(): Promise<void> {
+      private async monitorCscData(): Promise<void> {
         try {
-            // CSC monitoring would be implemented here
-            this.testResults.issuesFound.push("CSC 데이터 모니터링은 현재 구현되지 않았습니다.");
+            this.logInteraction('INFO - [monitorCscData] Setting up notifications for CSC Data.');
+            await this.ftmsManager.subscribeToNotifications(
+                // No control point for CSC
+                () => {},
+                // CSC Data handler
+                (data) => {
+                    this.handleBikeData(data);
+                }
+            );
             
-            // Placeholder for future CSC monitoring implementation
+            this.logInteraction('INFO - [monitorCscData] CSC notifications setup completed.');
             
         } catch (error) {
-            this.testResults.issuesFound.push(`CSC 알림 오류: ${error instanceof Error ? error.message : String(error)}`);
+            this.logInteraction(`ERROR - [monitorCscData] Error subscribing to CSC notifications: ${error instanceof Error ? error.message : String(error)}`);
+            this.testResults.issuesFound.push(`CSC 알림 구독 오류: ${error instanceof Error ? error.message : String(error)}`);
             throw error;
         }
-    }    private async testControlPoints(): Promise<void> {
+    }
+
+    private async monitorMobiData(): Promise<void> {
+        try {
+            this.logInteraction('INFO - [monitorMobiData] Setting up notifications for Mobi Data (read-only protocol).');
+            await this.ftmsManager.subscribeToNotifications(
+                // No control point for Mobi
+                () => {},
+                // Mobi Data handler
+                (data) => {
+                    this.handleBikeData(data);
+                }
+            );
+            
+            this.logInteraction('INFO - [monitorMobiData] Mobi notifications setup completed. Device is read-only - no control commands will be sent.');
+            
+        } catch (error) {
+            this.logInteraction(`ERROR - [monitorMobiData] Error subscribing to Mobi notifications: ${error instanceof Error ? error.message : String(error)}`);
+            this.testResults.issuesFound.push(`Mobi 알림 구독 오류: ${error instanceof Error ? error.message : String(error)}`);
+            throw error;
+        }
+    }private async testControlPoints(): Promise<void> {
         try {
             if (!this.checkConnectionAndStopIfNeeded()) return;
             
@@ -749,9 +811,7 @@ export class FTMSTester {
         } else {
             this.logInteraction(`DEBUG - [handleControlPointResponse] Received CP response for ${commandName} but no command is currently pending`);
         }
-    }
-
-    private handleBikeData(data: any) {
+    }    private handleBikeData(data: any) {
         // Update data fields
         if (data.instantaneousSpeed !== undefined) {
             this.testResults = updateDataField(this.testResults, 'speed', data.instantaneousSpeed);
@@ -762,6 +822,17 @@ export class FTMSTester {
         if (data.instantaneousPower !== undefined) {
             this.testResults = updateDataField(this.testResults, 'power', data.instantaneousPower);
         }
+        
+        // Handle Mobi-specific data
+        if (data.gearLevel !== undefined) {
+            this.testResults = updateDataField(this.testResults, 'gear', data.gearLevel);
+            this.logInteraction(`INFO - [handleBikeData] Mobi 기어 레벨: ${data.gearLevel}`);
+        }
+        if (data.batteryLevel !== undefined) {
+            this.testResults = updateDataField(this.testResults, 'battery', data.batteryLevel);
+            this.logInteraction(`INFO - [handleBikeData] Mobi 배터리 레벨: ${data.batteryLevel}%`);
+        }
+        
         if (data.resistanceLevel !== undefined) {
             const newResistance = data.resistanceLevel;
             const currentTime = Date.now();
