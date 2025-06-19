@@ -14,7 +14,7 @@ import { Colors, ButtonStyles, CardStyles, TextStyles, Shadows } from '../styles
 import Toast from 'react-native-root-toast';
 
 
-// 앱 버전 관리
+// 0.6.0 FTMS CSC 까지 동작 확인 버전
 const APP_VERSION = 'v0.6.0';
 
 function App() {
