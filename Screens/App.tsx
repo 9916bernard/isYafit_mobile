@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { StyleSheet, View, Text, FlatList, TouchableOpacity, PermissionsAndroid, Platform, Linking, ScrollView, SafeAreaView, Modal, Alert } from 'react-native';
+import { StyleSheet, View, Text, FlatList, TouchableOpacity, PermissionsAndroid, Platform, Linking, ScrollView, SafeAreaView, Modal, Alert, Dimensions, TouchableWithoutFeedback } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import LinearGradient from 'react-native-linear-gradient';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -32,7 +32,9 @@ function App() {
   const [showLogScreen, setShowLogScreen] = useState(false); // For showing the enhanced log screen
   const [showModeSelection, setShowModeSelection] = useState(false); // For showing mode selection
   const [showRealtimeData, setShowRealtimeData] = useState(false); // For showing realtime data screen
-  const [isLoadingCompatibilityTest, setIsLoadingCompatibilityTest] = useState(false); // For showing loading screen
+  const [isLoadingCompatibilityTest, setIsLoadingCompatibilityTest] = useState(false); // For showing loading screen    // Help popup states
+  const [isHelpPopupVisible, setIsHelpPopupVisible] = useState(false);
+  const screenHeight = Dimensions.get('window').height;
 
   const requestPermissions = useCallback(async () => {
     if (Platform.OS === 'android') {
@@ -186,7 +188,14 @@ function App() {
       return;
     }
     setShowModeSelection(true);
-  };  // Handle mode selection
+  };  // Help popup functions
+  const showHelpPopup = () => {
+    setIsHelpPopupVisible(true);
+  };
+  const hideHelpPopup = () => {
+    setIsHelpPopupVisible(false);
+  };
+  // Handle mode selection
   const handleSelectRealtimeData = async () => {
     setShowModeSelection(false);
     setIsLoadingCompatibilityTest(true); // 로딩 화면 표시 (이름은 호환성 테스트용이지만 재사용)
@@ -345,10 +354,6 @@ function App() {
         setStatusMessage('블루투스가 켜져 있습니다. 스캔을 시작할 수 있습니다.');
       } else {
         setStatusMessage('블루투스가 꺼져 있습니다. 블루투스 설정으로 이동합니다.');
-        // 블루투스 설정으로 이동 (안드로이드만 해당)
-        if (Platform.OS === 'android') {
-          Linking.openSettings();
-        }
       }
     } catch (error) {
       console.error("Bluetooth state check error:", error);
@@ -418,10 +423,17 @@ function App() {
             </Text>
           </View>
         </LinearGradient>
-      </TouchableOpacity>
-      <View style={styles.sectionHeader}>
-        <Icon name="devices" size={20} color={Colors.primary} />
-        <Text style={styles.sectionTitle}>발견된 장치</Text>
+      </TouchableOpacity>      <View style={styles.sectionHeader}>
+        <View style={styles.sectionTitleContainer}>
+          <Icon name="devices" size={20} color={Colors.primary} />
+          <Text style={styles.sectionTitle}>발견된 장치</Text>
+        </View>        <TouchableOpacity 
+          onPress={showHelpPopup}
+          style={styles.helpIconContainer}
+          activeOpacity={0.7}
+        >
+          <Icon name="help-circle-outline" size={20} color={Colors.primary} />
+        </TouchableOpacity>
       </View>
     </LinearGradient>
   );  const renderListFooter = () => (
@@ -444,7 +456,6 @@ function App() {
       </View>
     )
   );
-
   const renderDeviceItem = ({ item }: { item: Device }) => (
     <TouchableOpacity
       style={[
@@ -469,8 +480,7 @@ function App() {
             size={24} 
             color={selectedDevice?.id === item.id ? Colors.text : Colors.primary} 
           />
-        </View>
-        <View style={{ flex: 1 }}>
+        </View>        <View style={{ flex: 1 }}>
           <Text style={[styles.deviceText, { marginBottom: 4 }]}>
             {item.name || 'Unknown Device'}
           </Text>
@@ -481,9 +491,9 @@ function App() {
         )}
       </View>
     </TouchableOpacity>
-  );
-  return (
-    <SafeAreaView style={styles.safeArea}>      {/* Show loading screen for compatibility test */}
+  );  return (
+    <TouchableWithoutFeedback onPress={() => isHelpPopupVisible && hideHelpPopup()}>
+      <SafeAreaView style={styles.safeArea}>{/* Show loading screen for compatibility test */}
       {isLoadingCompatibilityTest && selectedDevice ? (
         <LoadingScreen
           device={selectedDevice}
@@ -651,10 +661,37 @@ function App() {
                 )}
               </LinearGradient>
             </ScrollView>
-          )}
-        </>
+          )}        </>
+      )}
+        {/* Help Popup Modal */}
+      {isHelpPopupVisible && (
+        <View style={styles.helpBubbleContainer}>
+          <View style={styles.helpBubble}>
+            <View style={styles.helpBubbleArrow} />
+            <View style={styles.helpBubbleContent}>
+              <View style={styles.helpBubbleHeader}>
+                <Icon name="help-circle" size={20} color={Colors.primary} />
+                <Text style={styles.helpBubbleTitle}>기기 호환성 안내</Text>
+                <TouchableOpacity onPress={hideHelpPopup}>
+                  <Icon name="close" size={16} color={Colors.textSecondary} />
+                </TouchableOpacity>
+              </View>
+              <Text style={styles.helpBubbleText}>
+                기기가 스캔되지 않는다면 기기의 UUID가 아래의 프로토콜 혹은 센서에 포함되는지 확인해주세요.
+              </Text>
+              <Text style={styles.helpBubbleText}>
+                만약 포함되지 않는다면 이는 Yafit 에 호환되지 않는 기기입니다. 관계자에게 문의해주세요.
+              </Text>
+              <View style={styles.helpBubbleProtocols}>
+                <Text style={styles.helpBubbleSubtitle}>프로토콜:</Text>
+                <Text style={styles.helpBubbleProtocolText}>FTMS, Mobi, Reborn, Tacx</Text>
+                <Text style={styles.helpBubbleSubtitle}>센서:</Text>
+                <Text style={styles.helpBubbleProtocolText}>CSC, FitShow, YAFIT, R1</Text>              </View>            </View>
+          </View>
+        </View>
       )}
     </SafeAreaView>
+    </TouchableWithoutFeedback>
   );
 }
 
@@ -980,10 +1017,10 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
     textAlign: 'center',
-  },
-  sectionHeader: {
+  },  sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     marginBottom: 8,
     marginTop: 8,
   },
@@ -1009,9 +1046,87 @@ const styles = StyleSheet.create({
   },  connectButtonGradient: {
     paddingVertical: 10,
     paddingHorizontal: 24,
-    borderRadius: 16,
-    alignItems: 'center',
+    borderRadius: 16,    alignItems: 'center',
     justifyContent: 'center',
+  },
+  helpIcon: {
+    padding: 4,
+    marginLeft: 8,
+  },  helpBubbleContainer: {
+    position: 'absolute',
+    top: Dimensions.get('window').height * 0.4, // 화면 높이의 2/5 지점
+    right: 20,
+    zIndex: 1000,
+    maxWidth: 260,
+  },
+  helpBubble: {
+    backgroundColor: Colors.cardBackground,
+    borderRadius: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+    elevation: 6,
+    position: 'relative',
+  },
+  helpBubbleArrow: {
+    position: 'absolute',
+    top: -8,
+    right: 16,
+    width: 0,
+    height: 0,
+    borderLeftWidth: 8,
+    borderRightWidth: 8,
+    borderBottomWidth: 8,
+    borderLeftColor: 'transparent',
+    borderRightColor: 'transparent',
+    borderBottomColor: Colors.cardBackground,
+  },  helpBubbleContent: {
+    padding: 12,
+  },
+  helpBubbleHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  helpBubbleTitle: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: Colors.text,
+    flex: 1,
+    marginLeft: 6,
+  },
+  helpBubbleText: {
+    fontSize: 12,
+    color: Colors.textSecondary,
+    lineHeight: 16,
+    marginBottom: 8,
+  },
+  helpBubbleProtocols: {
+    marginTop: 4,
+    padding: 8,
+    backgroundColor: Colors.background,
+    borderRadius: 6,
+  },  helpBubbleSubtitle: {
+    fontSize: 12,
+    fontWeight: 'bold',
+    color: Colors.text,
+    marginBottom: 2,
+    marginTop: 4,
+  },
+  helpBubbleProtocolText: {
+    fontSize: 12,
+    color: Colors.primary,
+    fontWeight: '500',
+    marginBottom: 2,
+  },
+  sectionTitleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },  helpIconContainer: {
+    padding: 4,
+    borderRadius: 12,
+    backgroundColor: 'transparent',
   },
 });
 
