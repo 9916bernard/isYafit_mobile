@@ -15,6 +15,7 @@ import {
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import Ionicons from 'react-native-vector-icons/Ionicons';
+import LottieView from 'lottie-react-native';
 import { TestResults, formatRangeInfo } from '../FtmsTestReport';
 import { FTMSTester } from '../FtmsTester';
 import { Device } from 'react-native-ble-plx';
@@ -59,12 +60,13 @@ const TestScreen: React.FC<TestScreenProps> = ({ device, ftmsManager, onClose, i
   const logScrollViewRef = useRef<ScrollView>(null);
   const testerRef = useRef<FTMSTester | null>(null);
   const safeAreaStyles = useSafeAreaStyles();
-  
-  // Animation values
+    // Animation values
   const progressAnim = useRef(new Animated.Value(0)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const scaleAnim = useRef(new Animated.Value(0.9)).current;
-  const slideAnim = useRef(new Animated.Value(50)).current;  useEffect(() => {
+  const slideAnim = useRef(new Animated.Value(50)).current;
+  const animationContainerHeight = useRef(new Animated.Value(0)).current;
+  const animationOpacity = useRef(new Animated.Value(0)).current;useEffect(() => {
     // Initialize the FTMSTester
     testerRef.current = new FTMSTester(ftmsManager);
     
@@ -124,12 +126,23 @@ const TestScreen: React.FC<TestScreenProps> = ({ device, ftmsManager, onClose, i
     try {
       if (!testerRef.current) {
         testerRef.current = new FTMSTester(ftmsManager);
-      }
-
-      setIsRunning(true);
+      }      setIsRunning(true);
       setTestCompleted(false);
       setProgress(0);
-      setMessage('테스트 시작 중...');      // Run the test with progress updates
+      setMessage('테스트 시작 중...');
+        // 애니메이션 컨테이너 확장 및 애니메이션 표시
+      Animated.parallel([
+        Animated.timing(animationContainerHeight, {
+          toValue: 120,
+          duration: 800,
+          useNativeDriver: false,
+        }),
+        Animated.timing(animationOpacity, {
+          toValue: 1,
+          duration: 600,
+          useNativeDriver: false,
+        }),
+      ]).start();// Run the test with progress updates
       const results = await testerRef.current.runDeviceTest(
         device,
         30000, // 30 seconds test
@@ -143,12 +156,25 @@ const TestScreen: React.FC<TestScreenProps> = ({ device, ftmsManager, onClose, i
             duration: 300,
             useNativeDriver: false,
           }).start();
-        },
-        (results) => {
+        },        (results) => {
           // Test completed callback
           setTestResults(results);
           setTestCompleted(true);
           setIsRunning(false);
+          
+          // 애니메이션 컨테이너 축소 및 애니메이션 숨기기
+          Animated.parallel([
+            Animated.timing(animationContainerHeight, {
+              toValue: 0,
+              duration: 600,
+              useNativeDriver: false,
+            }),
+            Animated.timing(animationOpacity, {
+              toValue: 0,
+              duration: 400,
+              useNativeDriver: false,
+            }),
+          ]).start();
           
           // Completion animation
           Animated.sequence([
@@ -186,6 +212,20 @@ const TestScreen: React.FC<TestScreenProps> = ({ device, ftmsManager, onClose, i
       setIsRunning(false);
       setMessage('테스트가 중지되었습니다.');
     }
+    
+    // 애니메이션 컨테이너 축소 및 애니메이션 숨기기
+    Animated.parallel([
+      Animated.timing(animationContainerHeight, {
+        toValue: 0,
+        duration: 600,
+        useNativeDriver: false,
+      }),
+      Animated.timing(animationOpacity, {
+        toValue: 0,
+        duration: 400,
+        useNativeDriver: false,
+      }),
+    ]).start();
     
     // 기기와 연결 해제
     try {
@@ -309,9 +349,25 @@ const TestScreen: React.FC<TestScreenProps> = ({ device, ftmsManager, onClose, i
                   </Text>
                 </View>
               </TouchableOpacity>
-            )}
+            )}            <View style={styles.progressSection}>
+              {/* 애니메이션 컨테이너 */}
+              <Animated.View 
+                style={[
+                  styles.animationContainer, 
+                  { 
+                    height: animationContainerHeight,
+                    opacity: animationOpacity,
+                  }
+                ]}
+              >
+                <LottieView
+                  source={require('../assets/animation/test_animation.json')}
+                  autoPlay
+                  loop
+                  style={styles.lottieAnimation}
+                />
+              </Animated.View>
 
-            <View style={styles.progressSection}>
               <View style={styles.progressContainer}>
                 <View style={styles.progressBarBackground}>
                   <Animated.View
@@ -351,7 +407,7 @@ const TestScreen: React.FC<TestScreenProps> = ({ device, ftmsManager, onClose, i
                   </View>
                 )}
               </View>
-            </View>          {testCompleted && testResults && (
+            </View>{testCompleted && testResults && (
             <Animated.View style={[styles.resultsSummary, { opacity: fadeAnim }]}>
               {renderCompatibilityBadge()}              {/* 결과 메시지를 맨 위에 표시 - 판정과 제한사항으로 분리 */}
               {testResults.reasons && testResults.reasons.length > 0 && (
@@ -687,10 +743,19 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 8,
+  },  animationContainer: {
+    marginBottom: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  lottieAnimation: {
+    width: '100%',
+    height: '100%',
   },
   progressContainer: {
     marginBottom: 16,
-  },  progressBarBackground: {
+  },progressBarBackground: {
     height: 16,
     backgroundColor: '#374151',
     borderRadius: 8,
