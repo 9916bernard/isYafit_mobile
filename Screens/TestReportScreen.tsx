@@ -296,29 +296,6 @@ const getCompatibilityColor = (compatibilityLevel?: string): string => {
 };
 
   // Helper function to extract reason codes from detailed reasons
-  const extractReasonCodes = (reasons: string[]): string[] => {
-    const codeMap: { [key: string]: string } = {
-      '검사가 중간에 중단되었습니다': '중지',
-      'Cadence가 검출된 데이터에 없습니다': 'RPM',
-      'UUID가 지원하는 프로토콜에 없습니다': '프로토콜',
-      'Resistance가 검출된 데이터에 없어 기본 기어값으로 설정됩니다': '기어',
-      '기어 변경이 불가능합니다': '기어',
-      'ERG 모드 사용이 불가능합니다': 'ERG',
-      'SIM 모드 사용이 불가능합니다': 'SIM',
-      '저항값이 명령 없이 변화합니다. 기본 상태에 SIM이나 ERG mode가 적용되어있는지 확인해주세요': '자동변화',
-      'CSC 프로토콜로 기본 기능만 사용 가능합니다': '기본기능'
-    };
-    
-    const codes: string[] = [];
-    for (const reason of reasons) {
-      const code = codeMap[reason];
-      if (code && !codes.includes(code)) {
-        codes.push(code);
-      }
-    }
-    return codes;
-  };
-
   return (
     <View style={safeAreaStyles.safeContainerMinPadding}>
       <Animated.View 
@@ -384,12 +361,6 @@ const getCompatibilityColor = (compatibilityLevel?: string): string => {
                   ]}>                    <Text style={styles.compatibilityText}>
                       {results.compatibilityLevel || '평가 불가'}
                     </Text>
-                    {/* Show reason codes as small text */}
-                    {results.reasons && results.reasons.length > 0 && (
-                      <Text style={styles.compatibilityReasonCodes}>
-                        ({extractReasonCodes(results.reasons).join(', ')})
-                      </Text>
-                    )}
                   </View>
                 </View>
                 
@@ -830,15 +801,8 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: 'rgba(255, 255, 255, 0.2)',
   },  compatibilityText: {
-    color: '#ffffff',
-    fontWeight: 'bold',
+    color: '#ffffff',    fontWeight: 'bold',
     fontSize: 14,
-  },  compatibilityReasonCodes: {
-    color: '#ffffff',
-    fontSize: 10,
-    fontWeight: '400',
-    marginTop: 2,
-    opacity: 0.8,
   },
   // 새로운 결과 메시지 스타일
   resultMessageSection: {
