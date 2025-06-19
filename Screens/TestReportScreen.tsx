@@ -46,33 +46,130 @@ const TestReportScreen: React.FC<TestReportScreenProps> = ({ results, onClose })
       }),
     ]).start();
   }, [fadeAnim, slideAnim]);
-  
-  // Function to share the test report
+    // Function to share the test report
   const handleShare = async () => {
     try {
-      const jsonReport = JSON.stringify(results, null, 2);
-      
-      // Create a human-readable report
+      // Create a comprehensive human-readable report
       const deviceName = results.deviceInfo.name || 'Unknown Device';
-      const protocols = results.supportedProtocols.join(', ');
-      const compatibility = results.compatibilityLevel || 'Not determined';
+      const deviceAddress = results.deviceInfo.address || 'Unknown Address';
+      const protocols = results.supportedProtocols.join(', ') || '없음';
+      const compatibility = results.compatibilityLevel || '판정되지 않음';
+      const testDate = new Date(results.testCompletedTimestamp || Date.now()).toLocaleString('ko-KR');
+      
+      // 제어 테스트 결과 정리
+      let controlTestsSection = '';
+      if (results.controlTests && Object.keys(results.controlTests).length > 0) {
+        controlTestsSection = '\n📋 제어 테스트 결과:\n';
+        Object.entries(results.controlTests).forEach(([name, test]) => {
+          const commandLabels = {
+            'SET_RESISTANCE_LEVEL': '저항 레벨 설정',
+            'SET_TARGET_POWER': '목표 파워 설정',
+            'SET_SIM_PARAMS': '경사도 시뮬레이션'
+          };
+          const commandLabel = commandLabels[name as keyof typeof commandLabels] || name;
+          const statusText = test.status === 'OK' ? '✅ 성공' : 
+                            test.status === 'Failed' ? '❌ 실패' : '⚠️ 미지원';
+          controlTestsSection += `- ${commandLabel}: ${statusText}\n`;
+        });
+      }
+      
+      // 제한사항 정리
+      let limitationsSection = '';
+      const limitations: string[] = [];
+      
+      // issuesFound에서 제한사항 추가
+      if (results.issuesFound && results.issuesFound.length > 0) {
+        limitations.push(...results.issuesFound);
+      }
+      
+      // controlTests 실패에서 제한사항 추가
+      if (results.controlTests) {
+        Object.entries(results.controlTests)
+          .filter(([_, test]) => test.status !== 'OK')
+          .forEach(([name, _]) => {
+            const limitationText = name === 'SET_RESISTANCE_LEVEL' ? '유저가 기어 조절 불가' :
+                                  name === 'SET_TARGET_POWER' ? 'ERG 모드 사용 불가' :
+                                  name === 'SET_SIM_PARAMS' ? 'SIM 모드 사용 불가' : name;
+            limitations.push(limitationText);
+          });
+      }
+      
+      if (limitations.length > 0) {
+        limitationsSection = '\n⚠️ 제한사항:\n' + limitations.map(l => `- ${l}`).join('\n');
+      }
+      
+      // 제한 사유 정리
+      let limitationReasonsSection = '';
+      if (results.controlTests) {
+        const failedTests = Object.entries(results.controlTests).filter(([_, test]) => test.status !== 'OK');
+        if (failedTests.length > 0) {
+          limitationReasonsSection = '\n🔍 제한 사유:\n';
+          failedTests.forEach(([name, test]) => {
+            const commandLabels = {
+              'SET_RESISTANCE_LEVEL': '유저가 기어 조절 불가',
+              'SET_TARGET_POWER': 'ERG 모드 사용 불가',
+              'SET_SIM_PARAMS': 'SIM 모드 사용 불가'
+            };
+            const commandLabel = commandLabels[name as keyof typeof commandLabels] || name;
+            const statusReason = test.status === 'Failed' ? '미작동' : '미지원';
+            limitationReasonsSection += `- ${commandLabel} ⇒ ${name.toLowerCase()} ${statusReason}\n`;
+          });
+        }
+      }
+      
+      // 지원 범위 정리
+      let supportRangesSection = '';
+      if (results.supportRanges && Object.keys(results.supportRanges).length > 0) {
+        supportRangesSection = '\n📊 지원 범위:\n';
+        if (results.supportRanges.speed) {
+          supportRangesSection += `- 속도: ${results.supportRanges.speed.min}-${results.supportRanges.speed.max} km/h\n`;
+        }
+        if (results.supportRanges.incline) {
+          supportRangesSection += `- 경사도: ${results.supportRanges.incline.min}-${results.supportRanges.incline.max}%\n`;
+        }
+        if (results.supportRanges.resistance) {
+          supportRangesSection += `- 저항: ${results.supportRanges.resistance.min}-${results.supportRanges.resistance.max} 레벨\n`;
+        }
+        if (results.supportRanges.power) {
+          supportRangesSection += `- 파워: ${results.supportRanges.power.min}-${results.supportRanges.power.max}W\n`;
+        }
+      }
+      
+      // 감지된 데이터 필드 정리
+      let dataFieldsSection = '';
+      if (results.dataFields && Object.keys(results.dataFields).length > 0) {
+        const detectedFields = Object.entries(results.dataFields).filter(([_, field]) => field.detected);
+        if (detectedFields.length > 0) {
+          dataFieldsSection = '\n📈 감지된 데이터 필드:\n';
+          detectedFields.forEach(([name, field]) => {
+            const currentValue = field.currentValue !== undefined ? field.currentValue : 'N/A';
+            const range = field.minValue !== undefined && field.maxValue !== undefined ? 
+                         ` (범위: ${field.minValue}-${field.maxValue})` : '';
+            dataFieldsSection += `- ${name}: ${currentValue}${range}\n`;
+          });
+        }
+      }
       
       const textReport = `
-IsYafit FTMS 호환성 테스트 보고서
+🏃‍♂️ IsYafit FTMS 호환성 테스트 보고서
 
-장치: ${deviceName} (${results.deviceInfo.address})
-프로토콜: ${protocols}
-호환성: ${compatibility}
-테스트 일자: ${new Date(results.testCompletedTimestamp || Date.now()).toLocaleString()}
+📱 장치 정보:
+- 장치명: ${deviceName}
+- 주소: ${deviceAddress}
+- 지원 프로토콜: ${protocols}
 
-${results.reasons && results.reasons.length > 0 ? '판정 사유:\n' + results.reasons.map(r => `- ${r}`).join('\n') : ''}
+🎯 호환성 판정: ${compatibility}
 
-${results.issuesFound && results.issuesFound.length > 0 ? '\n발견된 문제점:\n' + results.issuesFound.map(i => `- ${i}`).join('\n') : ''}
+✅ 테스트 결과: Yafit 연결과 플레이가 가능합니다
+
+📅 테스트 일시: ${testDate}${controlTestsSection}${limitationsSection}${limitationReasonsSection}${supportRangesSection}${dataFieldsSection}
+
+📋 상세 보고서는 앱에서 확인하실 수 있습니다.
       `;
       
       await Share.share({
         title: `IsYafit 호환성 보고서 - ${deviceName}`,
-        message: textReport,
+        message: textReport.trim(),
       });
     } catch (error) {
       console.error('Error sharing report:', error);
@@ -314,7 +411,7 @@ const getCompatibilityColor = (compatibilityLevel?: string): string => {
             <View style={styles.header}>
               <View style={styles.titleContainer}>
                 <MaterialCommunityIcons name="file-chart" size={28} color="#00c663" />
-                <Text style={styles.title}>FTMS 테스트 보고서</Text>
+                <Text style={styles.title}>테스트 보고서</Text>
               </View>
               <TouchableOpacity onPress={onClose} style={styles.closeButton} activeOpacity={0.8}>
                 <Icon name="close" size={20} color="#ffffff" />
