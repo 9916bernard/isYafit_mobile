@@ -291,23 +291,25 @@ const TestScreen: React.FC<TestScreenProps> = ({ device, ftmsManager, onClose, i
                 <MaterialCommunityIcons name="test-tube" size={28} color="#ffffff" />
               </View>
             </View>
-            
-            {/* Toggle Logs Button */}
-            <TouchableOpacity 
-              style={[styles.toggleLogButton, showLogs && styles.toggleLogButtonActive]} 
-              onPress={toggleLogs}              activeOpacity={0.8}
-            >
-              <View style={styles.buttonContent}>
-                <Ionicons 
-                  name={showLogs ? "list" : "analytics"} 
-                  size={18} 
-                  color={showLogs ? "#ffffff" : "#00c663"} 
-                />
-                <Text style={[styles.toggleLogButtonText, showLogs && styles.toggleLogButtonTextActive]}>
-                  {showLogs ? '로그 숨기기' : '실시간 로그 보기'}
-                </Text>
-              </View>
-            </TouchableOpacity>
+              {/* Toggle Logs Button - Only show when test is running or not completed */}
+            {(isRunning || !testCompleted) && (
+              <TouchableOpacity 
+                style={[styles.toggleLogButton, showLogs && styles.toggleLogButtonActive]} 
+                onPress={toggleLogs}
+                activeOpacity={0.8}
+              >
+                <View style={styles.buttonContent}>
+                  <Ionicons 
+                    name={showLogs ? "list" : "analytics"} 
+                    size={18} 
+                    color={showLogs ? "#ffffff" : "#00c663"} 
+                  />
+                  <Text style={[styles.toggleLogButtonText, showLogs && styles.toggleLogButtonTextActive]}>
+                    {showLogs ? '로그 숨기기' : '실시간 로그 보기'}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            )}
 
             <View style={styles.progressSection}>
               <View style={styles.progressContainer}>

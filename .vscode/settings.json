@@ -1,0 +1,36 @@
+{
+  "files.exclude": {
+    "**/node_modules": true,
+    "**/android/build": true,
+    "**/android/.gradle": true,
+    "**/ios/build": true,
+    "**/.expo": true,
+    "**/dist": true,
+    "**/web-build": true,
+    "**/*.log": true,
+    "**/results": true
+  },
+  "search.exclude": {
+    "**/node_modules": true,
+    "**/android/build": true,
+    "**/android/.gradle": true,
+    "**/ios/build": true,
+    "**/.expo": true,
+    "**/dist": true,
+    "**/web-build": true,
+    "**/results": true
+  },
+  "files.watcherExclude": {
+    "**/node_modules/**": true,
+    "**/android/build/**": true,
+    "**/android/.gradle/**": true,
+    "**/ios/build/**": true,
+    "**/.expo/**": true,
+    "**/dist/**": true,
+    "**/web-build/**": true,
+    "**/results/**": true
+  },
+  "typescript.preferences.includePackageJsonAutoImports": "off",
+  "typescript.surveys.enabled": false,
+  "typescript.suggest.autoImports": false
+}
