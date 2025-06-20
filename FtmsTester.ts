@@ -82,7 +82,7 @@ export class FTMSTester {
         }
         this.ftmsManager.clearLogs(); // Clear logs in manager to avoid duplicates if manager is reused
     }
-
+//#region Device Test
     // Main testing flow
     async runDeviceTest(
         device: Device, 
@@ -121,7 +121,7 @@ export class FTMSTester {
             this.logInteraction('INFO - Test: Discovering services and characteristics.');
             await this.identifyProtocols();
               this.logInteraction(`INFO - Test: Identified protocols: ${this.testResults.supportedProtocols.join(', ') || 'None'}.`);
-              // 프로토콜별 테스트 처리 (우선순위 순서: MOBI > REBORN > TACX_NEO > FITSHOW > YAFIT_S3 > YAFIT_S4 > FTMS > CSC)
+              // 프로토콜별 테스트 처리 (우선순위 순서: MOBI > REBORN > TACX > FITSHOW > YAFIT_S3 > YAFIT_S4 > FTMS > CSC)
             if (this.testResults.supportedProtocols.includes("MOBI")) {
                 // Mobi 프로토콜 테스트 (우선순위 1)
                 this.updateProgress(30, "Mobi 데이터 모니터링 중...");
@@ -165,7 +165,7 @@ export class FTMSTester {
                 if (this.onTestComplete) {
                     this.onTestComplete(this.testResults);
                 }
-                  } else if (this.testResults.supportedProtocols.includes("TACX_NEO")) {
+                  } else if (this.testResults.supportedProtocols.includes("TACX")) {
                 // Tacx Neo 프로토콜 테스트 (우선순위 3)
                 this.updateProgress(30, "Tacx Neo 데이터 모니터링 중...");
                 this.logInteraction('INFO - Test: Starting Tacx Neo protocol testing (with control commands).');
@@ -273,7 +273,7 @@ export class FTMSTester {
                     this.onTestComplete(this.testResults);
                 }            } else {
                 // No supported protocols
-                this.testResults.reasons.push("지원되는 프로토콜을 찾을 수 없습니다. 우선순위: MOBI > REBORN > TACX_NEO > FITSHOW > YAFIT_S3 > YAFIT_S4 > FTMS > CSC");
+                this.testResults.reasons.push("지원되는 프로토콜을 찾을 수 없습니다. 우선순위: MOBI > REBORN > TACX > FITSHOW > YAFIT_S3 > YAFIT_S4 > FTMS > CSC");
                 this.mergeFtmsManagerLogs();
                 this.testResults = finalizeTestReport(this.testResults);
                 this.updateProgress(100, "호환 불가능한 프로토콜");
@@ -376,14 +376,15 @@ export class FTMSTester {
             
             if (detectedProtocol) {
                 // 우선순위에 따른 프로토콜 설정
-                this.testResults.supportedProtocols = [detectedProtocol];                switch (detectedProtocol) {
+                this.testResults.supportedProtocols = [detectedProtocol];               
+                switch (detectedProtocol) {
                     case 'MOBI':
                         this.testResults.deviceInfo.protocol = "MOBI";
                         break;
                     case 'REBORN':
                         this.testResults.deviceInfo.protocol = "REBORN";
                         break;
-                    case 'TACX_NEO':
+                    case 'TACX':
                         this.testResults.deviceInfo.protocol = "TACX";
                         break;
                     case 'FITSHOW':
@@ -406,7 +407,7 @@ export class FTMSTester {
                 }
                 
                 this.logInteraction(`INFO - FTMSTester: Protocol selected by priority: ${detectedProtocol}`);
-                this.logInteraction(`INFO - FTMSTester: Priority order: MOBI > REBORN > TACX_NEO > FITSHOW > YAFIT_S3 > YAFIT_S4 > FTMS > CSC`);
+                this.logInteraction(`INFO - FTMSTester: Priority order: MOBI > REBORN > TACX > FITSHOW > YAFIT_S3 > YAFIT_S4 > FTMS > CSC`);
                 
                 // Read FTMS features if FTMS protocol or YAFIT_S3/YAFIT_S4 is selected
                 if (detectedProtocol === 'FTMS' || detectedProtocol === 'YAFIT_S3' || detectedProtocol === 'YAFIT_S4') {
