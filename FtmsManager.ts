@@ -863,9 +863,7 @@ export class FTMSManager {
         }
         
         try {
-            this.logInfo(`Starting connection sequence for ${this.detectedProtocol} protocol`);
-
-            // 프로토콜별 연결 시퀀스 처리
+            this.logInfo(`Starting connection sequence for ${this.detectedProtocol} protocol`);            // 프로토콜별 연결 시퀀스 처리
             switch (this.detectedProtocol) {
                 case ProtocolType.FTMS:
                     return await this.connectSequenceFTMS();
@@ -876,10 +874,6 @@ export class FTMSManager {
                     return await this.connectSequenceTacxNeo();
                 case ProtocolType.FITSHOW:
                     return await this.connectSequenceFitShow();
-                case ProtocolType.YAFIT_S3:
-                    return await this.connectSequenceYafitS3();
-                case ProtocolType.YAFIT_S4:
-                    return await this.connectSequenceYafitS4();
                 case ProtocolType.CSC:
                     return await this.connectSequenceCSC();
                 default:
@@ -972,46 +966,7 @@ export class FTMSManager {
             this.logError(`FitShow connection sequence error: ${error instanceof Error ? error.message : String(error)}`);
             // fallback으로 device를 active 상태로 설정
             this.isDeviceActive = true;
-            return true;
-        }
-    }
-    
-    // YafitS3 프로토콜 연결 시퀀스 (기본 틀)
-    private async connectSequenceYafitS3(): Promise<boolean> {
-        try {
-            this.logInfo("Starting YafitS3 Connection Sequence");
-            this.logWarning("YafitS3 protocol implementation is not complete - using basic control sequence");
-            // 기본 control sequence 시도
-            await this.requestControl();
-            await this.resetMachine();
-            await this.startMachine();
-            this.logSuccess("YafitS3 Connection Sequence Completed");
-            return true;
-        } catch (error) {
-            this.logError(`YafitS3 connection sequence error: ${error instanceof Error ? error.message : String(error)}`);
-            // fallback으로 device를 active 상태로 설정
-            this.isDeviceActive = true;
-            return true;
-        }
-    }
-    
-    // YafitS4 프로토콜 연결 시퀀스 (기본 틀)
-    private async connectSequenceYafitS4(): Promise<boolean> {
-        try {
-            this.logInfo("Starting YafitS4 Connection Sequence");
-            this.logWarning("YafitS4 protocol implementation is not complete - using basic control sequence");
-            // 기본 control sequence 시도
-            await this.requestControl();
-            await this.resetMachine();
-            await this.startMachine();
-            this.logSuccess("YafitS4 Connection Sequence Completed");
-            return true;
-        } catch (error) {
-            this.logError(`YafitS4 connection sequence error: ${error instanceof Error ? error.message : String(error)}`);
-            // fallback으로 device를 active 상태로 설정
-            this.isDeviceActive = true;
-            return true;
-        }
+            return true;        }
     }
 
     getConnectedDevice(): Device | null {

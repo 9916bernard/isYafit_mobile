@@ -71,10 +71,14 @@ const TestReportScreen: React.FC<TestReportScreenProps> = ({ results, onClose })
                             test.status === 'Failed' ? '❌ 실패' : '⚠️ 미지원';
           controlTestsSection += `- ${commandLabel}: ${statusText}\n`;
         });
-      }
-        // 제한사항 정리 - 새로운 기준에 맞게 수정
+      }        // 제한사항 정리 - 새로운 기준에 맞게 수정
       let limitationsSection = '';
       const limitations: string[] = [];
+      
+      // Reborn 프로토콜 제한사항 추가
+      if (results.supportedProtocols.includes('REBORN')) {
+        limitations.push('Reborn 프로토콜은 제어 명령이 불가능합니다. SIM,ERG,유저의 기어 변경이 불가능합니다.');
+      }
       
       // 호환성 레벨에 따른 제한사항 추가
       if (results.compatibilityLevel === '불가능') {
@@ -451,9 +455,7 @@ const getCompatibilityColor = (compatibilityLevel?: string): string => {
                     <Text style={styles.infoCardValue}>
                       {results.deviceInfo.protocol || '알 수 없음'}
                     </Text>
-                  </View>
-                  
-                  <View style={styles.infoCard}>
+                  </View>                  <View style={styles.infoCard}>
                     <Text style={styles.infoCardLabel}>지원 프로토콜</Text>
                     <Text style={styles.infoCardValue}>
                       {results.supportedProtocols.join(', ') || '없음'}
@@ -482,9 +484,13 @@ const getCompatibilityColor = (compatibilityLevel?: string): string => {
                    results.compatibilityLevel !== '불가능' && (
                     <View style={styles.limitationSection}>
                       <Text style={styles.limitationTitle}>제한사항:</Text>
-                      
-                      {(results.compatibilityLevel === '부분 호환' || results.compatibilityLevel === '수정 필요') && (
+                        {(results.compatibilityLevel === '부분 호환' || results.compatibilityLevel === '수정 필요') && (
                         <>
+                          {/* Reborn 프로토콜 제한사항 */}
+                          {results.supportedProtocols.includes('REBORN') && (
+                            <Text style={styles.limitationText}>• Reborn 프로토콜은 제어 명령이 불가능합니다. SIM,ERG,유저의 기어 변경이 불가능합니다.</Text>
+                          )}
+                          
                           {!results.dataFields?.resistance?.detected && (
                             <Text style={styles.limitationText}>• Resistance가 검출되지 않아 기본 기어값으로 설정</Text>
                           )}
@@ -496,7 +502,7 @@ const getCompatibilityColor = (compatibilityLevel?: string): string => {
                           )}
                           {results.controlTests?.SET_SIM_PARAMS?.status === 'Failed' && (
                             <Text style={styles.limitationText}>• SIM 모드 사용 불가능</Text>
-                          )}                          {results.resistanceChanges && results.resistanceChanges.filter(change => !change.command || change.command === '자동 변경').length >= 5 && (
+                          )}{results.resistanceChanges && results.resistanceChanges.filter(change => !change.command || change.command === '자동 변경').length >= 5 && (
                             <Text style={styles.limitationText}>• 의도하지 않은 저항 변경이 발생했습니다. 기기 자체 모드가 설정되어있는지 확인해주세요</Text>
                           )}
                         </>

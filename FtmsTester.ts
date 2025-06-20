@@ -141,8 +141,7 @@ export class FTMSTester {
                 this.updateProgress(100, "Mobi 테스트 완료 (읽기 전용)");
                 if (this.onTestComplete) {
                     this.onTestComplete(this.testResults);
-                }
-                  } else if (this.testResults.supportedProtocols.includes("REBORN")) {
+                }                  } else if (this.testResults.supportedProtocols.includes("REBORN")) {
                 // Reborn 프로토콜 테스트 (우선순위 2) - 인증 외 제어 불가능
                 this.updateProgress(30, "Reborn 인증 및 데이터 모니터링 중...");
                 this.logInteraction('INFO - Test: Starting Reborn protocol testing (authentication + data only).');
@@ -155,13 +154,14 @@ export class FTMSTester {
                 const remainingTime = Math.max(0, this.testDuration - elapsed);
                 
                 if (remainingTime > 0) {
-                    this.updateProgress(50, "Reborn 데이터 수집 중... (인증 완료 후 데이터 수신)");
-                    await new Promise(resolve => setTimeout(resolve, remainingTime));
+                    this.updateProgress(50, "Reborn 데이터 수집 중... 페달을 돌려주세요!");
+                    this.logInteraction('INFO - Test: Please pedal to generate data for Reborn protocol testing.');
+                    await this.runDataCollection(remainingTime);
                 }
                 
                 this.mergeFtmsManagerLogs();
                 this.testResults = finalizeTestReport(this.testResults);
-                this.updateProgress(100, "Reborn 테스트 완료 (데이터 수집만)");
+                this.updateProgress(100, "Reborn 테스트 완료");
                 if (this.onTestComplete) {
                     this.onTestComplete(this.testResults);
                 }
@@ -376,34 +376,33 @@ export class FTMSTester {
             
             if (detectedProtocol) {
                 // 우선순위에 따른 프로토콜 설정
-                this.testResults.supportedProtocols = [detectedProtocol];
-                  switch (detectedProtocol) {
+                this.testResults.supportedProtocols = [detectedProtocol];                switch (detectedProtocol) {
                     case 'MOBI':
-                        this.testResults.deviceInfo.protocol = "MOBI (커스텀) - 우선순위 1";
+                        this.testResults.deviceInfo.protocol = "MOBI";
                         break;
                     case 'REBORN':
-                        this.testResults.deviceInfo.protocol = "REBORN (커스텀) - 우선순위 2";
+                        this.testResults.deviceInfo.protocol = "REBORN";
                         break;
                     case 'TACX_NEO':
-                        this.testResults.deviceInfo.protocol = "TACX_NEO (커스텀) - 우선순위 3";
+                        this.testResults.deviceInfo.protocol = "TACX_NEO";
                         break;
                     case 'FITSHOW':
-                        this.testResults.deviceInfo.protocol = "FITSHOW (커스텀) - 우선순위 4";
+                        this.testResults.deviceInfo.protocol = "FITSHOW";
                         break;
                     case 'YAFIT_S3':
-                        this.testResults.deviceInfo.protocol = "YAFIT_S3 (FTMS 프로토콜 사용) - 우선순위 5";
+                        this.testResults.deviceInfo.protocol = "YAFIT_S3";
                         break;
                     case 'YAFIT_S4':
-                        this.testResults.deviceInfo.protocol = "YAFIT_S4 (FTMS 프로토콜 사용) - 우선순위 6";
+                        this.testResults.deviceInfo.protocol = "YAFIT_S4";
                         break;
                     case 'FTMS':
-                        this.testResults.deviceInfo.protocol = "FTMS (표준) - 우선순위 7";
+                        this.testResults.deviceInfo.protocol = "FTMS";
                         break;
                     case 'CSC':
-                        this.testResults.deviceInfo.protocol = "CSC (표준) - 우선순위 8";
+                        this.testResults.deviceInfo.protocol = "CSC";
                         break;
                     default:
-                        this.testResults.deviceInfo.protocol = `${detectedProtocol} (알 수 없음)`;
+                        this.testResults.deviceInfo.protocol = `${detectedProtocol}`;
                 }
                 
                 this.logInteraction(`INFO - FTMSTester: Protocol selected by priority: ${detectedProtocol}`);

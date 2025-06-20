@@ -433,9 +433,13 @@ const TestScreen: React.FC<TestScreenProps> = ({ device, ftmsManager, onClose, i
                      testResults.compatibilityLevel !== '불가능' && (
                       <View style={styles.limitationSection}>
                         <Text style={styles.limitationTitle}>제한사항:</Text>
-                        
-                        {(testResults.compatibilityLevel === '부분 호환' || testResults.compatibilityLevel === '수정 필요') && (
+                          {(testResults.compatibilityLevel === '부분 호환' || testResults.compatibilityLevel === '수정 필요') && (
                           <>
+                            {/* Reborn 프로토콜 제한사항 */}
+                            {testResults.supportedProtocols.includes('REBORN') && (
+                              <Text style={styles.limitationText}>• Reborn 프로토콜은 제어 명령이 불가능합니다. SIM,ERG,유저의 기어 변경이 불가능합니다.</Text>
+                            )}
+                            
                             {!testResults.dataFields?.resistance?.detected && (
                               <Text style={styles.limitationText}>• Resistance가 검출되지 않아 기본 기어값으로 설정</Text>
                             )}
@@ -447,7 +451,7 @@ const TestScreen: React.FC<TestScreenProps> = ({ device, ftmsManager, onClose, i
                             )}
                             {testResults.controlTests?.SET_SIM_PARAMS?.status === 'Failed' && (
                               <Text style={styles.limitationText}>• SIM 모드 사용 불가능</Text>
-                            )}                            {testResults.resistanceChanges && testResults.resistanceChanges.filter(change => !change.command || change.command === '자동 변경').length >= 5 && (
+                            )}{testResults.resistanceChanges && testResults.resistanceChanges.filter(change => !change.command || change.command === '자동 변경').length >= 5 && (
                               <Text style={styles.limitationText}>• 의도하지 않은 저항 변경이 발생했습니다. 기기 자체 모드가 설정되어있는지 확인해주세요</Text>
                             )}
                           </>
