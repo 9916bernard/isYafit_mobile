@@ -12,6 +12,11 @@ const FTMS_INDOOR_BIKE_DATA_CHAR_UUID = "00002ad2-0000-1000-8000-00805f9b34fb";
 const MOBI_SERVICE_UUID = "0000ffe0-0000-1000-8000-00805f9b34fb";
 const MOBI_DATA_CHAR_UUID = "0000ffe4-0000-1000-8000-00805f9b34fb";
 
+// Reborn UUIDs
+const REBORN_SERVICE_UUID = "00010203-0405-0607-0809-0a0b0c0d1910";
+const REBORN_DATA_CHAR_UUID = "00010203-0405-0607-0809-0a0b0c0d2b10";
+const REBORN_WRITE_CHAR_UUID = "00010203-0405-0607-0809-0a0b0c0d2b11";
+
 // FTMS Control Point Commands
 const REQUEST_CONTROL = Buffer.from([0x00]);
 const RESET = Buffer.from([0x01]);
@@ -78,7 +83,8 @@ interface IndoorBikeData {
 export enum ProtocolType {
     FTMS = 'FTMS',
     CSC = 'CSC',
-    MOBI = 'MOBI'
+    MOBI = 'MOBI',
+    REBORN = 'REBORN'
 }
 
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
@@ -96,11 +102,13 @@ export class FTMSManager {
     private controlPointSubscription: Subscription | null = null;
     private indoorBikeDataSubscription: Subscription | null = null;
     private bluetoothStateSubscription: Subscription | null = null;
-    private currentState: State = State.Unknown;
-
-    private ftmsFeatureBits: number = 0;
+    private currentState: State = State.Unknown;    private ftmsFeatureBits: number = 0;
     private isDeviceActive: boolean = false; // Track if device is active (started)
     private detectedProtocol: ProtocolType | null = null; // Track detected protocol
+    
+    // Reborn authentication state
+    private rebornAuthBytes: Buffer | null = null;
+    private rebornAuthCompleted: boolean = false;
     
     // Logging system
     private logs: LogEntry[] = [];
@@ -138,12 +146,12 @@ export class FTMSManager {
         }
         
         return new Promise((resolve, reject) => {
-            try {
-                // Scan for multiple protocol UUIDs
+            try {                // Scan for multiple protocol UUIDs
                 const serviceUUIDs = [
                     FTMS_SERVICE_UUID,
                     "00001816-0000-1000-8000-00805f9b34fb", // CSC Service UUID
-                    MOBI_SERVICE_UUID
+                    MOBI_SERVICE_UUID,
+                    REBORN_SERVICE_UUID
                 ];
                 
                 this.bleManager.startDeviceScan(serviceUUIDs, null, (error, device) => {
@@ -192,9 +200,12 @@ export class FTMSManager {
                     break;
                 case ProtocolType.CSC:
                     this.logInfo("CSC protocol detected - no specific initialization needed");
-                    break;
-                case ProtocolType.MOBI:
+                    break;                case ProtocolType.MOBI:
                     this.logInfo("Mobi protocol detected - read-only protocol");
+                    break;
+                case ProtocolType.REBORN:
+                    this.logInfo("Reborn protocol detected - authentication required");
+                    this.rebornAuthCompleted = false;
                     break;
                 default:
                     this.logWarning("Unknown protocol detected");
@@ -283,9 +294,7 @@ export class FTMSManager {
         // First detect protocol if not already detected
         if (!this.detectedProtocol) {
             await this.detectProtocol();
-        }
-
-        // Subscribe based on detected protocol
+        }        // Subscribe based on detected protocol
         switch (this.detectedProtocol) {
             case ProtocolType.FTMS:
                 await this.subscribeToFTMSNotifications(onControlPointResponse, onIndoorBikeData);
@@ -295,6 +304,9 @@ export class FTMSManager {
                 break;
             case ProtocolType.MOBI:
                 await this.subscribeToMobiNotifications(onIndoorBikeData);
+                break;
+            case ProtocolType.REBORN:
+                await this.subscribeToRebornNotifications(onIndoorBikeData);
                 break;
             default:
                 throw new Error("Unsupported protocol for notifications");
@@ -385,6 +397,42 @@ export class FTMSManager {
             }
         );
         console.log("Subscribed to Mobi Data notifications");
+    }
+
+    private async subscribeToRebornNotifications(
+        onIndoorBikeData: (data: IndoorBikeData) => void
+    ): Promise<void> {
+        if (!this.rebornAuthCompleted) {
+            this.logInfo("Starting Reborn authentication process...");
+            await this.performRebornAuthentication();
+        }
+        
+        // Reborn Data Notifications
+        this.indoorBikeDataSubscription = this.connectedDevice!.monitorCharacteristicForService(
+            REBORN_SERVICE_UUID,
+            REBORN_DATA_CHAR_UUID,
+            (error, characteristic) => {
+                if (error) {
+                    console.error("Reborn Data Notification error:", error);
+                    return;
+                }
+                if (characteristic?.value) {
+                    const buffer = Buffer.from(characteristic.value, 'base64');
+                    
+                    // Handle authentication responses or normal data
+                    if (buffer.length >= 4 && buffer[2] === 0x8A && buffer[3] === 0x03) {
+                        this.handleRebornAuthResponse(buffer);
+                    } else if (buffer.length === 16 && buffer[2] === 0x00 && buffer[3] === 0x80) {
+                        const parsedData = this.parseRebornData(buffer);
+                        onIndoorBikeData(parsedData);
+                    } else if (buffer.length >= 5 && buffer[2] === 0x80 && buffer[3] === 0xE1 && buffer[4] === 0x01) {
+                        this.logError("Reborn authentication error - restarting connection");
+                        // In a real app, this would trigger reconnection
+                    }
+                }
+            }
+        );
+        console.log("Subscribed to Reborn Data notifications");
     }parseControlPointResponse(data: Buffer): void {
         if (data.length >= 3) {
             const responseOpCode = data[0]; // Should be 0x80 for response
@@ -825,13 +873,21 @@ export class FTMSManager {
                     return ProtocolType.CSC;
                 }
             }
-            
-            // Third pass: Check for Mobi only if FTMS and CSC not found
+              // Third pass: Check for Mobi only if FTMS and CSC not found
             for (const service of services) {
                 if (service.uuid.toLowerCase() === MOBI_SERVICE_UUID.toLowerCase()) {
                     this.detectedProtocol = ProtocolType.MOBI;
                     this.logSuccess("Detected Mobi protocol (FTMS and CSC not found) - will use Mobi");
                     return ProtocolType.MOBI;
+                }
+            }
+            
+            // Fourth pass: Check for Reborn only if FTMS, CSC, and Mobi not found
+            for (const service of services) {
+                if (service.uuid.toLowerCase() === REBORN_SERVICE_UUID.toLowerCase()) {
+                    this.detectedProtocol = ProtocolType.REBORN;
+                    this.logSuccess("Detected Reborn protocol (FTMS, CSC, and Mobi not found) - will use Reborn");
+                    return ProtocolType.REBORN;
                 }
             }
             
@@ -921,6 +977,166 @@ export class FTMSManager {
             }
         } catch (error) {
             this.logError(`CSC data parsing error: ${error instanceof Error ? error.message : String(error)}`);
+        }
+
+        return parsed;
+    }
+
+    // Reborn authentication methods
+    private generateRandomBytes(length: number): Buffer {
+        const bytes = Buffer.alloc(length);
+        for (let i = 0; i < length; i++) {
+            bytes[i] = Math.floor(Math.random() * 256);
+        }
+        return bytes;
+    }
+
+    private calculateChecksum(buffer: Buffer): number {
+        let sum = 0;
+        for (let i = 0; i < buffer.length - 1; i++) {
+            sum += buffer[i];
+        }
+        return sum & 0xFF;
+    }
+
+    private async performRebornAuthentication(): Promise<void> {
+        this.logInfo("Performing Reborn authentication...");
+        
+        // Generate authentication request
+        const authRequest = Buffer.alloc(15);
+        authRequest[0] = 0xAA;  // Header
+        authRequest[1] = 0x0F;  // Length (15 bytes)
+        authRequest[2] = 0x8A;  // Command code
+        authRequest[3] = 0x03;  // Method
+        
+        // Generate 10 random bytes
+        const randomBytes = this.generateRandomBytes(10);
+        randomBytes.copy(authRequest, 4);
+        
+        // Calculate checksum
+        authRequest[14] = this.calculateChecksum(authRequest);
+        
+        // Store for later verification
+        this.rebornAuthBytes = Buffer.from(authRequest);
+        
+        try {
+            // Send authentication request
+            await this.connectedDevice!.writeCharacteristicWithoutResponseForService(
+                REBORN_SERVICE_UUID,
+                REBORN_WRITE_CHAR_UUID,
+                authRequest.toString('base64')
+            );
+            this.logInfo("Reborn authentication request sent");
+        } catch (error) {
+            this.logError(`Reborn authentication failed: ${error instanceof Error ? error.message : String(error)}`);
+            throw error;
+        }
+    }
+
+    private handleRebornAuthResponse(data: Buffer): void {
+        if (!this.rebornAuthBytes) {
+            this.logError("No authentication request stored for verification");
+            return;
+        }
+
+        this.logInfo("Received Reborn authentication response");
+        
+        // Encryption key from documentation
+        const key = Buffer.from([0x15, 0x25, 0x80, 0x13, 0xF0]);
+        
+        // Calculate expected response
+        const expectedResponse = Buffer.alloc(5);
+        expectedResponse[0] = (this.rebornAuthBytes[4] + this.rebornAuthBytes[9] + key[0]) & 0xFF;
+        expectedResponse[1] = (this.rebornAuthBytes[5] + this.rebornAuthBytes[10] + key[1]) & 0xFF;
+        expectedResponse[2] = (this.rebornAuthBytes[6] + this.rebornAuthBytes[11] + key[2]) & 0xFF;
+        expectedResponse[3] = (this.rebornAuthBytes[7] + this.rebornAuthBytes[12] + key[3]) & 0xFF;
+        expectedResponse[4] = (this.rebornAuthBytes[8] + this.rebornAuthBytes[13] + key[4]) & 0xFF;
+        
+        // Verify response (assuming response data starts at byte 4)
+        if (data.length >= 9 && 
+            data[4] === expectedResponse[0] && 
+            data[5] === expectedResponse[1] && 
+            data[6] === expectedResponse[2] && 
+            data[7] === expectedResponse[3] && 
+            data[8] === expectedResponse[4]) {
+            
+            this.logSuccess("Reborn authentication successful");
+            this.rebornAuthCompleted = true;
+            this.sendRebornAuthSuccess();
+        } else {
+            this.logError("Reborn authentication failed - invalid response");
+            this.sendRebornAuthFailure();
+        }
+    }
+
+    private async sendRebornAuthSuccess(): Promise<void> {
+        const successData = Buffer.from([0xAA, 0x06, 0x80, 0xE1, 0x00, 0x11]);
+        try {
+            await this.connectedDevice!.writeCharacteristicWithoutResponseForService(
+                REBORN_SERVICE_UUID,
+                REBORN_WRITE_CHAR_UUID,
+                successData.toString('base64')
+            );
+            this.logInfo("Reborn authentication success response sent");
+        } catch (error) {
+            this.logError(`Failed to send Reborn auth success: ${error instanceof Error ? error.message : String(error)}`);
+        }
+    }
+
+    private async sendRebornAuthFailure(): Promise<void> {
+        const failData = Buffer.from([0xAA, 0x06, 0x80, 0xE1, 0x01, 0x12]);
+        try {
+            await this.connectedDevice!.writeCharacteristicWithoutResponseForService(
+                REBORN_SERVICE_UUID,
+                REBORN_WRITE_CHAR_UUID,
+                failData.toString('base64')
+            );
+            this.logInfo("Reborn authentication failure response sent");
+        } catch (error) {
+            this.logError(`Failed to send Reborn auth failure: ${error instanceof Error ? error.message : String(error)}`);
+        }
+    }
+
+    // Parse Reborn protocol data
+    parseRebornData(data: Buffer): IndoorBikeData {
+        const parsed: IndoorBikeData = {
+            raw: data.toString('hex')
+        };
+
+        try {
+            // Reborn parsing logic based on documentation
+            if (data.length === 16 && data[2] === 0x00 && data[3] === 0x80) {
+                // Validate packet length
+                if (data.length !== data[1]) {
+                    this.logWarning("Reborn packet length mismatch");
+                    return parsed;
+                }
+
+                // RPM calculation (byte 11)
+                if (data[11] > 0) {
+                    const oneRoundPerSeconds = 60.0 / data[11];  // 1회전당 초
+                    const secondsRPM = 1.0 / oneRoundPerSeconds;  // 초당 회전수
+                    const rpm = secondsRPM * 60.0;  // 분당 회전수
+                    parsed.instantaneousCadence = Math.round(rpm);
+                    this.logInfo(`Reborn 데이터: RPM = ${parsed.instantaneousCadence}`);
+                }
+
+                // Gear data (byte 14)
+                if (data.length >= 15) {
+                    const rawGear = data[14];  // 1~100 range
+                    parsed.gearLevel = rawGear;
+                    // Convert raw gear to system gear (1~7) - simplified conversion
+                    // In real implementation, this would use CSV table
+                    const systemGear = Math.min(7, Math.max(1, Math.ceil(rawGear / 14.3))); // 100/7 ≈ 14.3
+                    parsed.resistanceLevel = systemGear;
+                    this.logInfo(`Reborn 데이터: 기어 = ${rawGear} (시스템 기어: ${systemGear})`);
+                }
+
+                // Battery (always 100% as per documentation)
+                parsed.batteryLevel = 100;
+            }
+        } catch (error) {
+            this.logError(`Reborn data parsing error: ${error instanceof Error ? error.message : String(error)}`);
         }
 
         return parsed;

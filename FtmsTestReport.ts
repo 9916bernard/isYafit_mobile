@@ -215,31 +215,47 @@ export function determineCompatibility(results: TestResults): TestResults {
         if (simTest && (simTest.status === "Failed" || simTest.status === "Pending")) {
             partialReasons.push('SIM');
         }
-    }
-    
-    // 8. Check for automatic resistance changes (수정 필요)
+    }    // 8. Check for automatic resistance changes (수정 필요)
     if (results.resistanceChanges) {
-        const automaticChanges = results.resistanceChanges.filter(change => !change.command);
+        const automaticChanges = results.resistanceChanges.filter(change => 
+            !change.command || change.command === '자동 변경'
+        );
+        console.log('자동변화 디버깅:', {
+            totalChanges: results.resistanceChanges.length,
+            automaticChanges: automaticChanges.length,
+            allChanges: results.resistanceChanges.map(c => ({ 
+                paramType: c.paramType, 
+                command: c.command, 
+                isAutomatic: !c.command || c.command === '자동 변경'
+            }))
+        });
         if (automaticChanges.length >= 5) {
             warningReasons.push('자동변화');
+            console.log('자동변화 5회 이상 감지됨 - 수정 필요로 분류');
         }
     }
-    
-    // Determine final compatibility level based on priority: 불가능 > 부분호환 > 완전호환
+      // Determine final compatibility level based on priority: 불가능 > 수정필요/부분호환 > 완전호환
     let compatLevel: "완전 호환" | "부분 호환" | "수정 필요" | "불가능";
     let displayReasons: string[] = [];
     
+    console.log('호환성 판정 디버깅:', {
+        impossibleReasons,
+        warningReasons,
+        partialReasons,
+        hasFTMS
+    });
+
     if (impossibleReasons.length > 0) {
         compatLevel = "불가능";
         displayReasons = impossibleReasons;
-    } else if (partialReasons.length > 0 || warningReasons.length > 0) {
-        if (warningReasons.length > 0) {
-            compatLevel = "수정 필요";
-            displayReasons = [...partialReasons, ...warningReasons];
-        } else {
-            compatLevel = "부분 호환";
-            displayReasons = partialReasons;
-        }
+    } else if (warningReasons.length > 0) {
+        // 자동변화가 있으면 수정 필요 (부분 호환 이유와 함께 표시)
+        compatLevel = "수정 필요";
+        displayReasons = [...partialReasons, ...warningReasons];
+        console.log('수정 필요로 분류됨:', displayReasons);
+    } else if (partialReasons.length > 0) {
+        compatLevel = "부분 호환";
+        displayReasons = partialReasons;
     } else if (hasFTMS) {
         compatLevel = "완전 호환";
         displayReasons = [];
@@ -247,6 +263,8 @@ export function determineCompatibility(results: TestResults): TestResults {
         compatLevel = "불가능";
         displayReasons = ['프로토콜'];
     }
+    
+    console.log('최종 호환성 레벨:', compatLevel, '이유:', displayReasons);
     
     // Update results with new compatibility system
     updatedResults.compatibilityLevel = compatLevel;
@@ -273,13 +291,12 @@ function generateDetailedReasons(reasonCodes: string[], compatLevel: string, res
         } else if (uniqueCodes.includes('프로토콜')) {
             resultMessage = "Yafit에서 지원하지 않는 프로토콜입니다. Yafit과 호환되지 않습니다.";
         }    } else if (compatLevel === "부분 호환") {
-        resultMessage = "Yafit 연결과 플레이가 가능합니다.";
-    } else if (compatLevel === "수정 필요") {
+        resultMessage = "Yafit 연결과 플레이가 가능합니다.";    } else if (compatLevel === "수정 필요") {
         let baseMessage = "Yafit에 연결과 플레이가 가능합니다.";
         let issues = [];
         
         if (uniqueCodes.includes('자동변화')) {
-            issues.push("기어 수정이 필요합니다. 유저가 의도치 않은 저항을 느낄 수 있습니다");
+            issues.push("의도하지 않은 저항 변경이 발생했습니다. 기기 자체 모드가 설정되어있는지 확인해주세요");
         }
         
         // Add any partial compatibility issues

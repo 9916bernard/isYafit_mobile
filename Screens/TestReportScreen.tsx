@@ -496,9 +496,8 @@ const getCompatibilityColor = (compatibilityLevel?: string): string => {
                           )}
                           {results.controlTests?.SET_SIM_PARAMS?.status === 'Failed' && (
                             <Text style={styles.limitationText}>• SIM 모드 사용 불가능</Text>
-                          )}
-                          {results.resistanceChanges && results.resistanceChanges.filter(change => !change.command).length >= 5 && (
-                            <Text style={styles.limitationText}>• 저항값이 명령 없이 자동 변화함</Text>
+                          )}                          {results.resistanceChanges && results.resistanceChanges.filter(change => !change.command || change.command === '자동 변경').length >= 5 && (
+                            <Text style={styles.limitationText}>• 의도하지 않은 저항 변경이 발생했습니다. 기기 자체 모드가 설정되어있는지 확인해주세요</Text>
                           )}
                         </>
                       )}

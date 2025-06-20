@@ -15,7 +15,7 @@ import Toast from 'react-native-root-toast';
 
 
 // 0.6.0 FTMS CSC 까지 동작 확인 버전
-const APP_VERSION = 'v0.6.0';
+const APP_VERSION = 'v0.6.1';
 
 function App() {
   const insets = useSafeAreaInsets();
@@ -419,7 +419,7 @@ function App() {
           <View style={styles.scanButtonContent}>
             {isScanning && <Icon name="radar" size={20} color={Colors.text} style={styles.scanIcon} />}
             <Text style={styles.scanButtonText}>
-              {isScanning ? "스캔 중..." : "FTMS 장치 스캔"}
+              {isScanning ? "스캔 중..." : "주변 장치 스캔"}
             </Text>
           </View>
         </LinearGradient>
