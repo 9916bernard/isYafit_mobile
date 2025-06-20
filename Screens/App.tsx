@@ -690,9 +690,9 @@ function App() {
                     </Text>
                     <View style={styles.helpBubbleProtocols}>
                       <Text style={styles.helpBubbleSubtitle}>프로토콜:</Text>
-                      <Text style={styles.helpBubbleProtocolText}>FTMS, Mobi, Reborn, Tacx</Text>
-                      <Text style={styles.helpBubbleSubtitle}>센서:</Text>
-                      <Text style={styles.helpBubbleProtocolText}>CSC, FitShow, YAFIT, R1</Text>
+                      <Text style={styles.helpBubbleProtocolText}>FTMS, CSC </Text>
+                      <Text style={styles.helpBubbleSubtitle}>브랜드 커스텀 프로토콜:</Text>
+                      <Text style={styles.helpBubbleProtocolText}>Mobi, Reborn, FitShow, Tacx, YAFIT</Text>
                     </View>
                   </View>
                 </View>

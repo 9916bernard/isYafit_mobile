@@ -384,7 +384,7 @@ export class FTMSTester {
                         this.testResults.deviceInfo.protocol = "REBORN";
                         break;
                     case 'TACX_NEO':
-                        this.testResults.deviceInfo.protocol = "TACX_NEO";
+                        this.testResults.deviceInfo.protocol = "TACX";
                         break;
                     case 'FITSHOW':
                         this.testResults.deviceInfo.protocol = "FITSHOW";
