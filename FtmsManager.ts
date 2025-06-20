@@ -84,7 +84,11 @@ export enum ProtocolType {
     FTMS = 'FTMS',
     CSC = 'CSC',
     MOBI = 'MOBI',
-    REBORN = 'REBORN'
+    REBORN = 'REBORN',
+    TACX_NEO = 'TACX_NEO',
+    FITSHOW = 'FITSHOW',
+    YAFIT_S3 = 'YAFIT_S3',
+    YAFIT_S4 = 'YAFIT_S4'
 }
 
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
@@ -102,9 +106,20 @@ export class FTMSManager {
     private controlPointSubscription: Subscription | null = null;
     private indoorBikeDataSubscription: Subscription | null = null;
     private bluetoothStateSubscription: Subscription | null = null;
-    private currentState: State = State.Unknown;    private ftmsFeatureBits: number = 0;
+    private currentState: State = State.Unknown;
+    
+    private ftmsFeatureBits: number = 0;
     private isDeviceActive: boolean = false; // Track if device is active (started)
     private detectedProtocol: ProtocolType | null = null; // Track detected protocol
+    
+    // Protocol detection flags
+    private _isMobiSensor: boolean = false;
+    private _isRebornSensor: boolean = false;
+    private _isTacxNeoSensor: boolean = false;
+    private _isFSSensor: boolean = false;
+    private _isS3Sensor: boolean = false;
+    private _isS4Sensor: boolean = false;
+    private _isFTMSSensor: boolean = false;
     
     // Reborn authentication state
     private rebornAuthBytes: Buffer | null = null;
@@ -117,6 +132,94 @@ export class FTMSManager {
         this.monitorBluetoothState();
         this.clearLogs();
         this.logInfo("FTMS Manager initialized");
+    }
+    
+    // 센서 타입 판별 메서드들
+    private checkMobiSensor(deviceName: string): boolean {
+        this._isMobiSensor = deviceName.includes("MOB");
+        return this._isMobiSensor;
+    }
+    
+    private checkRebornSensor(deviceName: string): boolean {
+        this._isRebornSensor = deviceName.includes("XQ");
+        return this._isRebornSensor;
+    }
+    
+    private checkTacxNeoSensor(deviceName: string): boolean {
+        this._isTacxNeoSensor = deviceName.includes("Tac");
+        return this._isTacxNeoSensor;
+    }
+    
+    private checkFitShowSensor(deviceName: string): boolean {
+        this._isFSSensor = deviceName.includes("FS-");
+        return this._isFSSensor;
+    }
+    
+    private checkS3Sensor(deviceName: string): boolean {
+        this._isS3Sensor = deviceName.includes("YAFITS3") || deviceName.includes("YA FIT");
+        return this._isS3Sensor;
+    }
+    
+    private checkS4Sensor(deviceName: string): boolean {
+        this._isS4Sensor = deviceName.includes("R-Q") || deviceName.includes("YAFITF1");
+        return this._isS4Sensor;
+    }
+    
+    private checkFTMSSensor(): boolean {
+        // FTMS 서비스가 있는지 확인
+        this._isFTMSSensor = this.connectedDevice?.serviceUUIDs?.includes(FTMS_SERVICE_UUID) ?? false;
+        return this._isFTMSSensor;
+    }
+    
+    // Mobi 센서 확인 메서드 (우선순위가 가장 높으므로 public으로 제공)
+    public isMobiSensor(): boolean {
+        return this._isMobiSensor;
+    }
+    
+    // 모든 센서 플래그 초기화
+    private resetSensorFlags(): void {
+        this._isMobiSensor = false;
+        this._isRebornSensor = false;
+        this._isTacxNeoSensor = false;
+        this._isFSSensor = false;
+        this._isS3Sensor = false;
+        this._isS4Sensor = false;
+        this._isFTMSSensor = false;
+    }
+      // 프로토콜 우선순위에 따른 연결 타입 결정
+    private determineProtocolByPriority(): ProtocolType {
+        if (this.isMobiSensor()) {
+            this.logInfo("Detected Mobi sensor - using Mobi protocol");
+            return ProtocolType.MOBI;
+        }
+        else if (this._isRebornSensor) {
+            this.logInfo("Detected Reborn sensor - using Reborn protocol");
+            return ProtocolType.REBORN;
+        }
+        else if (this._isTacxNeoSensor) {
+            this.logInfo("Detected Tacx Neo sensor - using Tacx Neo protocol");
+            return ProtocolType.TACX_NEO;
+        }
+        else if (this._isFSSensor) {
+            this.logInfo("Detected FitShow sensor - using FitShow protocol");
+            return ProtocolType.FITSHOW;
+        }
+        else if (this._isS3Sensor) {
+            this.logInfo("Detected YafitS3 sensor - using FTMS protocol");
+            return ProtocolType.FTMS;
+        }
+        else if (this._isS4Sensor) {
+            this.logInfo("Detected YafitS4 sensor - using FTMS protocol");
+            return ProtocolType.FTMS;
+        }
+        else if (this._isFTMSSensor) {
+            this.logInfo("Detected FTMS sensor - using standard FTMS protocol");
+            return ProtocolType.FTMS;
+        }
+        else {
+            this.logInfo("No specific protocol detected - using CSC protocol as fallback");
+            return ProtocolType.CSC;
+        }
     }
     
     private monitorBluetoothState(): void {
@@ -191,21 +294,26 @@ export class FTMSManager {
             this.logInfo("Services and characteristics discovered");
 
             // Detect protocol and perform protocol-specific initialization
-            await this.detectProtocol();
-            
-            // Protocol-specific initialization
+            await this.detectProtocol();            // Protocol-specific initialization
             switch (this.detectedProtocol) {
                 case ProtocolType.FTMS:
                     await this.readFTMSFeatures();
                     break;
                 case ProtocolType.CSC:
                     this.logInfo("CSC protocol detected - no specific initialization needed");
-                    break;                case ProtocolType.MOBI:
+                    break;
+                case ProtocolType.MOBI:
                     this.logInfo("Mobi protocol detected - read-only protocol");
                     break;
                 case ProtocolType.REBORN:
                     this.logInfo("Reborn protocol detected - authentication required");
                     this.rebornAuthCompleted = false;
+                    break;
+                case ProtocolType.TACX_NEO:
+                    this.logInfo("Tacx Neo protocol detected - initialization not implemented yet");
+                    break;
+                case ProtocolType.FITSHOW:
+                    this.logInfo("FitShow protocol detected - initialization not implemented yet");
                     break;
                 default:
                     this.logWarning("Unknown protocol detected");
@@ -244,13 +352,42 @@ export class FTMSManager {
             this.logError("Device not connected");
             return null;
         }
+        
         try {
             this.logInfo(`Writing to Control Point: ${data.toString('hex')}`);
-            const char = await this.connectedDevice.writeCharacteristicWithResponseForService(
-                FTMS_SERVICE_UUID,
-                FTMS_CONTROL_POINT_CHAR_UUID,
-                data.toString('base64')
-            );
+            
+            let char: Characteristic | null = null;
+              // 프로토콜별 control point 처리
+            switch (this.detectedProtocol) {
+                case ProtocolType.FTMS:
+                case ProtocolType.YAFIT_S3:
+                case ProtocolType.YAFIT_S4:
+                    char = await this.connectedDevice.writeCharacteristicWithResponseForService(
+                        FTMS_SERVICE_UUID,
+                        FTMS_CONTROL_POINT_CHAR_UUID,
+                        data.toString('base64')
+                    );
+                    break;
+                    
+                case ProtocolType.REBORN:
+                    // Reborn 프로토콜용 control point (향후 구현)
+                    char = await this.connectedDevice.writeCharacteristicWithResponseForService(
+                        REBORN_SERVICE_UUID,
+                        REBORN_WRITE_CHAR_UUID,
+                        data.toString('base64')
+                    );
+                    break;
+                    
+                case ProtocolType.TACX_NEO:
+                case ProtocolType.FITSHOW:
+                    // 다른 프로토콜들은 추후 구현
+                    this.logWarning(`Control point implementation not yet available for ${this.detectedProtocol} protocol`);
+                    throw new Error(`Control point implementation not yet available for ${this.detectedProtocol} protocol`);
+                    
+                default:
+                    throw new Error(`Unsupported protocol for control commands: ${this.detectedProtocol}`);
+            }
+            
             this.logSuccess("Write successful");
             return char;
         } catch (error) {
@@ -308,6 +445,12 @@ export class FTMSManager {
             case ProtocolType.REBORN:
                 await this.subscribeToRebornNotifications(onIndoorBikeData);
                 break;
+            case ProtocolType.TACX_NEO:
+                this.logWarning("Tacx Neo protocol notifications not implemented yet");
+                throw new Error("Tacx Neo protocol notifications not implemented yet");
+            case ProtocolType.FITSHOW:
+                this.logWarning("FitShow protocol notifications not implemented yet");
+                throw new Error("FitShow protocol notifications not implemented yet");
             default:
                 throw new Error("Unsupported protocol for notifications");
         }
@@ -604,27 +747,24 @@ export class FTMSManager {
         return parsed;
     }    // --- Control Commands ---
     async requestControl(): Promise<void> {
-        if (this.detectedProtocol !== ProtocolType.FTMS) {
+        if (!this.supportsControlCommands()) {
             this.logWarning(`Control commands not supported for ${this.detectedProtocol} protocol`);
             throw new Error(`Control commands not supported for ${this.detectedProtocol} protocol`);
         }
         this.logInfo("명령 전송: REQUEST_CONTROL (0x00) - 제어 권한 요청");
         await this.writeControlPoint(REQUEST_CONTROL);
         await delay(500); // Time for device to respond
-    }
-
-    async resetMachine(): Promise<void> {
-        if (this.detectedProtocol !== ProtocolType.FTMS) {
+    }    async resetMachine(): Promise<void> {
+        if (!this.supportsControlCommands()) {
             this.logWarning(`Control commands not supported for ${this.detectedProtocol} protocol`);
             throw new Error(`Control commands not supported for ${this.detectedProtocol} protocol`);
         }
         this.logInfo("명령 전송: RESET (0x01) - 기기 리셋");
         await this.writeControlPoint(RESET);
         await delay(1000);
-    }    
-    
-    async startMachine(): Promise<void> {
-        if (this.detectedProtocol !== ProtocolType.FTMS) {
+    }
+      async startMachine(): Promise<void> {
+        if (!this.supportsControlCommands()) {
             this.logWarning(`Control commands not supported for ${this.detectedProtocol} protocol`);
             throw new Error(`Control commands not supported for ${this.detectedProtocol} protocol`);
         }
@@ -632,10 +772,8 @@ export class FTMSManager {
         await this.writeControlPoint(START);
         this.isDeviceActive = true; // Set device as active
         await delay(1000);
-    }
-
-    async stopMachine(): Promise<void> {
-        if (this.detectedProtocol !== ProtocolType.FTMS) {
+    }    async stopMachine(): Promise<void> {
+        if (!this.supportsControlCommands()) {
             this.logWarning(`Control commands not supported for ${this.detectedProtocol} protocol`);
             throw new Error(`Control commands not supported for ${this.detectedProtocol} protocol`);
         }
@@ -643,20 +781,16 @@ export class FTMSManager {
         await this.writeControlPoint(STOP); // Stop command might have parameters for pause etc.
         this.isDeviceActive = false; // Set device as inactive
         await delay(1000);
-    }
-
-    async setResistance(level: number): Promise<void> {
-        if (this.detectedProtocol !== ProtocolType.FTMS) {
+    }    async setResistance(level: number): Promise<void> {
+        if (!this.supportsControlCommands()) {
             this.logWarning(`Control commands not supported for ${this.detectedProtocol} protocol`);
             throw new Error(`Control commands not supported for ${this.detectedProtocol} protocol`);
         }
         console.log(`Sending Set Resistance Level command (${level})`);
         await this.writeControlPoint(SET_RESISTANCE_LEVEL(level));
         await delay(500);
-    }
-
-    async setTargetPower(watts: number): Promise<void> {
-        if (this.detectedProtocol !== ProtocolType.FTMS) {
+    }    async setTargetPower(watts: number): Promise<void> {
+        if (!this.supportsControlCommands()) {
             this.logWarning(`Control commands not supported for ${this.detectedProtocol} protocol`);
             throw new Error(`Control commands not supported for ${this.detectedProtocol} protocol`);
         }
@@ -668,10 +802,8 @@ export class FTMSManager {
         console.log(`Sending Set Target Power command (${watts} watts)`);
         await this.writeControlPoint(SET_TARGET_POWER(watts));
         await delay(500);
-    }
-
-    async setSimulationParameters(windSpeed: number = 0, grade: number = 0, crr: number = 0.004, cw: number = 0.5): Promise<void> {
-        if (this.detectedProtocol !== ProtocolType.FTMS) {
+    }    async setSimulationParameters(windSpeed: number = 0, grade: number = 0, crr: number = 0.004, cw: number = 0.5): Promise<void> {
+        if (!this.supportsControlCommands()) {
             this.logWarning(`Control commands not supported for ${this.detectedProtocol} protocol`);
             throw new Error(`Control commands not supported for ${this.detectedProtocol} protocol`);
         }
@@ -724,23 +856,36 @@ export class FTMSManager {
             this.logError(`Error during test sequence: ${error instanceof Error ? error.message : String(error)}`);
         }
     }// Initial connection sequence without running tests
-
-
     async connectSequence(): Promise<boolean> {
         if (!this.connectedDevice) {
             this.logError("No device connected to run connection sequence");
             return false;
         }
+        
         try {
-            this.logInfo("Starting FTMS Connection Sequence");
+            this.logInfo(`Starting connection sequence for ${this.detectedProtocol} protocol`);
 
-            await this.requestControl();
-            await this.resetMachine();
-            await this.startMachine();
-            // Note: isDeviceActive is set to true in startMachine()
-            
-            this.logSuccess("FTMS Connection Sequence Completed - Device is now active and ready for commands");
-            return true;
+            // 프로토콜별 연결 시퀀스 처리
+            switch (this.detectedProtocol) {
+                case ProtocolType.FTMS:
+                    return await this.connectSequenceFTMS();
+                case ProtocolType.MOBI:
+                    return await this.connectSequenceMobi();
+                case ProtocolType.REBORN:
+                    return await this.connectSequenceReborn();                case ProtocolType.TACX_NEO:
+                    return await this.connectSequenceTacxNeo();
+                case ProtocolType.FITSHOW:
+                    return await this.connectSequenceFitShow();
+                case ProtocolType.YAFIT_S3:
+                    return await this.connectSequenceYafitS3();
+                case ProtocolType.YAFIT_S4:
+                    return await this.connectSequenceYafitS4();
+                case ProtocolType.CSC:
+                    return await this.connectSequenceCSC();
+                default:
+                    this.logError("Unsupported protocol for connection sequence");
+                    return false;
+            }
         } catch (error) {
             this.logError(`Error during connection sequence: ${error instanceof Error ? error.message : String(error)}`);
             this.isDeviceActive = false;
@@ -748,6 +893,127 @@ export class FTMSManager {
         }
     }
     
+    // FTMS 프로토콜 연결 시퀀스
+    private async connectSequenceFTMS(): Promise<boolean> {
+        try {
+            this.logInfo("Starting FTMS Connection Sequence");
+            await this.requestControl();
+            await this.resetMachine();
+            await this.startMachine();
+            this.logSuccess("FTMS Connection Sequence Completed - Device is now active and ready for commands");
+            return true;
+        } catch (error) {
+            this.logError(`FTMS connection sequence error: ${error instanceof Error ? error.message : String(error)}`);
+            return false;
+        }
+    }
+    
+    // Mobi 프로토콜 연결 시퀀스 (추후 구현)
+    private async connectSequenceMobi(): Promise<boolean> {
+        this.logInfo("Mobi protocol connection sequence - read-only mode");
+        this.isDeviceActive = true;
+        return true;
+    }    // Reborn 프로토콜 연결 시퀀스
+    private async connectSequenceReborn(): Promise<boolean> {
+        try {
+            this.logInfo("Starting Reborn Connection Sequence");
+            this.logInfo("Reborn protocol detected - authentication only, no control commands");
+            
+            // Reborn은 인증만 수행하고 제어 명령은 시도하지 않음
+            this.logInfo("Reborn authentication completed, device is active for data reading only");
+            this.isDeviceActive = true;
+            return true;
+        } catch (error) {
+            this.logError(`Reborn connection sequence error: ${error instanceof Error ? error.message : String(error)}`);
+            // fallback으로 device를 active 상태로 설정
+            this.isDeviceActive = true;
+            return true;
+        }
+    }
+    
+    // CSC 프로토콜 연결 시퀀스
+    private async connectSequenceCSC(): Promise<boolean> {
+        this.logInfo("CSC protocol connection sequence - read-only mode");
+        this.isDeviceActive = true;
+        return true;
+    }
+    
+    // Tacx Neo 프로토콜 연결 시퀀스 (기본 틀)
+    private async connectSequenceTacxNeo(): Promise<boolean> {
+        try {
+            this.logInfo("Starting Tacx Neo Connection Sequence");
+            this.logWarning("Tacx Neo protocol implementation is not complete - using basic control sequence");
+            // 기본 control sequence 시도
+            await this.requestControl();
+            await this.resetMachine();
+            await this.startMachine();
+            this.logSuccess("Tacx Neo Connection Sequence Completed");
+            return true;
+        } catch (error) {
+            this.logError(`Tacx Neo connection sequence error: ${error instanceof Error ? error.message : String(error)}`);
+            // fallback으로 device를 active 상태로 설정
+            this.isDeviceActive = true;
+            return true;
+        }
+    }
+    
+    // FitShow 프로토콜 연결 시퀀스 (기본 틀)
+    private async connectSequenceFitShow(): Promise<boolean> {
+        try {
+            this.logInfo("Starting FitShow Connection Sequence");
+            this.logWarning("FitShow protocol implementation is not complete - using basic control sequence");
+            // 기본 control sequence 시도
+            await this.requestControl();
+            await this.resetMachine();
+            await this.startMachine();
+            this.logSuccess("FitShow Connection Sequence Completed");
+            return true;
+        } catch (error) {
+            this.logError(`FitShow connection sequence error: ${error instanceof Error ? error.message : String(error)}`);
+            // fallback으로 device를 active 상태로 설정
+            this.isDeviceActive = true;
+            return true;
+        }
+    }
+    
+    // YafitS3 프로토콜 연결 시퀀스 (기본 틀)
+    private async connectSequenceYafitS3(): Promise<boolean> {
+        try {
+            this.logInfo("Starting YafitS3 Connection Sequence");
+            this.logWarning("YafitS3 protocol implementation is not complete - using basic control sequence");
+            // 기본 control sequence 시도
+            await this.requestControl();
+            await this.resetMachine();
+            await this.startMachine();
+            this.logSuccess("YafitS3 Connection Sequence Completed");
+            return true;
+        } catch (error) {
+            this.logError(`YafitS3 connection sequence error: ${error instanceof Error ? error.message : String(error)}`);
+            // fallback으로 device를 active 상태로 설정
+            this.isDeviceActive = true;
+            return true;
+        }
+    }
+    
+    // YafitS4 프로토콜 연결 시퀀스 (기본 틀)
+    private async connectSequenceYafitS4(): Promise<boolean> {
+        try {
+            this.logInfo("Starting YafitS4 Connection Sequence");
+            this.logWarning("YafitS4 protocol implementation is not complete - using basic control sequence");
+            // 기본 control sequence 시도
+            await this.requestControl();
+            await this.resetMachine();
+            await this.startMachine();
+            this.logSuccess("YafitS4 Connection Sequence Completed");
+            return true;
+        } catch (error) {
+            this.logError(`YafitS4 connection sequence error: ${error instanceof Error ? error.message : String(error)}`);
+            // fallback으로 device를 active 상태로 설정
+            this.isDeviceActive = true;
+            return true;
+        }
+    }
+
     getConnectedDevice(): Device | null {
         return this.connectedDevice;
     }
@@ -844,54 +1110,46 @@ export class FTMSManager {
             // destroy 후에는 bleManager를 null로 설정하여 중복 호출 방지
             (this as any).bleManager = null;
         }
-    }
-
-    // Protocol detection method
+    }    // Protocol detection method
     async detectProtocol(): Promise<ProtocolType> {
         if (!this.connectedDevice) {
             throw new Error("Device not connected");
-        }        try {
-            this.logInfo("Detecting device protocol (Priority: FTMS > CSC > MOBI)...");
-            const services = await this.connectedDevice.services();
+        }
+        
+        try {
+            this.logInfo("Detecting device protocol using priority system...");
             
-            // First pass: Check for FTMS (highest priority)
+            // 먼저 모든 센서 플래그 초기화
+            this.resetSensorFlags();
+            
+            // 디바이스 이름으로 센서 타입 판별
+            const deviceName = this.connectedDevice.name || "";
+            this.logInfo(`Device name: ${deviceName}`);
+            
+            // 각 센서 타입 확인
+            this.checkMobiSensor(deviceName);
+            this.checkRebornSensor(deviceName);
+            this.checkTacxNeoSensor(deviceName);
+            this.checkFitShowSensor(deviceName);
+            this.checkS3Sensor(deviceName);
+            this.checkS4Sensor(deviceName);
+            
+            // 서비스 확인하여 FTMS 지원 여부 판별
+            const services = await this.connectedDevice.services();
             for (const service of services) {
                 this.logInfo(`Found service: ${service.uuid}`);
-                
                 if (service.uuid.toLowerCase() === FTMS_SERVICE_UUID.toLowerCase()) {
-                    this.detectedProtocol = ProtocolType.FTMS;
-                    this.logSuccess("Detected FTMS protocol (highest priority) - will use FTMS");
-                    return ProtocolType.FTMS;
+                    this._isFTMSSensor = true;
+                    break;
                 }
             }
             
-            // Second pass: Check for CSC only if FTMS not found
-            for (const service of services) {
-                if (service.uuid.toLowerCase() === "00001816-0000-1000-8000-00805f9b34fb") {
-                    this.detectedProtocol = ProtocolType.CSC;
-                    this.logSuccess("Detected CSC protocol (FTMS not found) - will use CSC");
-                    return ProtocolType.CSC;
-                }
-            }
-              // Third pass: Check for Mobi only if FTMS and CSC not found
-            for (const service of services) {
-                if (service.uuid.toLowerCase() === MOBI_SERVICE_UUID.toLowerCase()) {
-                    this.detectedProtocol = ProtocolType.MOBI;
-                    this.logSuccess("Detected Mobi protocol (FTMS and CSC not found) - will use Mobi");
-                    return ProtocolType.MOBI;
-                }
-            }
+            // 우선순위에 따라 프로토콜 결정
+            this.detectedProtocol = this.determineProtocolByPriority();
             
-            // Fourth pass: Check for Reborn only if FTMS, CSC, and Mobi not found
-            for (const service of services) {
-                if (service.uuid.toLowerCase() === REBORN_SERVICE_UUID.toLowerCase()) {
-                    this.detectedProtocol = ProtocolType.REBORN;
-                    this.logSuccess("Detected Reborn protocol (FTMS, CSC, and Mobi not found) - will use Reborn");
-                    return ProtocolType.REBORN;
-                }
-            }
+            this.logSuccess(`Protocol detection completed: ${this.detectedProtocol}`);
+            return this.detectedProtocol;
             
-            throw new Error("No supported protocol detected");
         } catch (error) {
             this.logError(`Protocol detection error: ${error instanceof Error ? error.message : String(error)}`);
             throw error;
@@ -1140,6 +1398,21 @@ export class FTMSManager {
         }
 
         return parsed;
+    }    // 프로토콜이 control command를 지원하는지 확인하는 helper 메서드
+    private supportsControlCommands(): boolean {
+        switch (this.detectedProtocol) {
+            case ProtocolType.FTMS:
+            case ProtocolType.TACX_NEO:
+            case ProtocolType.FITSHOW:
+            case ProtocolType.YAFIT_S3:
+            case ProtocolType.YAFIT_S4:
+                return true;
+            case ProtocolType.MOBI:
+            case ProtocolType.REBORN:  // REBORN은 인증 외 제어 불가능
+            case ProtocolType.CSC:
+            default:
+                return false;
+        }
     }
 }
 

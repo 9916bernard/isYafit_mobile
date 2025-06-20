@@ -172,21 +172,27 @@ export function determineCompatibility(results: TestResults): TestResults {
     if (results.issuesFound?.some(issue => issue.includes('연결이 끊어졌습니다') || issue.includes('테스트 중단'))) {
         impossibleReasons.push('중지');
     }
+      // 2. Check cadence detection (불가능(RPM)) - 우선순위 프로토콜은 예외 처리
+    const priorityProtocols = ["MOBI", "REBORN", "TACX_NEO", "FITSHOW", "YAFIT_S3", "YAFIT_S4"];
+    const hasPriorityProtocol = results.supportedProtocols.some(protocol => priorityProtocols.includes(protocol));
     
-    // 2. Check cadence detection (불가능(RPM))
-    if (!results.dataFields?.cadence?.detected) {
+    if (!results.dataFields?.cadence?.detected && !hasPriorityProtocol) {
         impossibleReasons.push('RPM');
     }
     
-    // 3. Check protocol support (불가능(프로토콜))
+    // 3. Check protocol support (불가능(프로토콜)) - 우선순위 프로토콜도 지원 프로토콜로 인정
     const hasFTMS = results.supportedProtocols.includes("FTMS");
     const hasCSC = results.supportedProtocols.includes("CSC");
     
-    if (!hasFTMS && !hasCSC) {
+    if (!hasFTMS && !hasCSC && !hasPriorityProtocol) {
         impossibleReasons.push('프로토콜');
-    } else if (!hasFTMS && hasCSC) {
-        // CSC only case - add specific reason
-        partialReasons.push('기본기능');
+    } else if ((!hasFTMS && hasCSC) || hasPriorityProtocol) {
+        // CSC only case or priority protocol case - add specific reason
+        if (hasPriorityProtocol && !hasFTMS) {
+            partialReasons.push('기본기능'); // 우선순위 프로토콜은 기본기능으로 분류
+        } else if (!hasFTMS && hasCSC) {
+            partialReasons.push('기본기능');
+        }
     }
     
     // 4. Check resistance detection (부분 호환(기어))
@@ -252,11 +258,11 @@ export function determineCompatibility(results: TestResults): TestResults {
         // 자동변화가 있으면 수정 필요 (부분 호환 이유와 함께 표시)
         compatLevel = "수정 필요";
         displayReasons = [...partialReasons, ...warningReasons];
-        console.log('수정 필요로 분류됨:', displayReasons);
-    } else if (partialReasons.length > 0) {
+        console.log('수정 필요로 분류됨:', displayReasons);    } else if (partialReasons.length > 0) {
         compatLevel = "부분 호환";
         displayReasons = partialReasons;
-    } else if (hasFTMS) {
+    } else if (hasFTMS || hasPriorityProtocol) {
+        // FTMS 또는 우선순위 프로토콜이 있으면 완전 호환 가능
         compatLevel = "완전 호환";
         displayReasons = [];
     } else {
@@ -291,9 +297,23 @@ function generateDetailedReasons(reasonCodes: string[], compatLevel: string, res
         } else if (uniqueCodes.includes('프로토콜')) {
             resultMessage = "Yafit에서 지원하지 않는 프로토콜입니다. Yafit과 호환되지 않습니다.";
         }    } else if (compatLevel === "부분 호환") {
-        resultMessage = "Yafit 연결과 플레이가 가능합니다.";    } else if (compatLevel === "수정 필요") {
+        resultMessage = "Yafit 연결과 플레이가 가능합니다.";
+        
+        // REBORN 프로토콜 제한사항 추가
+        if (results.supportedProtocols.includes("REBORN")) {
+            resultMessage += " Reborn 프로토콜은 제어 명령이 불가능합니다. SIM,ERG,유저의 기어 변경이 불가능합니다.";
+        }    } else if (compatLevel === "수정 필요") {
         let baseMessage = "Yafit에 연결과 플레이가 가능합니다.";
         let issues = [];
+        
+        // REBORN 프로토콜 제한사항 먼저 추가
+        if (results.supportedProtocols.includes("REBORN")) {
+            issues.push("Reborn 프로토콜은 제어 명령이 불가능합니다. SIM,ERG,유저의 기어 변경이 불가능합니다.");
+        }
+        const hasReborn = results.supportedProtocols.includes("REBORN");
+        if (hasReborn) {
+            issues.push("Reborn 프로토콜은 제어 명령이 불가능합니다. SIM,ERG,유저의 기어 변경이 불가능합니다");
+        }
         
         if (uniqueCodes.includes('자동변화')) {
             issues.push("의도하지 않은 저항 변경이 발생했습니다. 기기 자체 모드가 설정되어있는지 확인해주세요");

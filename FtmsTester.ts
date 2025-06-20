@@ -121,75 +121,13 @@ export class FTMSTester {
             this.logInteraction('INFO - Test: Discovering services and characteristics.');
             await this.identifyProtocols();
               this.logInteraction(`INFO - Test: Identified protocols: ${this.testResults.supportedProtocols.join(', ') || 'None'}.`);
-            
-            // Step 2: Read supported ranges if FTMS protocol is available
-            if (this.testResults.supportedProtocols.includes("FTMS")) {
-                this.updateProgress(20, "지원 범위 확인 중...");
-                this.logInteraction('INFO - Test: Reading supported FTMS ranges.');
-                await this.readSupportRanges();
-                this.logInteraction('INFO - Test: Finished reading supported ranges.');
-                
-                // Step 3: Subscribe to notifications and monitor data fields
-                this.updateProgress(30, "데이터 필드 모니터링 설정 중...");
-                this.logInteraction('INFO - Test: Subscribing to FTMS notifications.');
-                await this.monitorBikeData();
-                this.logInteraction('INFO - Test: Subscribed to notifications and initial commands sent.');
-                
-                // Step 4: Test control points
-                this.updateProgress(40, "제어 기능 테스트 중...");
-                this.logInteraction('INFO - Test: Starting control point tests.');
-                await this.testControlPoints();
-                this.logInteraction('INFO - Test: Control point tests completed.');
-                
-                // Step 5: Let the test run for the remaining duration to collect data
-                const elapsed = Date.now() - this.startTime;
-                const remainingTime = Math.max(0, this.testDuration - elapsed);
-                
-                if (remainingTime > 0) {
-                    this.updateProgress(50, "데이터 수집 중...");
-                    this.logInteraction(`INFO - Test: Starting data collection phase for ${remainingTime / 1000} seconds.`);
-                    await this.runDataCollection(remainingTime);
-                    this.logInteraction('INFO - Test: Data collection phase ended.');
-                }
-                
-                // Finalize the test
-                this.updateProgress(90, "호환성 분석 중...");
-                this.mergeFtmsManagerLogs(); // Merge logs before finalizing
-                this.testResults = finalizeTestReport(this.testResults);
-                
-                // Complete
-                this.updateProgress(100, "테스트 완료");
-                if (this.onTestComplete) {
-                    this.onTestComplete(this.testResults);
-                }
-                
-            } else if (this.testResults.supportedProtocols.includes("CSC")) {
-                // Limited CSC protocol testing
-                this.updateProgress(30, "CSC 데이터 모니터링 중...");
-                this.logInteraction('INFO - Test: Starting limited CSC protocol testing.');
-                await this.monitorCscData();
-                
-                // Let it run for a while to collect data
-                const elapsed = Date.now() - this.startTime;
-                const remainingTime = Math.max(0, this.testDuration - elapsed);
-                
-                if (remainingTime > 0) {
-                    await new Promise(resolve => setTimeout(resolve, remainingTime));
-                }
-                
-                // Finalize CSC test
-                this.mergeFtmsManagerLogs(); // Merge logs before finalizing
-                this.testResults = finalizeTestReport(this.testResults);
-                this.updateProgress(100, "CSC 테스트 완료 (제한된 기능)");                if (this.onTestComplete) {
-                    this.onTestComplete(this.testResults);
-                }
-            } else if (this.testResults.supportedProtocols.includes("MOBI")) {
-                // Limited Mobi protocol testing (read-only)
+              // 프로토콜별 테스트 처리 (우선순위 순서: MOBI > REBORN > TACX_NEO > FITSHOW > YAFIT_S3 > YAFIT_S4 > FTMS > CSC)
+            if (this.testResults.supportedProtocols.includes("MOBI")) {
+                // Mobi 프로토콜 테스트 (우선순위 1)
                 this.updateProgress(30, "Mobi 데이터 모니터링 중...");
-                this.logInteraction('INFO - Test: Starting limited Mobi protocol testing (read-only).');
+                this.logInteraction('INFO - Test: Starting Mobi protocol testing (read-only).');
                 await this.monitorMobiData();
                 
-                // Let it run for a while to collect data
                 const elapsed = Date.now() - this.startTime;
                 const remainingTime = Math.max(0, this.testDuration - elapsed);
                 
@@ -197,20 +135,22 @@ export class FTMSTester {
                     this.updateProgress(50, "Mobi 데이터 수집 중... (페달을 계속 돌려주세요)");
                     await new Promise(resolve => setTimeout(resolve, remainingTime));
                 }
-                  // Finalize Mobi test
-                this.mergeFtmsManagerLogs(); // Merge logs before finalizing
+                
+                this.mergeFtmsManagerLogs();
                 this.testResults = finalizeTestReport(this.testResults);
                 this.updateProgress(100, "Mobi 테스트 완료 (읽기 전용)");
                 if (this.onTestComplete) {
                     this.onTestComplete(this.testResults);
                 }
-            } else if (this.testResults.supportedProtocols.includes("REBORN")) {
-                // Limited Reborn protocol testing (read-only with authentication)
+                  } else if (this.testResults.supportedProtocols.includes("REBORN")) {
+                // Reborn 프로토콜 테스트 (우선순위 2) - 인증 외 제어 불가능
                 this.updateProgress(30, "Reborn 인증 및 데이터 모니터링 중...");
-                this.logInteraction('INFO - Test: Starting limited Reborn protocol testing (read-only with auth).');
+                this.logInteraction('INFO - Test: Starting Reborn protocol testing (authentication + data only).');
                 await this.monitorRebornData();
                 
-                // Let it run for a while to collect data
+                // Reborn은 인증 외에는 제어 명령이 불가능하므로 제어 테스트 생략
+                this.logInteraction('INFO - Test: Skipping control point tests for Reborn (authentication-only protocol).');
+                
                 const elapsed = Date.now() - this.startTime;
                 const remainingTime = Math.max(0, this.testDuration - elapsed);
                 
@@ -219,17 +159,122 @@ export class FTMSTester {
                     await new Promise(resolve => setTimeout(resolve, remainingTime));
                 }
                 
-                // Finalize Reborn test
-                this.mergeFtmsManagerLogs(); // Merge logs before finalizing
+                this.mergeFtmsManagerLogs();
                 this.testResults = finalizeTestReport(this.testResults);
-                this.updateProgress(100, "Reborn 테스트 완료 (읽기 전용)");
+                this.updateProgress(100, "Reborn 테스트 완료 (데이터 수집만)");
                 if (this.onTestComplete) {
                     this.onTestComplete(this.testResults);
                 }
-            } else {
+                  } else if (this.testResults.supportedProtocols.includes("TACX_NEO")) {
+                // Tacx Neo 프로토콜 테스트 (우선순위 3)
+                this.updateProgress(30, "Tacx Neo 데이터 모니터링 중...");
+                this.logInteraction('INFO - Test: Starting Tacx Neo protocol testing (with control commands).');
+                await this.monitorBikeData();
+                
+                this.updateProgress(40, "Tacx Neo 제어 기능 테스트 중...");
+                this.logInteraction('INFO - Test: Starting Tacx Neo control point tests.');
+                await this.testControlPoints();
+                
+                const elapsed = Date.now() - this.startTime;
+                const remainingTime = Math.max(0, this.testDuration - elapsed);
+                
+                if (remainingTime > 0) {
+                    this.updateProgress(50, "Tacx Neo 데이터 수집 중...");
+                    await new Promise(resolve => setTimeout(resolve, remainingTime));
+                }
+                
+                this.mergeFtmsManagerLogs();
+                this.testResults = finalizeTestReport(this.testResults);
+                this.updateProgress(100, "Tacx Neo 테스트 완료 (제어 기능 포함)");
+                if (this.onTestComplete) {
+                    this.onTestComplete(this.testResults);
+                }
+                  } else if (this.testResults.supportedProtocols.includes("FITSHOW")) {
+                // FitShow 프로토콜 테스트 (우선순위 4)
+                this.updateProgress(30, "FitShow 데이터 모니터링 중...");
+                this.logInteraction('INFO - Test: Starting FitShow protocol testing (with control commands).');
+                await this.monitorBikeData();
+                
+                this.updateProgress(40, "FitShow 제어 기능 테스트 중...");
+                this.logInteraction('INFO - Test: Starting FitShow control point tests.');
+                await this.testControlPoints();
+                
+                const elapsed = Date.now() - this.startTime;
+                const remainingTime = Math.max(0, this.testDuration - elapsed);
+                
+                if (remainingTime > 0) {
+                    this.updateProgress(50, "FitShow 데이터 수집 중...");
+                    await new Promise(resolve => setTimeout(resolve, remainingTime));
+                }
+                
+                this.mergeFtmsManagerLogs();
+                this.testResults = finalizeTestReport(this.testResults);
+                this.updateProgress(100, "FitShow 테스트 완료 (제어 기능 포함)");
+                if (this.onTestComplete) {
+                    this.onTestComplete(this.testResults);
+                }                  } else if (this.testResults.supportedProtocols.includes("YAFIT_S3") || this.testResults.supportedProtocols.includes("YAFIT_S4") || this.testResults.supportedProtocols.includes("FTMS")) {
+                // FTMS 프로토콜 테스트 (YAFIT_S3, YAFIT_S4 포함)
+                let protocolName = "FTMS";
+                if (this.testResults.supportedProtocols.includes("YAFIT_S3")) {
+                    protocolName = "YAFIT_S3";
+                } else if (this.testResults.supportedProtocols.includes("YAFIT_S4")) {
+                    protocolName = "YAFIT_S4";
+                }
+                
+                this.updateProgress(20, `${protocolName} 지원 범위 확인 중...`);
+                this.logInteraction(`INFO - Test: Reading supported ${protocolName} ranges (using FTMS protocol).`);
+                await this.readSupportRanges();
+                this.logInteraction(`INFO - Test: Finished reading supported ranges for ${protocolName}.`);
+                
+                this.updateProgress(30, `${protocolName} 데이터 필드 모니터링 설정 중...`);
+                this.logInteraction(`INFO - Test: Subscribing to ${protocolName} notifications (using FTMS protocol).`);
+                await this.monitorBikeData();
+                this.logInteraction(`INFO - Test: Subscribed to notifications and initial commands sent for ${protocolName}.`);
+                
+                this.updateProgress(40, `${protocolName} 제어 기능 테스트 중...`);
+                this.logInteraction(`INFO - Test: Starting ${protocolName} control point tests (using FTMS protocol).`);
+                await this.testControlPoints();
+                this.logInteraction(`INFO - Test: Control point tests completed for ${protocolName}.`);
+                
+                const elapsed = Date.now() - this.startTime;
+                const remainingTime = Math.max(0, this.testDuration - elapsed);
+                
+                if (remainingTime > 0) {
+                    this.updateProgress(50, `${protocolName} 데이터 수집 중...`);
+                    this.logInteraction(`INFO - Test: Starting data collection phase for ${protocolName} for ${remainingTime / 1000} seconds.`);
+                    await this.runDataCollection(remainingTime);
+                    this.logInteraction(`INFO - Test: Data collection phase ended for ${protocolName}.`);
+                }
+                
+                this.updateProgress(90, `${protocolName} 호환성 분석 중...`);
+                this.mergeFtmsManagerLogs();
+                this.testResults = finalizeTestReport(this.testResults);
+                this.updateProgress(100, `${protocolName} 테스트 완료`);
+                if (this.onTestComplete) {
+                    this.onTestComplete(this.testResults);
+                }
+                } else if (this.testResults.supportedProtocols.includes("CSC")) {
+                // CSC 프로토콜 테스트 (우선순위 8)
+                this.updateProgress(30, "CSC 데이터 모니터링 중...");
+                this.logInteraction('INFO - Test: Starting CSC protocol testing.');
+                await this.monitorCscData();
+                
+                const elapsed = Date.now() - this.startTime;
+                const remainingTime = Math.max(0, this.testDuration - elapsed);
+                
+                if (remainingTime > 0) {
+                    this.updateProgress(50, "CSC 데이터 수집 중...");
+                    await new Promise(resolve => setTimeout(resolve, remainingTime));
+                }
+                
+                this.mergeFtmsManagerLogs();
+                this.testResults = finalizeTestReport(this.testResults);
+                this.updateProgress(100, "CSC 테스트 완료 (제한된 기능)");                if (this.onTestComplete) {
+                    this.onTestComplete(this.testResults);
+                }            } else {
                 // No supported protocols
-                this.testResults.reasons.push("지원되는 프로토콜(FTMS, CSC, MOBI, REBORN)을 찾을 수 없습니다.");
-                this.mergeFtmsManagerLogs(); // Merge logs before finalizing
+                this.testResults.reasons.push("지원되는 프로토콜을 찾을 수 없습니다. 우선순위: MOBI > REBORN > TACX_NEO > FITSHOW > YAFIT_S3 > YAFIT_S4 > FTMS > CSC");
+                this.mergeFtmsManagerLogs();
                 this.testResults = finalizeTestReport(this.testResults);
                 this.updateProgress(100, "호환 불가능한 프로토콜");
                 if (this.onTestComplete) {
@@ -310,9 +355,7 @@ export class FTMSTester {
             this.testResults.issuesFound.push(`연결 오류: ${error instanceof Error ? error.message : String(error)}`);
             throw error;
         }
-    }
-
-    private async identifyProtocols(): Promise<void> {
+    }    private async identifyProtocols(): Promise<void> {
         try {
             // Read device services and identify supported protocols
             this.logInteraction('INFO - FTMSTester: Identifying protocols.');
@@ -328,57 +371,54 @@ export class FTMSTester {
             const serviceUUIDs = services.map(s => s.uuid.toLowerCase());
             this.testResults.deviceInfo.services = serviceUUIDs;
             
-            const supportedProtocols = [];
+            // FtmsManager에서 이미 우선순위에 따라 프로토콜을 결정했으므로 그 결과를 사용
+            const detectedProtocol = this.ftmsManager.getDetectedProtocol();
             
-            // FTMS
-            if (serviceUUIDs.includes("00001826-0000-1000-8000-00805f9b34fb")) {
-                supportedProtocols.push("FTMS");
-            }
-              // CSC (Cycling Speed and Cadence)
-            if (serviceUUIDs.includes("00001816-0000-1000-8000-00805f9b34fb")) {
-                supportedProtocols.push("CSC");
-            }
-              // Mobi protocol
-            if (serviceUUIDs.includes("0000ffe0-0000-1000-8000-00805f9b34fb")) {
-                supportedProtocols.push("MOBI");
-            }
-            
-            // Reborn protocol
-            if (serviceUUIDs.includes("00010203-0405-0607-0809-0a0b0c0d1910")) {
-                supportedProtocols.push("REBORN");
-            }
-            
-            // Custom protocols can be added here if needed            // Protocol priority: FTMS > CSC > MOBI > REBORN
-            // If both FTMS and CSC are detected, prioritize FTMS
-            // If only CSC is detected, use CSC
-            const prioritizedProtocols = [];
-            if (supportedProtocols.includes("FTMS")) {
-                prioritizedProtocols.push("FTMS");
-                this.testResults.deviceInfo.protocol = "FTMS (표준)";
-            } else if (supportedProtocols.includes("CSC")) {
-                prioritizedProtocols.push("CSC");
-                this.testResults.deviceInfo.protocol = "CSC (표준)";
-            } else if (supportedProtocols.includes("MOBI")) {
-                prioritizedProtocols.push("MOBI");
-                this.testResults.deviceInfo.protocol = "MOBI (커스텀)";
-            } else if (supportedProtocols.includes("REBORN")) {
-                prioritizedProtocols.push("REBORN");
-                this.testResults.deviceInfo.protocol = "REBORN (커스텀)";
-            } else if (supportedProtocols.length > 0) {
-                prioritizedProtocols.push(supportedProtocols[0]);
-                this.testResults.deviceInfo.protocol = `${supportedProtocols[0]} (커스텀)`;
+            if (detectedProtocol) {
+                // 우선순위에 따른 프로토콜 설정
+                this.testResults.supportedProtocols = [detectedProtocol];
+                  switch (detectedProtocol) {
+                    case 'MOBI':
+                        this.testResults.deviceInfo.protocol = "MOBI (커스텀) - 우선순위 1";
+                        break;
+                    case 'REBORN':
+                        this.testResults.deviceInfo.protocol = "REBORN (커스텀) - 우선순위 2";
+                        break;
+                    case 'TACX_NEO':
+                        this.testResults.deviceInfo.protocol = "TACX_NEO (커스텀) - 우선순위 3";
+                        break;
+                    case 'FITSHOW':
+                        this.testResults.deviceInfo.protocol = "FITSHOW (커스텀) - 우선순위 4";
+                        break;
+                    case 'YAFIT_S3':
+                        this.testResults.deviceInfo.protocol = "YAFIT_S3 (FTMS 프로토콜 사용) - 우선순위 5";
+                        break;
+                    case 'YAFIT_S4':
+                        this.testResults.deviceInfo.protocol = "YAFIT_S4 (FTMS 프로토콜 사용) - 우선순위 6";
+                        break;
+                    case 'FTMS':
+                        this.testResults.deviceInfo.protocol = "FTMS (표준) - 우선순위 7";
+                        break;
+                    case 'CSC':
+                        this.testResults.deviceInfo.protocol = "CSC (표준) - 우선순위 8";
+                        break;
+                    default:
+                        this.testResults.deviceInfo.protocol = `${detectedProtocol} (알 수 없음)`;
+                }
+                
+                this.logInteraction(`INFO - FTMSTester: Protocol selected by priority: ${detectedProtocol}`);
+                this.logInteraction(`INFO - FTMSTester: Priority order: MOBI > REBORN > TACX_NEO > FITSHOW > YAFIT_S3 > YAFIT_S4 > FTMS > CSC`);
+                
+                // Read FTMS features if FTMS protocol or YAFIT_S3/YAFIT_S4 is selected
+                if (detectedProtocol === 'FTMS' || detectedProtocol === 'YAFIT_S3' || detectedProtocol === 'YAFIT_S4') {
+                    this.logInteraction(`INFO - FTMSTester: Reading FTMS features for ${detectedProtocol}.`);
+                    await this.readFtmsFeatures();
+                }
             } else {
                 this.testResults.deviceInfo.protocol = "알 수 없음";
+                this.testResults.supportedProtocols = [];
                 this.testResults.issuesFound.push("지원되는 프로토콜을 식별할 수 없습니다.");
-            }// Set the prioritized protocol list (only the highest priority one)
-            this.testResults.supportedProtocols = prioritizedProtocols;
-              this.logInteraction(`INFO - FTMSTester: All detected protocols: ${supportedProtocols.join(', ') || 'None'}.`);
-            this.logInteraction(`INFO - FTMSTester: Selected protocol: ${prioritizedProtocols[0] || 'None'} (Priority: FTMS > CSC > MOBI > REBORN).`);
-            
-            // Read FTMS features if available
-            if (supportedProtocols.includes("FTMS")) {
-                this.logInteraction('INFO - FTMSTester: Reading FTMS features.');
-                await this.readFtmsFeatures();
+                this.logInteraction('ERROR - FTMSTester: No protocol detected');
             }
             
         } catch (error) {
