@@ -1,7 +1,7 @@
 import { Device } from 'react-native-ble-plx';
 import { ProtocolType } from './protocols';
 import { LogManager } from './LogManager';
-import { FTMS_SERVICE_UUID } from './constants';
+import { FTMS_SERVICE_UUID, TACX_SERVICE_UUID } from './constants';
 
 export class ProtocolDetector {
     private logManager: LogManager;
@@ -117,7 +117,9 @@ export class ProtocolDetector {
                 this.logManager.logInfo(`Found service: ${service.uuid}`);
                 if (service.uuid.toLowerCase() === FTMS_SERVICE_UUID.toLowerCase()) {
                     this._isFTMSSensor = true;
-                    break;
+                }
+                if (service.uuid.toLowerCase() === TACX_SERVICE_UUID.toLowerCase()) {
+                    this._isTacxNeoSensor = true;
                 }
             }
             

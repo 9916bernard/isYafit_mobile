@@ -15,6 +15,11 @@ export const REBORN_SERVICE_UUID = "00010203-0405-0607-0809-0a0b0c0d1910";
 export const REBORN_DATA_CHAR_UUID = "00010203-0405-0607-0809-0a0b0c0d2b10";
 export const REBORN_WRITE_CHAR_UUID = "00010203-0405-0607-0809-0a0b0c0d2b11";
 
+// Tacx UUIDs
+export const TACX_SERVICE_UUID = "6e40fec1-b5a3-f393-e0a9-e50e24dcca9e";
+export const TACX_READ_CHAR_UUID = "6e40fec2-b5a3-f393-e0a9-e50e24dcca9e";
+export const TACX_WRITE_CHAR_UUID = "6e40fec3-b5a3-f393-e0a9-e50e24dcca9e";
+
 // FTMS Control Point Commands
 export const REQUEST_CONTROL = Buffer.from([0x00]);
 export const RESET = Buffer.from([0x01]);

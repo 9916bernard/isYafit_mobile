@@ -5,8 +5,72 @@ import { ProtocolType } from './protocols';
 import {
     FTMS_SERVICE_UUID, FTMS_CONTROL_POINT_CHAR_UUID,
     REBORN_SERVICE_UUID, REBORN_WRITE_CHAR_UUID,
+    TACX_SERVICE_UUID, TACX_WRITE_CHAR_UUID,
     REQUEST_CONTROL, RESET, START, STOP, SET_RESISTANCE_LEVEL, SET_TARGET_POWER, SET_SIM_PARAMS
 } from './constants';
+
+// --- Tacx Packet Builder ---
+const TACX_SYNC_BYTE = 0xA4;
+const TACX_MSG_TYPE_ACK = 0x4F;
+const TACX_DEFAULT_CHANNEL = 0x05;
+
+function calculateTacxChecksum(data: Buffer): number {
+    let checksum = 0;
+    for (let i = 0; i < data.length - 1; i++) {
+        checksum ^= data[i];
+    }
+    return checksum;
+}
+
+function createTacxPacket(commandId: number, payload: Buffer): Buffer {
+    if (payload.length !== 7) {
+        console.error(`Tacx payload must be 7 bytes long, but got ${payload.length}`);
+        return Buffer.alloc(0);
+    }
+    const packet = Buffer.alloc(13);
+    
+    packet.writeUInt8(TACX_SYNC_BYTE, 0);
+    packet.writeUInt8(0x09, 1);
+    packet.writeUInt8(TACX_MSG_TYPE_ACK, 2);
+    packet.writeUInt8(TACX_DEFAULT_CHANNEL, 3);
+    packet.writeUInt8(commandId, 4);
+    payload.copy(packet, 5);
+    
+    const checksum = calculateTacxChecksum(packet);
+    packet.writeUInt8(checksum, 12);
+    
+    return packet;
+}
+
+// --- Tacx Command Creators ---
+function setTacxResistance(level: number): Buffer {
+    const resistanceValue = Math.min(255, Math.round(level * 2.0));
+    const payload = Buffer.from([0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, resistanceValue]);
+    return createTacxPacket(0x30, payload);
+}
+
+function setTacxTargetPower(watts: number): Buffer {
+    const target = Math.round(watts * 4);
+    const payload = Buffer.from([
+        0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+        target & 0xFF,
+        (target >> 8) & 0xFF
+    ]);
+    return createTacxPacket(0x31, payload);
+}
+
+function setTacxSimulationParameters(grade: number, crr: number): Buffer {
+    const gradeN = Math.round((grade + 200) / 0.01);
+    const crrN = Math.round(crr / (5 * Math.pow(10, -5)));
+
+    const payload = Buffer.from([
+        0xFF, 0xFF, 0xFF, 0xFF,
+        gradeN & 0xFF,
+        (gradeN >> 8) & 0xFF,
+        crrN
+    ]);
+    return createTacxPacket(0x33, payload);
+}
 
 export class CommandManager {
     private logManager: LogManager;
@@ -42,6 +106,12 @@ export class CommandManager {
                     );
                     break;
                 case ProtocolType.TACX:
+                    char = await device.writeCharacteristicWithResponseForService(
+                        TACX_SERVICE_UUID,
+                        TACX_WRITE_CHAR_UUID,
+                        data.toString('base64')
+                    );
+                    break;
                 case ProtocolType.FITSHOW:
                     this.logManager.logWarning(`Control point implementation not yet available for ${protocol} protocol`);
                     throw new Error(`Control point implementation not yet available for ${protocol} protocol`);
@@ -119,24 +189,48 @@ export class CommandManager {
     }
 
     async setResistance(device: Device, protocol: ProtocolType, level: number): Promise<void> {
-        await this.writeControlPoint(device, protocol, SET_RESISTANCE_LEVEL(level));
+        let command: Buffer;
+        if (protocol === ProtocolType.TACX) {
+            this.logManager.logInfo(`명령 전송: SET_TACX_RESISTANCE (${level}%)`);
+            command = setTacxResistance(level);
+        } else {
+            this.logManager.logInfo(`명령 전송: SET_RESISTANCE_LEVEL (${level})`);
+            command = SET_RESISTANCE_LEVEL(level);
+        }
+        await this.writeControlPoint(device, protocol, command);
         await new Promise(resolve => setTimeout(resolve, 500));
     }
 
     async setTargetPower(device: Device, protocol: ProtocolType, watts: number): Promise<void> {
-        await this.writeControlPoint(device, protocol, SET_TARGET_POWER(watts));
+        let command: Buffer;
+        if (protocol === ProtocolType.TACX) {
+            this.logManager.logInfo(`명령 전송: SET_TACX_TARGET_POWER (${watts}W)`);
+            command = setTacxTargetPower(watts);
+        } else {
+            this.logManager.logInfo(`명령 전송: SET_TARGET_POWER (${watts}W)`);
+            command = SET_TARGET_POWER(watts);
+        }
+        await this.writeControlPoint(device, protocol, command);
         await new Promise(resolve => setTimeout(resolve, 500));
     }
 
     async setSimulationParameters(
-        device: Device, 
-        protocol: ProtocolType, 
-        windSpeed: number = 0, 
-        grade: number = 0, 
-        crr: number = 0.004, 
+        device: Device,
+        protocol: ProtocolType,
+        windSpeed: number = 0,
+        grade: number = 0,
+        crr: number = 0.004,
         cw: number = 0.5
     ): Promise<void> {
-        await this.writeControlPoint(device, protocol, SET_SIM_PARAMS(windSpeed, grade, crr, cw));
+        let command: Buffer;
+        if (protocol === ProtocolType.TACX) {
+            this.logManager.logInfo(`명령 전송: SET_TACX_SIM_PARAMS (grade: ${grade}%, crr: ${crr})`);
+            command = setTacxSimulationParameters(grade, crr);
+        } else {
+            this.logManager.logInfo(`명령 전송: SET_SIM_PARAMS (grade: ${grade}%)`);
+            command = SET_SIM_PARAMS(windSpeed, grade, crr, cw);
+        }
+        await this.writeControlPoint(device, protocol, command);
         await new Promise(resolve => setTimeout(resolve, 500));
     }
 

@@ -3,11 +3,12 @@ import { Buffer } from 'buffer';
 import {
   FTMS_SERVICE_UUID, FTMS_FEATURE_CHAR_UUID, FTMS_CONTROL_POINT_CHAR_UUID, FTMS_INDOOR_BIKE_DATA_CHAR_UUID,
   MOBI_SERVICE_UUID, MOBI_DATA_CHAR_UUID,
-  REBORN_SERVICE_UUID, REBORN_DATA_CHAR_UUID
+  REBORN_SERVICE_UUID, REBORN_DATA_CHAR_UUID,
+  TACX_SERVICE_UUID, TACX_READ_CHAR_UUID
 } from './constants';
 import { ProtocolType } from './protocols';
 import { IndoorBikeData } from './types';
-import { parseIndoorBikeData, parseMobiData, parseCSCData, parseRebornData } from './parsers';
+import { parseIndoorBikeData, parseMobiData, parseCSCData, parseRebornData, parseTacxData } from './parsers';
 import { LogManager, LogEntry } from './LogManager';
 import { BluetoothManager } from './BluetoothManager';
 import { ProtocolDetector } from './ProtocolDetector';
@@ -116,8 +117,8 @@ export class FTMSManager {
                 await this.subscribeToRebornNotifications(onIndoorBikeData);
                 break;
             case ProtocolType.TACX:
-                this.logManager.logWarning("Tacx Neo protocol notifications not implemented yet");
-                throw new Error("Tacx Neo protocol notifications not implemented yet");
+                await this.subscribeToTacxNotifications(onIndoorBikeData);
+                break;
             case ProtocolType.FITSHOW:
                 this.logManager.logWarning("FitShow protocol notifications not implemented yet");
                 throw new Error("FitShow protocol notifications not implemented yet");
@@ -435,8 +436,39 @@ export class FTMSManager {
         );
     }
 
+    private async subscribeToTacxNotifications(
+        onIndoorBikeData: (data: IndoorBikeData) => void
+    ): Promise<void> {
+        if (!this.connectedDevice) return;
+
+        try {
+            this.indoorBikeDataSubscription = this.connectedDevice.monitorCharacteristicForService(
+                TACX_SERVICE_UUID,
+                TACX_READ_CHAR_UUID,
+                (error, characteristic) => {
+                    if (error) {
+                        this.logManager.logError(`Tacx data notification error: ${error.message}`);
+                        return;
+                    }
+                    if (characteristic?.value) {
+                        const data = Buffer.from(characteristic.value, 'base64');
+                        const parsedData = parseTacxData(data);
+                        if (Object.keys(parsedData).length > 1) {
+                            onIndoorBikeData(parsedData);
+                        }
+                    }
+                }
+            );
+            this.logManager.logInfo("Subscribed to Tacx data notifications");
+        } catch (error) {
+            this.logManager.logError(`Failed to subscribe to Tacx notifications: ${error instanceof Error ? error.message : String(error)}`);
+            throw error;
+        }
+    }
+
     // --- Connection Sequences ---
     private async connectSequenceFTMS(): Promise<boolean> {
+        this.logManager.logInfo("Running FTMS connection sequence...");
         try {
             this.logManager.logInfo("Starting FTMS Connection Sequence");
             await this.requestControl();
@@ -457,42 +489,35 @@ export class FTMSManager {
     }
 
     private async connectSequenceReborn(): Promise<boolean> {
+        if (!this.connectedDevice) {
+            this.logManager.logError("No device connected for Reborn auth");
+            return false;
+        }
         try {
-            this.logManager.logInfo("Starting Reborn Connection Sequence");
-            this.logManager.logInfo("Reborn protocol detected - authentication only, no control commands");
-            this.logManager.logInfo("Reborn authentication completed, device is active for data reading only");
+            await this.rebornAuthManager.performRebornAuthentication(this.connectedDevice);
+            this.logManager.logInfo("Reborn authentication initiated.");
             this.isDeviceActive = true;
             return true;
         } catch (error) {
             this.logManager.logError(`Reborn connection sequence error: ${error instanceof Error ? error.message : String(error)}`);
-            this.isDeviceActive = true;
-            return true;
+            return false;
         }
     }
 
     private async connectSequenceCSC(): Promise<boolean> {
-        this.logManager.logInfo("CSC protocol connection sequence - read-only mode");
+        this.logManager.logSuccess("CSC sensor connected and ready");
         this.isDeviceActive = true;
         return true;
     }
 
     private async connectSequenceTacxNeo(): Promise<boolean> {
-        try {
-            this.logManager.logInfo("Starting Tacx Neo Connection Sequence");
-            this.logManager.logWarning("Tacx Neo protocol implementation is not complete - using basic control sequence");
-            await this.requestControl();
-            await this.resetMachine();
-            await this.startMachine();
-            this.logManager.logSuccess("Tacx Neo Connection Sequence Completed");
-            return true;
-        } catch (error) {
-            this.logManager.logError(`Tacx Neo connection sequence error: ${error instanceof Error ? error.message : String(error)}`);
-            this.isDeviceActive = true;
-            return true;
-        }
+        this.logManager.logSuccess("Tacx Neo sensor connected and ready");
+        this.isDeviceActive = true;
+        return true;
     }
 
     private async connectSequenceFitShow(): Promise<boolean> {
+        this.logManager.logInfo("Running FitShow connection sequence...");
         try {
             this.logManager.logInfo("Starting FitShow Connection Sequence");
             this.logManager.logWarning("FitShow protocol implementation is not complete - using basic control sequence");

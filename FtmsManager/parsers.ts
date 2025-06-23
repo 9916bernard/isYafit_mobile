@@ -164,4 +164,42 @@ export function parseRebornData(data: Buffer): IndoorBikeData {
         // Optionally log error
     }
     return parsed;
+}
+
+export function parseTacxData(data: Buffer): IndoorBikeData {
+    const parsed: IndoorBikeData = { raw: data.toString('hex') };
+
+    if (data.length !== 13) {
+        return parsed;
+    }
+
+    const packetType = data[4];
+
+    if (packetType === 0x19) { // RPM Data
+        const rpmRaw = data[6];
+        if (rpmRaw > 0) {
+            const oneRoundPerSeconds = 60.0 / rpmRaw;
+            const secondsRPM = 1.0 / oneRoundPerSeconds;
+            parsed.instantaneousCadence = secondsRPM * 60.0;
+        } else {
+            parsed.instantaneousCadence = 0;
+        }
+    } else if (packetType === 0xFB) { // Gear Data
+        const frontGear = data[10];
+        const rearGear = data[11];
+        const resistance = frontGear - rearGear;
+
+        let totalGear = 1;
+        if (resistance < -10) totalGear = 1;
+        else if (resistance < 0) totalGear = 2;
+        else if (resistance < 7) totalGear = 3;
+        else if (resistance < 13) totalGear = 4;
+        else if (resistance < 20) totalGear = 5;
+        else if (resistance < 27) totalGear = 6;
+        else totalGear = 7;
+        
+        parsed.gearLevel = totalGear;
+    }
+
+    return parsed;
 } 
