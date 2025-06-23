@@ -3,7 +3,8 @@ import { StyleSheet, View, Text, FlatList, TouchableOpacity, PermissionsAndroid,
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import LinearGradient from 'react-native-linear-gradient';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { FTMSManager, LogEntry } from '../FtmsManager';
+import { FTMSManager } from '../FtmsManager';
+import { LogEntry } from '../FtmsManager/LogManager';
 import { BleError, Device, BleErrorCode, State } from 'react-native-ble-plx';
 import TestScreen from './TestScreen';
 import EnhancedTestScreen from './EnhancedTestScreen';
@@ -15,7 +16,7 @@ import Toast from 'react-native-root-toast';
 
 
 // 0.6.0 FTMS CSC 까지 동작 확인 버전
-const APP_VERSION = 'v0.6.4';
+const APP_VERSION = 'v0.6.5';
 
 function App() {
   const insets = useSafeAreaInsets();

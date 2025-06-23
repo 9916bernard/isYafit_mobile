@@ -1,6 +1,8 @@
 // FtmsTestReport.ts - FTMS Test Report utility for IsYafit app
 import { Buffer } from 'buffer';
 
+// If ProtocolType or other types are used, import from './FtmsManager'.
+
 // UUID Constants for FTMS characteristics
 export const RANGE_CHAR_UUIDS = {
     SPEED_RANGE: "00002ad4-0000-1000-8000-00805f9b34fb",
