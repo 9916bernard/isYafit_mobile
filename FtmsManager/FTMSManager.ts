@@ -8,7 +8,7 @@ import {
 } from './constants';
 import { ProtocolType } from './protocols';
 import { IndoorBikeData } from './types';
-import { parseIndoorBikeData, parseMobiData, parseCSCData, parseRebornData, parseTacxData, parseTacxControlResponse } from './parsers';
+import { parseIndoorBikeData, parseMobiData, parseCSCData, parseRebornData, parseTacxData } from './parsers';
 import { LogManager, LogEntry } from './LogManager';
 import { BluetoothManager } from './BluetoothManager';
 import { ProtocolDetector } from './ProtocolDetector';
@@ -466,23 +466,9 @@ export class FTMSManager {
                     const data = Buffer.from(characteristic.value, 'base64');
                     this.logManager.logInfo(`[Tacx Raw] ${data.toString('hex')}`);
                     
-                    // Check if it's a control response
-                    const controlResponse = parseTacxControlResponse(data);
-                    if (controlResponse) {
-                        this.logManager.logInfo(`[Tacx CP Response] Success: ${controlResponse.success}, Data: ${controlResponse.received.join(',')}`);
-                        // To make it compatible with the standard CP response handler,
-                        // we need to construct a buffer similar to the FTMS CP response.
-                        // Op Code (byte 1), Result Code (byte 2)
-                        // We'll use a fake Op Code (e.g., 0xAA) since Tacx doesn't provide one.
-                        // Result code: 0x01 for success, 0x02 for fail (as an example)
-                        const resultCode = controlResponse.success ? 0x01 : 0x02;
-                        const responseBuffer = Buffer.from([0x80, 0xAA, resultCode]);
-                        onControlPointResponse(responseBuffer);
-                    } else {
-                        // Otherwise, it's regular bike data
-                        const parsedData = parseTacxData(data);
-                        onIndoorBikeData(parsedData);
-                    }
+                    // 모든 데이터를 bike data로 처리 (사용자가 직접 제어 성공/실패를 판단)
+                    const parsedData = parseTacxData(data);
+                    onIndoorBikeData(parsedData);
                 }
             }
         );

@@ -17,7 +17,7 @@ import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityI
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import LottieView from 'lottie-react-native';
 import { TestResults, formatRangeInfo } from '../FtmsTestReport';
-import { FTMSTester } from '../FtmsTester';
+import { FTMSTester, UserInteractionRequest } from '../FtmsTester';
 import { Device } from 'react-native-ble-plx';
 import { FTMSManager } from '../FtmsManager'; // Your existing manager
 import TestReportScreen from './TestReportScreen';
@@ -54,19 +54,31 @@ const TestScreen: React.FC<TestScreenProps> = ({ device, ftmsManager, onClose, i
   const [isRunning, setIsRunning] = useState(false);
   const [testCompleted, setTestCompleted] = useState(false);
   const [testResults, setTestResults] = useState<TestResults | null>(null);
-  const [showReport, setShowReport] = useState(false);  const [realtimeLogs, setRealtimeLogs] = useState<string[]>([]);
+  const [showReport, setShowReport] = useState(false);
+  const [realtimeLogs, setRealtimeLogs] = useState<string[]>([]);
   const [showLogs, setShowLogs] = useState(false);
   const [detectedProtocol, setDetectedProtocol] = useState<string | null>(null);
   const logScrollViewRef = useRef<ScrollView>(null);
   const testerRef = useRef<FTMSTester | null>(null);
   const safeAreaStyles = useSafeAreaStyles();
-    // Animation values
+
+  // Tacx 사용자 상호작용을 위한 상태
+  const [showUserInteractionModal, setShowUserInteractionModal] = useState(false);
+  const [userInteractionRequest, setUserInteractionRequest] = useState<UserInteractionRequest | null>(null);
+  const [userInteractionResolve, setUserInteractionResolve] = useState<((value: boolean) => void) | null>(null);
+  const [showCountdown, setShowCountdown] = useState(false);
+  const [countdownValue, setCountdownValue] = useState(3);
+  const countdownAnim = useRef(new Animated.Value(1)).current;
+
+  // Animation values
   const progressAnim = useRef(new Animated.Value(0)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const scaleAnim = useRef(new Animated.Value(0.9)).current;
   const slideAnim = useRef(new Animated.Value(50)).current;
   const animationContainerHeight = useRef(new Animated.Value(0)).current;
-  const animationOpacity = useRef(new Animated.Value(0)).current;  useEffect(() => {
+  const animationOpacity = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
     // Initialize the FTMSTester
     testerRef.current = new FTMSTester(ftmsManager);
     
@@ -126,15 +138,70 @@ const TestScreen: React.FC<TestScreenProps> = ({ device, ftmsManager, onClose, i
     };
   }, [ftmsManager, showLogs, fadeAnim, scaleAnim, slideAnim]);
 
+  // 사용자 상호작용 핸들러
+  const handleUserInteraction = (interaction: UserInteractionRequest): Promise<boolean> => {
+    console.log(`[DEBUG] handleUserInteraction 호출됨:`, interaction);
+    return new Promise((resolve) => {
+      setUserInteractionRequest(interaction);
+      setUserInteractionResolve(() => resolve);
+      setShowUserInteractionModal(true);
+      console.log(`[DEBUG] 사용자 상호작용 모달 표시됨`);
+    });
+  };
+
+  // 카운트다운 업데이트 핸들러
+  const handleCountdownUpdate = (countdown: number) => {
+    console.log(`[DEBUG] handleCountdownUpdate 호출됨: ${countdown}`);
+    setCountdownValue(countdown);
+    if (countdown > 0) {
+      setShowCountdown(true);
+      // 카운트다운 애니메이션
+      countdownAnim.setValue(1);
+      Animated.sequence([
+        Animated.timing(countdownAnim, {
+          toValue: 1.5,
+          duration: 200,
+          useNativeDriver: true,
+        }),
+        Animated.timing(countdownAnim, {
+          toValue: 1,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    } else {
+      setShowCountdown(false);
+    }
+  };
+
+  // 사용자 상호작용 응답 핸들러
+  const handleUserResponse = (response: boolean) => {
+    setShowUserInteractionModal(false);
+    if (userInteractionResolve) {
+      userInteractionResolve(response);
+      setUserInteractionResolve(null);
+    }
+    setUserInteractionRequest(null);
+  };
+
   const handleStartTest = async () => {
     try {
       if (!testerRef.current) {
         testerRef.current = new FTMSTester(ftmsManager);
-      }      setIsRunning(true);
+      }
+
+      // Tacx 프로토콜을 위한 사용자 상호작용 콜백 설정
+      testerRef.current.setUserInteractionCallbacks(
+        handleUserInteraction,
+        handleCountdownUpdate
+      );
+
+      setIsRunning(true);
       setTestCompleted(false);
       setProgress(0);
       setMessage('테스트 시작 중...');
-        // 애니메이션 컨테이너 확장 및 애니메이션 표시
+      
+      // 애니메이션 컨테이너 확장 및 애니메이션 표시
       Animated.parallel([
         Animated.timing(animationContainerHeight, {
           toValue: 120,
@@ -146,7 +213,9 @@ const TestScreen: React.FC<TestScreenProps> = ({ device, ftmsManager, onClose, i
           duration: 600,
           useNativeDriver: false,
         }),
-      ]).start();// Run the test with progress updates
+      ]).start();
+
+      // Run the test with progress updates
       const results = await testerRef.current.runDeviceTest(
         device,
         30000, // 30 seconds test
@@ -160,7 +229,8 @@ const TestScreen: React.FC<TestScreenProps> = ({ device, ftmsManager, onClose, i
             duration: 300,
             useNativeDriver: false,
           }).start();
-        },        (results) => {
+        },
+        (results) => {
           // Test completed callback
           setTestResults(results);
           setTestCompleted(true);
@@ -210,7 +280,9 @@ const TestScreen: React.FC<TestScreenProps> = ({ device, ftmsManager, onClose, i
       );
       setIsRunning(false);
     }
-  };  const handleStopTest = async () => {
+  };
+
+  const handleStopTest = async () => {
     if (testerRef.current) {
       testerRef.current.stopTest();
       setIsRunning(false);
@@ -662,6 +734,100 @@ const TestScreen: React.FC<TestScreenProps> = ({ device, ftmsManager, onClose, i
         visible={showLogs}
         onClose={toggleLogs}
       />
+
+      {/* Tacx 사용자 상호작용 모달 */}
+      <Modal
+        visible={showUserInteractionModal}
+        animationType="fade"
+        transparent={true}
+        onRequestClose={() => handleUserResponse(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <MaterialCommunityIcons 
+                name={userInteractionRequest?.type === 'command_start' ? 'play-circle' : 'check-circle'} 
+                size={32} 
+                color="#00c663" 
+              />
+              <Text style={styles.modalTitle}>
+                {userInteractionRequest?.type === 'command_start' ? '제어 명령 실행' : '저항 변화 확인'}
+              </Text>
+            </View>
+            
+            <View style={styles.modalBody}>
+              <Text style={styles.modalMessage}>
+                {userInteractionRequest?.message}
+              </Text>
+              
+              {userInteractionRequest?.type === 'command_start' && (
+                <View style={styles.commandInfo}>
+                  <Text style={styles.commandName}>{userInteractionRequest.commandDescription}</Text>
+                </View>
+              )}
+              
+              {userInteractionRequest?.type === 'resistance_check' && (
+                <View style={styles.resistanceCheckInfo}>
+                  <Text style={styles.resistanceCheckText}>
+                    명령 실행 후 실제로 저항이 변했는지 확인해주세요.
+                  </Text>
+                </View>
+              )}
+            </View>
+            
+            <View style={styles.modalButtons}>
+              {userInteractionRequest?.type === 'command_start' ? (
+                <>
+                  <TouchableOpacity
+                    style={[styles.modalButton, styles.modalButtonCancel]}
+                    onPress={() => handleUserResponse(false)}
+                  >
+                    <Text style={styles.modalButtonTextCancel}>취소</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.modalButton, styles.modalButtonConfirm]}
+                    onPress={() => handleUserResponse(true)}
+                  >
+                    <Text style={styles.modalButtonTextConfirm}>시작</Text>
+                  </TouchableOpacity>
+                </>
+              ) : (
+                <>
+                  <TouchableOpacity
+                    style={[styles.modalButton, styles.modalButtonCancel]}
+                    onPress={() => handleUserResponse(false)}
+                  >
+                    <Text style={styles.modalButtonTextCancel}>아니요</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.modalButton, styles.modalButtonConfirm]}
+                    onPress={() => handleUserResponse(true)}
+                  >
+                    <Text style={styles.modalButtonTextConfirm}>예</Text>
+                  </TouchableOpacity>
+                </>
+              )}
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* 카운트다운 오버레이 */}
+      {showCountdown && (
+        <View style={styles.countdownOverlay}>
+          <View style={styles.countdownContainer}>
+            <Animated.Text 
+              style={[
+                styles.countdownText,
+                { transform: [{ scale: countdownAnim }] }
+              ]}
+            >
+              {countdownValue}
+            </Animated.Text>
+            <Text style={styles.countdownLabel}>초 후 명령 실행</Text>
+          </View>
+        </View>
+      )}
     </View>
   );
 };
@@ -1223,6 +1389,147 @@ const styles = StyleSheet.create({
     lineHeight: 16,
     marginLeft: 6,
     flex: 1,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  modalContent: {
+    backgroundColor: '#242c3b',
+    padding: 24,
+    borderRadius: 16,
+    width: '90%',
+    maxWidth: 400,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.3,
+    shadowRadius: 16,
+    elevation: 12,
+  },
+  modalHeader: {
+    marginBottom: 24,
+    alignItems: 'center',
+  },
+  modalTitle: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: '#00c663',
+    marginTop: 12,
+    textAlign: 'center',
+  },
+  modalBody: {
+    marginBottom: 24,
+  },
+  modalMessage: {
+    color: '#ffffff',
+    fontSize: 16,
+    textAlign: 'center',
+    marginBottom: 20,
+    lineHeight: 24,
+  },
+  commandInfo: {
+    backgroundColor: '#1a2029',
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 20,
+    borderLeftWidth: 4,
+    borderLeftColor: '#00c663',
+  },
+  commandName: {
+    color: '#00c663',
+    fontSize: 16,
+    fontWeight: 'bold',
+    textAlign: 'center',
+  },
+  resistanceCheckInfo: {
+    backgroundColor: '#1a2029',
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 20,
+    borderLeftWidth: 4,
+    borderLeftColor: '#FF9800',
+  },
+  resistanceCheckText: {
+    color: '#ffffff',
+    fontSize: 14,
+    textAlign: 'center',
+    lineHeight: 20,
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  modalButton: {
+    flex: 1,
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+    borderRadius: 12,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  modalButtonCancel: {
+    backgroundColor: '#e53e3e',
+  },
+  modalButtonConfirm: {
+    backgroundColor: '#00c663',
+  },
+  modalButtonTextCancel: {
+    color: '#ffffff',
+    fontWeight: 'bold',
+    fontSize: 16,
+  },
+  modalButtonTextConfirm: {
+    color: '#ffffff',
+    fontWeight: 'bold',
+    fontSize: 16,
+  },
+  countdownOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1000,
+  },
+  countdownContainer: {
+    backgroundColor: '#242c3b',
+    padding: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.4,
+    shadowRadius: 16,
+    elevation: 12,
+    borderWidth: 2,
+    borderColor: '#00c663',
+  },
+  countdownText: {
+    color: '#00c663',
+    fontSize: 72,
+    fontWeight: 'bold',
+    textShadowColor: 'rgba(0, 198, 99, 0.5)',
+    textShadowOffset: { width: 0, height: 4 },
+    textShadowRadius: 8,
+  },
+  countdownLabel: {
+    color: '#ffffff',
+    fontSize: 18,
+    fontWeight: '600',
+    marginTop: 16,
+    textAlign: 'center',
   },
 });
 

@@ -13,6 +13,14 @@ import {
     finalizeTestReport
 } from './FtmsTestReport';
 
+// 사용자 상호작용 요청을 위한 타입 정의
+export interface UserInteractionRequest {
+    type: 'command_start' | 'resistance_check';
+    commandName: string;
+    commandDescription: string;
+    message: string;
+}
+
 export class FTMSTester {
     private ftmsManager: FTMSManager;
     private testResults: TestResults;
@@ -22,7 +30,8 @@ export class FTMSTester {
     private lastResistanceLevel?: number;
     private onProgressUpdate?: (progress: number, message: string) => void;
     private onTestComplete?: (results: TestResults) => void;
-    private testTimeoutId?: NodeJS.Timeout;    private resistanceTracking = {
+    private testTimeoutId?: NodeJS.Timeout;
+    private resistanceTracking = {
         commandPending: false,
         lastCommandType: '',
         commandSentTime: 0,
@@ -32,11 +41,26 @@ export class FTMSTester {
         allowResistanceAttributionWindow: 0 // Time window to still attribute resistance changes to last command
     };
 
+    // Tacx 사용자 상호작용 테스트를 위한 콜백들
+    private onUserInteractionRequest?: (interaction: UserInteractionRequest) => Promise<boolean>;
+    private onCountdownUpdate?: (countdown: number) => void;
+
     constructor(ftmsManager: FTMSManager) {
         this.ftmsManager = ftmsManager;
         this.testResults = initTestResults();
         // this.ftmsManager.setLogCallback(this.logInteraction.bind(this)); // Remove this line
-    }    // Check if device is still connected
+    }
+
+    // 사용자 상호작용 요청을 위한 인터페이스
+    public setUserInteractionCallbacks(
+        onUserInteractionRequest: (interaction: UserInteractionRequest) => Promise<boolean>,
+        onCountdownUpdate?: (countdown: number) => void
+    ) {
+        this.onUserInteractionRequest = onUserInteractionRequest;
+        this.onCountdownUpdate = onCountdownUpdate;
+    }
+
+    // Check if device is still connected
     private isDeviceConnected(): boolean {
         const connectedDevice = this.ftmsManager.getConnectedDevice();
         return connectedDevice !== null && connectedDevice !== undefined;
@@ -82,7 +106,7 @@ export class FTMSTester {
         }
         this.ftmsManager.clearLogs(); // Clear logs in manager to avoid duplicates if manager is reused
     }
-//#region Device Test
+
     // Main testing flow
     async runDeviceTest(
         device: Device, 
@@ -168,12 +192,12 @@ export class FTMSTester {
                   } else if (this.testResults.supportedProtocols.includes("TACX")) {
                 // Tacx Neo 프로토콜 테스트 (우선순위 3)
                 this.updateProgress(30, "Tacx Neo 데이터 모니터링 중...");
-                this.logInteraction('INFO - Test: Starting Tacx Neo protocol testing (with control commands).');
+                this.logInteraction('INFO - Test: Starting Tacx Neo protocol testing (with user interaction control commands).');
                 await this.monitorBikeData();
                 
-                this.updateProgress(40, "Tacx Neo 제어 기능 테스트 중...");
-                this.logInteraction('INFO - Test: Starting Tacx Neo control point tests.');
-                await this.testControlPoints();
+                this.updateProgress(40, "Tacx Neo 사용자 상호작용 제어 기능 테스트 중...");
+                this.logInteraction('INFO - Test: Starting Tacx Neo user interaction control point tests.');
+                await this.testTacxControlPointsWithUserInteraction();
                 
                 const elapsed = Date.now() - this.startTime;
                 const remainingTime = Math.max(0, this.testDuration - elapsed);
@@ -185,7 +209,7 @@ export class FTMSTester {
                 
                 this.mergeFtmsManagerLogs();
                 this.testResults = finalizeTestReport(this.testResults);
-                this.updateProgress(100, "Tacx Neo 테스트 완료 (제어 기능 포함)");
+                this.updateProgress(100, "Tacx Neo 테스트 완료 (사용자 상호작용 제어 기능 포함)");
                 if (this.onTestComplete) {
                     this.onTestComplete(this.testResults);
                 }
@@ -1107,6 +1131,162 @@ export class FTMSTester {
         
         if (this.onProgressUpdate) {
             this.onProgressUpdate(progress, message);
+        }
+    }
+
+    // Tacx 프로토콜을 위한 사용자 상호작용 제어 테스트
+    private async testTacxControlPointsWithUserInteraction(): Promise<void> {
+        try {
+            if (!this.checkConnectionAndStopIfNeeded()) return;
+            
+            if (!this.testResults.controlTests) {
+                this.testResults.controlTests = {};
+            }
+            
+            this.logInteraction('INFO - [testTacxControlPointsWithUserInteraction] Tacx 사용자 상호작용 제어 테스트 시작');
+
+            // Test SET_SIM_PARAMS with user interaction
+            if (!this.checkConnectionAndStopIfNeeded()) return;
+            await this.testTacxControlCommandWithUserInteraction('SET_SIM_PARAMS', async () => {
+                const grade = 10;
+                const windSpeed = 0;
+                const crr = 0.004;
+                const cw = 0.5;
+                this.logInteraction(`INFO - [testTacxControlPointsWithUserInteraction] Executing SET_SIM_PARAMS with Grade: ${grade}%, Wind: ${windSpeed} km/h, CRR: ${crr}, CW: ${cw}`);
+                await this.ftmsManager.setSimulationParameters(windSpeed, grade, crr, cw);
+                return `Grade: ${grade}%, Wind: ${windSpeed} km/h, CRR: ${crr}, CW: ${cw}`;
+            }, '시뮬레이션 파라미터 설정', '경사 10%, 바람 0km/h로 설정합니다');
+              
+            // Test SET_TARGET_POWER with user interaction
+            if (!this.checkConnectionAndStopIfNeeded()) return;
+            await this.testTacxControlCommandWithUserInteraction('SET_TARGET_POWER', async () => {
+                const targetPower = 50;
+                this.logInteraction(`INFO - [testTacxControlPointsWithUserInteraction] Executing SET_TARGET_POWER with value: ${targetPower}W`);
+                await this.ftmsManager.setTargetPower(targetPower);
+                return `Target power: ${targetPower}W`;
+            }, '목표 파워 설정', '목표 파워를 50W로 설정합니다');
+            
+            // Test SET_RESISTANCE_LEVEL with user interaction
+            if (!this.checkConnectionAndStopIfNeeded()) return;
+            await this.testTacxControlCommandWithUserInteraction('SET_RESISTANCE_LEVEL', async () => {
+                const testResistance = 40;
+                this.logInteraction(`INFO - [testTacxControlPointsWithUserInteraction] Executing SET_RESISTANCE_LEVEL with value: ${testResistance}`);
+                await this.ftmsManager.setResistance(testResistance);
+                return `Resistance level: ${testResistance}`;
+            }, '저항 레벨 설정', '저항 레벨을 40으로 설정합니다');
+            
+            this.logInteraction('INFO - [testTacxControlPointsWithUserInteraction] Tacx 사용자 상호작용 제어 테스트 완료');
+            
+        } catch (error) {
+            this.logInteraction(`ERROR - [testTacxControlPointsWithUserInteraction] Tacx 제어 테스트 실패: ${error instanceof Error ? error.message : String(error)}`);
+            this.testResults.issuesFound.push(`Tacx 제어 테스트 오류: ${error instanceof Error ? error.message : String(error)}`);
+        }
+    }
+
+    // Tacx 개별 제어 명령을 사용자 상호작용과 함께 테스트
+    private async testTacxControlCommandWithUserInteraction(
+        commandName: string, 
+        commandExecutor: () => Promise<string>,
+        commandDisplayName: string,
+        commandDescription: string
+    ): Promise<void> {
+        if (!this.checkConnectionAndStopIfNeeded()) return;
+        
+        try {
+            this.logInteraction(`INFO - [testTacxControlCommandWithUserInteraction] ${commandName} 사용자 상호작용 테스트 시작`);
+            console.log(`[DEBUG] Tacx 사용자 상호작용 테스트 시작: ${commandName}`);
+
+            // 1. 사용자에게 명령 시작 요청
+            if (this.onUserInteractionRequest) {
+                console.log(`[DEBUG] 사용자 상호작용 콜백이 설정되어 있음`);
+                const startInteraction: UserInteractionRequest = {
+                    type: 'command_start',
+                    commandName: commandName,
+                    commandDescription: commandDescription,
+                    message: `${commandDisplayName} 명령을 실행하시겠습니까?`
+                };
+
+                console.log(`[DEBUG] 사용자에게 명령 시작 요청: ${commandDisplayName}`);
+                const userConfirmed = await this.onUserInteractionRequest(startInteraction);
+                console.log(`[DEBUG] 사용자 응답: ${userConfirmed}`);
+                
+                if (!userConfirmed) {
+                    this.logInteraction(`INFO - [testTacxControlCommandWithUserInteraction] 사용자가 ${commandName} 명령 실행을 취소했습니다`);
+                    this.testResults.controlTests[commandName] = {
+                        status: "Skipped",
+                        timestamp: Date.now(),
+                        details: "사용자가 명령 실행을 취소했습니다"
+                    };
+                    return;
+                }
+            } else {
+                console.log(`[DEBUG] 사용자 상호작용 콜백이 설정되지 않음!`);
+                this.logInteraction(`WARN - [testTacxControlCommandWithUserInteraction] 사용자 상호작용 콜백이 설정되지 않음`);
+            }
+
+            // 2. 3초 카운트다운
+            this.logInteraction(`INFO - [testTacxControlCommandWithUserInteraction] ${commandName} 명령 실행을 위한 3초 카운트다운 시작`);
+            console.log(`[DEBUG] 3초 카운트다운 시작`);
+            for (let i = 3; i > 0; i--) {
+                if (this.onCountdownUpdate) {
+                    this.onCountdownUpdate(i);
+                }
+                this.logInteraction(`INFO - [testTacxControlCommandWithUserInteraction] 카운트다운: ${i}`);
+                console.log(`[DEBUG] 카운트다운: ${i}`);
+                await new Promise(resolve => setTimeout(resolve, 1000));
+            }
+            if (this.onCountdownUpdate) {
+                this.onCountdownUpdate(0);
+            }
+
+            // 3. 명령 실행
+            this.logInteraction(`[CONTROL_COMMAND] 🟢 Tacx 제어 명령 실행: ${commandName}`);
+            console.log(`[DEBUG] 명령 실행: ${commandName}`);
+            const details = await commandExecutor();
+
+            // 4. 사용자에게 저항 변화 확인 요청
+            if (this.onUserInteractionRequest) {
+                const resistanceCheckInteraction: UserInteractionRequest = {
+                    type: 'resistance_check',
+                    commandName: commandName,
+                    commandDescription: commandDescription,
+                    message: `${commandDisplayName} 명령 실행 후 실제로 저항이 변했습니까?`
+                };
+
+                console.log(`[DEBUG] 사용자에게 저항 변화 확인 요청`);
+                const resistanceChanged = await this.onUserInteractionRequest(resistanceCheckInteraction);
+                console.log(`[DEBUG] 저항 변화 확인 응답: ${resistanceChanged}`);
+                
+                // 결과 저장
+                this.testResults.controlTests[commandName] = {
+                    status: resistanceChanged ? "OK" : "Failed",
+                    timestamp: Date.now(),
+                    details: resistanceChanged 
+                        ? `${details} - 사용자 확인: 저항 변화 감지됨`
+                        : `${details} - 사용자 확인: 저항 변화 감지되지 않음`
+                };
+
+                this.logInteraction(`INFO - [testTacxControlCommandWithUserInteraction] ${commandName} 테스트 완료 - 사용자 확인 결과: ${resistanceChanged ? '성공' : '실패'}`);
+                console.log(`[DEBUG] 테스트 완료: ${commandName} - ${resistanceChanged ? '성공' : '실패'}`);
+            } else {
+                // 콜백이 없는 경우 기본 처리
+                this.testResults.controlTests[commandName] = {
+                    status: "Pending",
+                    timestamp: Date.now(),
+                    details: `${details} - 사용자 상호작용 콜백 없음`
+                };
+                this.logInteraction(`WARN - [testTacxControlCommandWithUserInteraction] ${commandName} 사용자 상호작용 콜백이 설정되지 않음`);
+                console.log(`[DEBUG] 사용자 상호작용 콜백 없음 - Pending 상태로 설정`);
+            }
+
+        } catch (error) {
+            this.logInteraction(`ERROR - [testTacxControlCommandWithUserInteraction] ${commandName} 실행 실패: ${error instanceof Error ? error.message : String(error)}`);
+            console.log(`[DEBUG] 오류 발생: ${error instanceof Error ? error.message : String(error)}`);
+            this.testResults.controlTests[commandName] = {
+                status: "Failed",
+                timestamp: Date.now(),
+                details: `Error: ${error instanceof Error ? error.message : String(error)}`
+            };
         }
     }
 }
