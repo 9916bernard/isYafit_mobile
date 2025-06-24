@@ -219,9 +219,9 @@ export class FTMSTester {
                 this.logInteraction('INFO - Test: Starting FitShow protocol testing (with control commands).');
                 await this.monitorBikeData();
                 
-                this.updateProgress(40, "FitShow 제어 기능 테스트 중...");
-                this.logInteraction('INFO - Test: Starting FitShow control point tests.');
-                await this.testControlPoints();
+                // this.updateProgress(40, "FitShow 제어 기능 테스트 중...");
+                // this.logInteraction('INFO - Test: Starting FitShow control point tests.');
+                // await this.testControlPoints();
                 
                 const elapsed = Date.now() - this.startTime;
                 const remainingTime = Math.max(0, this.testDuration - elapsed);
@@ -233,7 +233,7 @@ export class FTMSTester {
                 
                 this.mergeFtmsManagerLogs();
                 this.testResults = finalizeTestReport(this.testResults);
-                this.updateProgress(100, "FitShow 테스트 완료 (제어 기능 포함)");
+                this.updateProgress(100, "FitShow 테스트 완료 (제어 기능 미포함)");
                 if (this.onTestComplete) {
                     this.onTestComplete(this.testResults);
                 }                  } else if (this.testResults.supportedProtocols.includes("YAFIT_S3") || this.testResults.supportedProtocols.includes("YAFIT_S4") || this.testResults.supportedProtocols.includes("FTMS")) {

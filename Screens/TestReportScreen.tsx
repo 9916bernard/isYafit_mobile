@@ -56,10 +56,25 @@ const TestReportScreen: React.FC<TestReportScreenProps> = ({ results, onClose })
       const compatibility = results.compatibilityLevel || '판정되지 않음';
       const testDate = new Date(results.testCompletedTimestamp || Date.now()).toLocaleString('ko-KR');
       
-      // 제어 테스트 결과 정리
+      // --- Formal, detailed report construction ---
+      let deviceInfoSection = `장치 정보\n- 장치명: ${deviceName}\n- 주소: ${deviceAddress}`;
+      if (results.deviceInfo.protocol) deviceInfoSection += `\n- 주요 프로토콜: ${results.deviceInfo.protocol}`;
+      if (results.deviceInfo.services && results.deviceInfo.services.length > 0) deviceInfoSection += `\n- 서비스: ${results.deviceInfo.services.join(', ')}`;
+      deviceInfoSection += `\n- 지원 프로토콜: ${protocols}`;
+
+      let testMetaSection = `테스트 정보\n- 테스트 완료: ${results.testCompleted ? '예' : '아니오'}`;
+      testMetaSection += `\n- 테스트 일시: ${testDate}`;
+      if (results.reportId) testMetaSection += `\n- 보고서 ID: ${results.reportId}`;
+
+      let compatibilitySection = `호환성 판정: ${compatibility}`;
+      if (results.reasons && results.reasons.length > 0) {
+        compatibilitySection += `\n- 판정 사유: ${results.reasons.join('; ')}`;
+      }
+
+      // Control test details
       let controlTestsSection = '';
       if (results.controlTests && Object.keys(results.controlTests).length > 0) {
-        controlTestsSection = '\n📋 제어 테스트 결과:\n';
+        controlTestsSection = '\n[제어 테스트 결과]';
         Object.entries(results.controlTests).forEach(([name, test]) => {
           const commandLabels = {
             'SET_RESISTANCE_LEVEL': '저항 레벨 설정',
@@ -67,106 +82,92 @@ const TestReportScreen: React.FC<TestReportScreenProps> = ({ results, onClose })
             'SET_SIM_PARAMS': '경사도 시뮬레이션'
           };
           const commandLabel = commandLabels[name as keyof typeof commandLabels] || name;
-          const statusText = test.status === 'OK' ? '✅ 성공' : 
-                            test.status === 'Failed' ? '❌ 실패' : '⚠️ 미지원';
-          controlTestsSection += `- ${commandLabel}: ${statusText}\n`;
+          const statusText = test.status === 'OK' ? '성공' : test.status === 'Failed' ? '실패' : '미지원';
+          controlTestsSection += `\n- ${commandLabel} (${name}): ${statusText}`;
+          if (test.details) controlTestsSection += ` (상세: ${test.details})`;
+          controlTestsSection += `, 테스트 시간: ${new Date(test.timestamp).toLocaleTimeString()}`;
         });
-      }        // 제한사항 정리 - 새로운 기준에 맞게 수정
+      }
+
+      // Limitations/issues
       let limitationsSection = '';
       const limitations: string[] = [];
-      
-      // Reborn 프로토콜 제한사항 추가
       if (results.supportedProtocols.includes('REBORN')) {
-        limitations.push('Reborn 프로토콜은 제어 명령이 불가능합니다. SIM,ERG,유저의 기어 변경이 불가능합니다.');
+        limitations.push('Reborn 프로토콜은 제어 명령이 불가능합니다. SIM, ERG, 유저의 기어 변경이 불가능합니다.');
       }
-      
-      // 호환성 레벨에 따른 제한사항 추가
       if (results.compatibilityLevel === '불가능') {
-        if (!results.dataFields?.cadence?.detected) {
-          limitations.push('Cadence가 검출되지 않음 (RPM)');
-        }
-        if (!results.supportedProtocols.includes('FTMS') && !results.supportedProtocols.includes('CSC')) {
-          limitations.push('지원하지 않는 프로토콜');
-        }
-        if (results.issuesFound?.some(issue => issue.includes('중단'))) {
-          limitations.push('검사가 중단됨');
-        }
+        if (!results.dataFields?.cadence?.detected) limitations.push('Cadence가 검출되지 않음 (RPM)');
+        if (!results.supportedProtocols.includes('FTMS') && !results.supportedProtocols.includes('CSC')) limitations.push('지원하지 않는 프로토콜');
+        if (results.issuesFound?.some(issue => issue.includes('중단'))) limitations.push('검사가 중단됨');
       } else if (results.compatibilityLevel === '부분 호환' || results.compatibilityLevel === '수정 필요') {
-        if (!results.dataFields?.resistance?.detected) {
-          limitations.push('Resistance가 검출되지 않아 기본 기어값으로 설정');
-        }
-        if (results.controlTests?.SET_RESISTANCE_LEVEL?.status === 'Failed') {
-          limitations.push('기어 변경 불가능');
-        }
-        if (results.controlTests?.SET_TARGET_POWER?.status === 'Failed') {
-          limitations.push('ERG 모드 사용 불가능');
-        }
-        if (results.controlTests?.SET_SIM_PARAMS?.status === 'Failed') {
-          limitations.push('SIM 모드 사용 불가능');
-        }
-        if (results.resistanceChanges && results.resistanceChanges.filter(change => !change.command).length >= 5) {
-          limitations.push('저항값이 명령 없이 자동 변화함');
-        }
+        if (!results.dataFields?.resistance?.detected) limitations.push('Resistance가 검출되지 않아 기본 기어값으로 설정');
+        if (results.controlTests?.SET_RESISTANCE_LEVEL?.status === 'Failed') limitations.push('기어 변경 불가능');
+        if (results.controlTests?.SET_TARGET_POWER?.status === 'Failed') limitations.push('ERG 모드 사용 불가능');
+        if (results.controlTests?.SET_SIM_PARAMS?.status === 'Failed') limitations.push('SIM 모드 사용 불가능');
+        if (results.resistanceChanges && results.resistanceChanges.filter(change => !change.command).length >= 5) limitations.push('저항값이 명령 없이 자동 변화함');
       }
-      
-      // issuesFound에서 추가 제한사항
-      if (results.issuesFound && results.issuesFound.length > 0) {
-        limitations.push(...results.issuesFound);
-      }
-      
+      if (results.issuesFound && results.issuesFound.length > 0) limitations.push(...results.issuesFound);
       if (limitations.length > 0) {
-        const sectionTitle = results.compatibilityLevel === '불가능' ? '⚠️ 불가능 사유:' : '⚠️ 제한사항:';
-        limitationsSection = '\n' + sectionTitle + '\n' + limitations.map(l => `- ${l}`).join('\n');
-      }      
-      // 지원 범위 정리
+        const sectionTitle = results.compatibilityLevel === '불가능' ? '[불가능 사유]' : '[제한사항]';
+        limitationsSection = `\n${sectionTitle}\n- ${limitations.join('\n- ')}`;
+      }
+
+      // Features
+      let featuresSection = '';
+      if (results.features && Object.keys(results.features).length > 0) {
+        featuresSection = '\n[지원 기능]';
+        Object.entries(results.features).forEach(([name, supported]) => {
+          featuresSection += `\n- ${name}: ${supported ? '지원' : '미지원'}`;
+        });
+      }
+
+      // Supported ranges
       let supportRangesSection = '';
       if (results.supportRanges && Object.keys(results.supportRanges).length > 0) {
-        supportRangesSection = '\n📊 지원 범위:\n';
+        supportRangesSection = '\n[지원 범위]';
         if (results.supportRanges.speed) {
-          supportRangesSection += `- 속도: ${results.supportRanges.speed.min}-${results.supportRanges.speed.max} km/h\n`;
+          const r = results.supportRanges.speed;
+          supportRangesSection += `\n- 속도: ${r.min} ~ ${r.max} km/h (증분: ${r.increment})`;
         }
         if (results.supportRanges.incline) {
-          supportRangesSection += `- 경사도: ${results.supportRanges.incline.min}-${results.supportRanges.incline.max}%\n`;
+          const r = results.supportRanges.incline;
+          supportRangesSection += `\n- 경사도: ${r.min} ~ ${r.max} % (증분: ${r.increment})`;
         }
         if (results.supportRanges.resistance) {
-          supportRangesSection += `- 저항: ${results.supportRanges.resistance.min}-${results.supportRanges.resistance.max} 레벨\n`;
+          const r = results.supportRanges.resistance;
+          supportRangesSection += `\n- 저항: ${r.min} ~ ${r.max} 레벨 (증분: ${r.increment})`;
         }
         if (results.supportRanges.power) {
-          supportRangesSection += `- 파워: ${results.supportRanges.power.min}-${results.supportRanges.power.max}W\n`;
+          const r = results.supportRanges.power;
+          supportRangesSection += `\n- 파워: ${r.min} ~ ${r.max} W (증분: ${r.increment})`;
         }
       }
-      
-      // 감지된 데이터 필드 정리
+
+      // Data fields
       let dataFieldsSection = '';
       if (results.dataFields && Object.keys(results.dataFields).length > 0) {
         const detectedFields = Object.entries(results.dataFields).filter(([_, field]) => field.detected);
         if (detectedFields.length > 0) {
-          dataFieldsSection = '\n📈 감지된 데이터 필드:\n';
+          dataFieldsSection = '\n[감지된 데이터 필드]';
           detectedFields.forEach(([name, field]) => {
             const currentValue = field.currentValue !== undefined ? field.currentValue : 'N/A';
-            const range = field.minValue !== undefined && field.maxValue !== undefined ? 
-                         ` (범위: ${field.minValue}-${field.maxValue})` : '';
-            dataFieldsSection += `- ${name}: ${currentValue}${range}\n`;
+            const range = field.minValue !== undefined && field.maxValue !== undefined ? ` (범위: ${field.minValue} ~ ${field.maxValue})` : '';
+            dataFieldsSection += `\n- ${name}: ${currentValue}${range}`;
           });
         }
       }
-      
-      const textReport = `
-🏃‍♂️ IsYafit FTMS 호환성 테스트 보고서
 
-📱 장치 정보:
-- 장치명: ${deviceName}
-- 주소: ${deviceAddress}
-- 지원 프로토콜: ${protocols}
+      // Resistance changes summary
+      let resistanceChangesSection = '';
+      if (results.resistanceChanges && results.resistanceChanges.length > 0) {
+        resistanceChangesSection = '\n[저항 변화 이력]';
+        results.resistanceChanges.forEach((change, idx) => {
+          const time = new Date(change.timestamp).toLocaleTimeString();
+          resistanceChangesSection += `\n- 시간: ${time}, 이전값: ${change.oldValue ?? '-'}, 현재값: ${change.newValue}, 원인: ${change.command || '자동 변경'}`;
+        });
+      }
 
-🎯 호환성 판정: ${compatibility}
-
-✅ 테스트 결과: ${results.reasons && results.reasons.length > 0 ? results.reasons[0] : '판정 결과 없음'}
-
-📅 테스트 일시: ${testDate}${controlTestsSection}${limitationsSection}${supportRangesSection}${dataFieldsSection}
-
-📋 상세 보고서는 앱에서 확인하실 수 있습니다.
-      `;
+      const textReport = `\n\n${deviceInfoSection}\n\n${testMetaSection}\n\n${compatibilitySection}\n${limitationsSection}\n${controlTestsSection}\n${featuresSection}\n${supportRangesSection}\n${dataFieldsSection}\n${resistanceChangesSection}`;
       
       await Share.share({
         title: `IsYafit 호환성 보고서 - ${deviceName}`,

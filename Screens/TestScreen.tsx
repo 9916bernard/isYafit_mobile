@@ -11,6 +11,9 @@ import {
   Alert,
   Animated,
   Dimensions,
+  findNodeHandle,
+  UIManager,
+  TouchableWithoutFeedback,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
@@ -77,6 +80,13 @@ const TestScreen: React.FC<TestScreenProps> = ({ device, ftmsManager, onClose, i
   const slideAnim = useRef(new Animated.Value(50)).current;
   const animationContainerHeight = useRef(new Animated.Value(0)).current;
   const animationOpacity = useRef(new Animated.Value(0)).current;
+
+  // Help popup for compatibility badge
+  const [isHelpPopupVisible, setIsHelpPopupVisible] = useState(false);
+  const [helpPopupPos, setHelpPopupPos] = useState<{x: number, y: number}>({x: 0, y: 0});
+  const helpIconRef = useRef(null);
+  const helpPopupAnim = useRef(new Animated.Value(0)).current;
+  const screenWidth = Dimensions.get('window').width;
 
   useEffect(() => {
     // Initialize the FTMSTester
@@ -363,22 +373,66 @@ const TestScreen: React.FC<TestScreenProps> = ({ device, ftmsManager, onClose, i
   };
 
   // Render the compatibility badge
-  const renderCompatibilityBadge = () => {    if (!testResults || !testResults.compatibilityLevel) return null;
-
+  const renderCompatibilityBadge = () => {
+    if (!testResults || !testResults.compatibilityLevel) return null;
     const badgeColor = getCompatibilityColor(testResults.compatibilityLevel);
-
     return (
-      <View style={[styles.compatibilityBadge, { backgroundColor: badgeColor }]}>
-        <Text style={[styles.compatibilityText, { color: '#FFFFFF' }]}>
-          {testResults.compatibilityLevel}
-        </Text>
+      <View style={{ flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start' }}>
+        <View style={[styles.compatibilityBadge, { backgroundColor: badgeColor }]}> 
+          <Text style={[styles.compatibilityText, { color: '#FFFFFF' }]}> 
+            {testResults.compatibilityLevel}
+          </Text>
+        </View>
+        <TouchableOpacity
+          ref={helpIconRef}
+          onPress={showHelpPopup}
+          style={styles.helpIconContainer}
+          activeOpacity={0.7}
+        >
+          <MaterialCommunityIcons name="help-circle-outline" size={20} color={badgeColor} />
+        </TouchableOpacity>
       </View>
     );
   };
+
   // Toggle real-time log display
   const toggleLogs = () => {
     setShowLogs(!showLogs);
-  };    return (
+  };
+
+  const showHelpPopup = () => {
+    if (helpIconRef.current) {
+      const nodeHandle = findNodeHandle(helpIconRef.current);
+      if (nodeHandle) {
+        UIManager.measureInWindow(
+          nodeHandle,
+          (x, y, width, height) => {
+            setHelpPopupPos({
+              x: Math.min(x, screenWidth - 270),
+              y: y + height + 4,
+            });
+            setIsHelpPopupVisible(true);
+            Animated.timing(helpPopupAnim, {
+              toValue: 1,
+              duration: 180,
+              useNativeDriver: true,
+            }).start();
+          }
+        );
+      }
+    }
+  };
+  const hideHelpPopup = () => {
+    Animated.timing(helpPopupAnim, {
+      toValue: 0,
+      duration: 120,
+      useNativeDriver: true,
+    }).start(() => {
+      setIsHelpPopupVisible(false);
+    });
+  };
+
+  return (
     <View style={safeAreaStyles.safeContainerMinPadding}>
       <Animated.View 
         style={[
@@ -827,6 +881,45 @@ const TestScreen: React.FC<TestScreenProps> = ({ device, ftmsManager, onClose, i
             <Text style={styles.countdownLabel}>초 후 명령 실행</Text>
           </View>
         </View>
+      )}
+
+      {/* Help Popup (absolute, animated, not Modal) */}
+      {isHelpPopupVisible && (
+        <TouchableWithoutFeedback onPress={hideHelpPopup}>
+          <Animated.View
+            style={[
+              styles.animatedHelpPopup,
+              {
+                left: helpPopupPos.x,
+                top: helpPopupPos.y,
+                opacity: helpPopupAnim,
+                transform: [
+                  {
+                    scale: helpPopupAnim.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [0.92, 1],
+                    }),
+                  },
+                ],
+              },
+            ]}
+          >
+            <View style={styles.helpBubble}>
+              <View style={styles.helpBubbleContent}>
+                <View style={styles.helpBubbleHeader}>
+                  <MaterialCommunityIcons name="help-circle" size={20} color={getCompatibilityColor(testResults?.compatibilityLevel)} />
+                  <Text style={styles.helpBubbleTitle}>테스트 도움말</Text>
+                  <TouchableOpacity onPress={hideHelpPopup}>
+                    <MaterialCommunityIcons name="close" size={16} color="#aaa" />
+                  </TouchableOpacity>
+                </View>
+                <Text style={styles.helpBubbleText}>
+                  테스트 진행 중 수동으로 저항을 변경하면, 테스트 결과에 오류가 발생할 수 있습니다. {'\n'}테스트 결과가 예상과 다르다면, 페달을 돌리며 혹은 멈추고 다시 테스트를 진행해 보세요.
+                </Text>
+              </View>
+            </View>
+          </Animated.View>
+        </TouchableWithoutFeedback>
       )}
     </View>
   );
@@ -1530,6 +1623,52 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginTop: 16,
     textAlign: 'center',
+  },
+  helpIconContainer: {
+    marginLeft: 8,
+    padding: 4,
+    borderRadius: 12,
+    backgroundColor: 'transparent',
+  },
+  animatedHelpPopup: {
+    position: 'absolute',
+    zIndex: 9999,
+    width: 260,
+  },
+  helpBubble: {
+    backgroundColor: '#1a2029',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#374151',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 100,
+    width: '100%',
+  },
+  helpBubbleContent: {
+    padding: 12,
+    minHeight: 60,
+  },
+  helpBubbleHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  helpBubbleTitle: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#fff',
+    flex: 1,
+    marginLeft: 6,
+  },
+  helpBubbleText: {
+    fontSize: 12,
+    color: '#aaa',
+    lineHeight: 16,
+    marginBottom: 8,
+    textAlign: 'left',
   },
 });
 

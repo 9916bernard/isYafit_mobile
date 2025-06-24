@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { StyleSheet, View, Text, FlatList, TouchableOpacity, PermissionsAndroid, Platform, Linking, ScrollView, SafeAreaView, Modal, Alert, Dimensions, TouchableWithoutFeedback } from 'react-native';
+import { StyleSheet, View, Text, FlatList, TouchableOpacity, PermissionsAndroid, Platform, Linking, ScrollView, SafeAreaView, Modal, Alert, Dimensions, TouchableWithoutFeedback, Animated, findNodeHandle, UIManager } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import LinearGradient from 'react-native-linear-gradient';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -35,6 +35,10 @@ function App() {
   const [showRealtimeData, setShowRealtimeData] = useState(false); // For showing realtime data screen
   const [isLoadingCompatibilityTest, setIsLoadingCompatibilityTest] = useState(false); // For showing loading screen    // Help popup states
   const [isHelpPopupVisible, setIsHelpPopupVisible] = useState(false);
+  const [helpPopupPos, setHelpPopupPos] = useState<{x: number, y: number}>({x: 0, y: 0});
+  const helpIconRef = useRef(null);
+  const helpPopupAnim = useRef(new Animated.Value(0)).current;
+  const screenWidth = Dimensions.get('window').width;
   const screenHeight = Dimensions.get('window').height;
 
   const requestPermissions = useCallback(async () => {
@@ -191,10 +195,36 @@ function App() {
     setShowModeSelection(true);
   };  // Help popup functions
   const showHelpPopup = () => {
-    setIsHelpPopupVisible(true);
+    if (helpIconRef.current) {
+      const nodeHandle = findNodeHandle(helpIconRef.current);
+      if (nodeHandle) {
+        UIManager.measureInWindow(
+          nodeHandle,
+          (x, y, width, height) => {
+            // 팝업을 ? 아이콘 바로 아래에 위치시키기 위해 y+height
+            setHelpPopupPos({
+              x: Math.min(x, screenWidth - 270), // 팝업 너비 고려
+              y: y + height + 4, // 아래로 약간 띄움
+            });
+            setIsHelpPopupVisible(true);
+            Animated.timing(helpPopupAnim, {
+              toValue: 1,
+              duration: 180,
+              useNativeDriver: true,
+            }).start();
+          }
+        );
+      }
+    }
   };
   const hideHelpPopup = () => {
-    setIsHelpPopupVisible(false);
+    Animated.timing(helpPopupAnim, {
+      toValue: 0,
+      duration: 120,
+      useNativeDriver: true,
+    }).start(() => {
+      setIsHelpPopupVisible(false);
+    });
   };
   // Handle mode selection
   const handleSelectRealtimeData = async () => {
@@ -430,6 +460,7 @@ function App() {
           <Text style={styles.sectionTitle}>발견된 장치</Text>
         </View>        <View style={styles.helpIconWrapper}>
           <TouchableOpacity 
+            ref={helpIconRef}
             onPress={showHelpPopup}
             style={styles.helpIconContainer}
             activeOpacity={0.7}
@@ -665,42 +696,53 @@ function App() {
               </LinearGradient>
             </ScrollView>
           )}        </>
-      )}        {/* Help Popup Modal */}
-        <Modal
-          transparent={true}
-          visible={isHelpPopupVisible}
-          animationType="fade"
-          onRequestClose={hideHelpPopup}
-        >
+      )}        {/* Help Popup (absolute, animated, not Modal) */}
+        {isHelpPopupVisible && (
           <TouchableWithoutFeedback onPress={hideHelpPopup}>
-            <View style={styles.modalOverlay}>              <View style={styles.helpBubbleContainer}>
-                <View style={styles.helpBubble}>
-                  <View style={styles.helpBubbleContent}>
-                    <View style={styles.helpBubbleHeader}>
-                      <Icon name="help-circle" size={20} color={Colors.primary} />
-                      <Text style={styles.helpBubbleTitle}>기기 호환성 안내</Text>
-                      <TouchableOpacity onPress={hideHelpPopup}>
-                        <Icon name="close" size={16} color={Colors.textSecondary} />
-                      </TouchableOpacity>
-                    </View>
-                    <Text style={styles.helpBubbleText}>
-                      기기가 스캔되지 않는다면 기기의 UUID가 아래의 프로토콜 혹은 센서에 포함되는지 확인해주세요.
-                    </Text>
-                    <Text style={styles.helpBubbleText}>
-                      만약 포함되지 않는다면 이는 Yafit 에 호환되지 않는 기기입니다. 관계자에게 문의해주세요.
-                    </Text>
-                    <View style={styles.helpBubbleProtocols}>
-                      <Text style={styles.helpBubbleSubtitle}>프로토콜:</Text>
-                      <Text style={styles.helpBubbleProtocolText}>FTMS, CSC </Text>
-                      <Text style={styles.helpBubbleSubtitle}>브랜드 커스텀 프로토콜:</Text>
-                      <Text style={styles.helpBubbleProtocolText}>Mobi, Reborn, FitShow, Tacx, YAFIT</Text>
-                    </View>
+            <Animated.View
+              style={[
+                styles.animatedHelpPopup,
+                {
+                  left: helpPopupPos.x,
+                  top: helpPopupPos.y,
+                  opacity: helpPopupAnim,
+                  transform: [
+                    {
+                      scale: helpPopupAnim.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [0.92, 1],
+                      }),
+                    },
+                  ],
+                },
+              ]}
+            >
+              <View style={styles.helpBubble}>
+                <View style={styles.helpBubbleContent}>
+                  <View style={styles.helpBubbleHeader}>
+                    <Icon name="help-circle" size={20} color={Colors.primary} />
+                    <Text style={styles.helpBubbleTitle}>기기 호환성 안내</Text>
+                    <TouchableOpacity onPress={hideHelpPopup}>
+                      <Icon name="close" size={16} color={Colors.textSecondary} />
+                    </TouchableOpacity>
+                  </View>
+                  <Text style={styles.helpBubbleText}>
+                    기기가 스캔되지 않는다면 기기의 UUID가 아래의 프로토콜 혹은 센서에 포함되는지 확인해주세요.
+                  </Text>
+                  <Text style={styles.helpBubbleText}>
+                    만약 포함되지 않는다면 이는 Yafit 에 호환되지 않는 기기입니다. 관계자에게 문의해주세요.
+                  </Text>
+                  <View style={styles.helpBubbleProtocols}>
+                    <Text style={styles.helpBubbleSubtitle}>프로토콜:</Text>
+                    <Text style={styles.helpBubbleProtocolText}>FTMS, CSC </Text>
+                    <Text style={styles.helpBubbleSubtitle}>브랜드 커스텀 프로토콜:</Text>
+                    <Text style={styles.helpBubbleProtocolText}>Mobi, Reborn, FitShow, Tacx, YAFIT</Text>
                   </View>
                 </View>
               </View>
-            </View>
+            </Animated.View>
           </TouchableWithoutFeedback>
-        </Modal>
+        )}
     </SafeAreaView>
     </TouchableWithoutFeedback>
   );
@@ -1127,14 +1169,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
   },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'transparent', // 투명한 배경
-  },  helpBubbleContainer: {
+  animatedHelpPopup: {
     position: 'absolute',
-    top: Dimensions.get('window').height / 3, // 화면 높이의 1/3 지점
-    right: 20,
+    zIndex: 9999,
     width: 260,
+    // left, top 동적으로 지정
+    // 그림자 등은 helpBubble에서 처리
   },
 });
 
