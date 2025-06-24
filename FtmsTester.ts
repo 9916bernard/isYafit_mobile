@@ -138,6 +138,7 @@ export class FTMSTester {
             this.updateProgress(5, "기기에 연결 중...");
             this.logInteraction('INFO - Test: Attempting to connect to device.');
             await this.connectToDevice(device);
+            if (!this.isTestRunning) throw new Error("테스트가 중지되었습니다.");
 
             this.testResults.connection.status = true;
             this.logInteraction('INFO - Test: Device connected successfully.');
@@ -157,7 +158,7 @@ export class FTMSTester {
                 
                 if (remainingTime > 0) {
                     this.updateProgress(50, "Mobi 데이터 수집 중... (페달을 계속 돌려주세요)");
-                    await new Promise(resolve => setTimeout(resolve, remainingTime));
+                    await this.waitWithEarlyExit(remainingTime);
                 }
                 
                 this.mergeFtmsManagerLogs();
@@ -165,7 +166,8 @@ export class FTMSTester {
                 this.updateProgress(100, "Mobi 테스트 완료 (읽기 전용)");
                 if (this.onTestComplete) {
                     this.onTestComplete(this.testResults);
-                }                  } else if (this.testResults.supportedProtocols.includes("REBORN")) {
+                }
+            } else if (this.testResults.supportedProtocols.includes("REBORN")) {
                 // Reborn 프로토콜 테스트 (우선순위 2) - 인증 외 제어 불가능
                 this.updateProgress(30, "Reborn 인증 및 데이터 모니터링 중...");
                 this.logInteraction('INFO - Test: Starting Reborn protocol testing (authentication + data only).');
@@ -189,7 +191,7 @@ export class FTMSTester {
                 if (this.onTestComplete) {
                     this.onTestComplete(this.testResults);
                 }
-                  } else if (this.testResults.supportedProtocols.includes("TACX")) {
+            } else if (this.testResults.supportedProtocols.includes("TACX")) {
                 // Tacx Neo 프로토콜 테스트 (우선순위 3)
                 this.updateProgress(30, "Tacx Neo 데이터 모니터링 중...");
                 this.logInteraction('INFO - Test: Starting Tacx Neo protocol testing (with user interaction control commands).');
@@ -204,7 +206,7 @@ export class FTMSTester {
                 
                 if (remainingTime > 0) {
                     this.updateProgress(50, "Tacx Neo 데이터 수집 중...");
-                    await new Promise(resolve => setTimeout(resolve, remainingTime));
+                    await this.waitWithEarlyExit(remainingTime);
                 }
                 
                 this.mergeFtmsManagerLogs();
@@ -213,7 +215,7 @@ export class FTMSTester {
                 if (this.onTestComplete) {
                     this.onTestComplete(this.testResults);
                 }
-                  } else if (this.testResults.supportedProtocols.includes("FITSHOW")) {
+            } else if (this.testResults.supportedProtocols.includes("FITSHOW")) {
                 // FitShow 프로토콜 테스트 (우선순위 4)
                 this.updateProgress(30, "FitShow 데이터 모니터링 중...");
                 this.logInteraction('INFO - Test: Starting FitShow protocol testing (with control commands).');
@@ -228,7 +230,7 @@ export class FTMSTester {
                 
                 if (remainingTime > 0) {
                     this.updateProgress(50, "FitShow 데이터 수집 중...");
-                    await new Promise(resolve => setTimeout(resolve, remainingTime));
+                    await this.waitWithEarlyExit(remainingTime);
                 }
                 
                 this.mergeFtmsManagerLogs();
@@ -236,7 +238,8 @@ export class FTMSTester {
                 this.updateProgress(100, "FitShow 테스트 완료 (제어 기능 미포함)");
                 if (this.onTestComplete) {
                     this.onTestComplete(this.testResults);
-                }                  } else if (this.testResults.supportedProtocols.includes("YAFIT_S3") || this.testResults.supportedProtocols.includes("YAFIT_S4") || this.testResults.supportedProtocols.includes("FTMS")) {
+                }
+            } else if (this.testResults.supportedProtocols.includes("YAFIT_S3") || this.testResults.supportedProtocols.includes("YAFIT_S4") || this.testResults.supportedProtocols.includes("FTMS")) {
                 // FTMS 프로토콜 테스트 (YAFIT_S3, YAFIT_S4 포함)
                 let protocolName = "FTMS";
                 if (this.testResults.supportedProtocols.includes("YAFIT_S3")) {
@@ -277,7 +280,7 @@ export class FTMSTester {
                 if (this.onTestComplete) {
                     this.onTestComplete(this.testResults);
                 }
-                } else if (this.testResults.supportedProtocols.includes("CSC")) {
+            } else if (this.testResults.supportedProtocols.includes("CSC")) {
                 // CSC 프로토콜 테스트 (우선순위 8)
                 this.updateProgress(30, "CSC 데이터 모니터링 중...");
                 this.logInteraction('INFO - Test: Starting CSC protocol testing.');
@@ -288,14 +291,15 @@ export class FTMSTester {
                 
                 if (remainingTime > 0) {
                     this.updateProgress(50, "CSC 데이터 수집 중...");
-                    await new Promise(resolve => setTimeout(resolve, remainingTime));
+                    await this.waitWithEarlyExit(remainingTime);
                 }
                 
                 this.mergeFtmsManagerLogs();
                 this.testResults = finalizeTestReport(this.testResults);
                 this.updateProgress(100, "CSC 테스트 완료 (제한된 기능)");                if (this.onTestComplete) {
                     this.onTestComplete(this.testResults);
-                }            } else {
+                }
+            } else {
                 // No supported protocols
                 this.testResults.reasons.push("지원되는 프로토콜을 찾을 수 없습니다. 우선순위: MOBI > REBORN > TACX > FITSHOW > YAFIT_S3 > YAFIT_S4 > FTMS > CSC");
                 this.mergeFtmsManagerLogs();
@@ -322,7 +326,7 @@ export class FTMSTester {
                 this.testTimeoutId = undefined; // Clear the timeout ID
             }            // Wait a bit before disconnecting to allow any pending responses to complete
             this.logInteraction('INFO - Test: Waiting 3 seconds before disconnecting to allow pending operations to complete...');
-            await new Promise(resolve => setTimeout(resolve, 3000));
+            await this.waitWithEarlyExit(3000);
             
             // Disconnect the device
             if (this.ftmsManager.getConnectedDevice()) {
@@ -359,9 +363,22 @@ export class FTMSTester {
         }
     }
 
+    // --- 추가: 대기 중 중단 체크 유틸 ---
+    private async waitWithEarlyExit(ms: number): Promise<void> {
+        const interval = 100; // 0.1초마다 체크
+        let waited = 0;
+        while (waited < ms) {
+            if (!this.isTestRunning) return;
+            const sleep = Math.min(interval, ms - waited);
+            await new Promise(res => setTimeout(res, sleep));
+            waited += sleep;
+        }
+    }
+
     private async connectToDevice(device: Device): Promise<void> {
         try {
             await this.ftmsManager.connectToDevice(device.id);
+            if (!this.isTestRunning) throw new Error("테스트가 중지되었습니다.");
             this.logInteraction(`INFO - FTMSTester: Successfully connected to device ${device.id}`);
             
             // Get the list of services
@@ -724,7 +741,7 @@ export class FTMSTester {
             // Wait for SET_TARGET_POWER to show its effects
             if (!this.checkConnectionAndStopIfNeeded()) return;
             this.logInteraction('INFO - [testControlPoints] Waiting for SET_TARGET_POWER to demonstrate continuous resistance changes...');
-            await new Promise(resolve => setTimeout(resolve, 4000));
+            await this.waitWithEarlyExit(4000);
 
             // Test SET_RESISTANCE_LEVEL for functionality testing
             if (!this.checkConnectionAndStopIfNeeded()) return;
@@ -738,7 +755,7 @@ export class FTMSTester {
             
             // Wait for resistance change to be observed and any delayed responses
             this.logInteraction('INFO - [testControlPoints] Waiting for final resistance changes and delayed responses...');
-            await new Promise(resolve => setTimeout(resolve, 5000)); // Increased from 3 to 5 seconds
+            await this.waitWithEarlyExit(5000); // Increased from 3 to 5 seconds
             
             this.logInteraction('INFO - [testControlPoints] All control point tests completed');
             
@@ -803,7 +820,7 @@ export class FTMSTester {
             const waitTime = trackedCommandName === 'SET_TARGET_POWER' ? 5000 : 3000;
             this.logInteraction(`DEBUG - [testSingleControlCommand] Waiting ${waitTime}ms for ${trackedCommandName} response...`);
 
-            await new Promise(resolve => setTimeout(resolve, waitTime));
+            await this.waitWithEarlyExit(waitTime);
             
             // Check final status after wait - only handle truly failed commands
             const actualCommandName = this.resistanceTracking.lastCommandType;
@@ -1233,7 +1250,7 @@ export class FTMSTester {
                 }
                 this.logInteraction(`INFO - [testTacxControlCommandWithUserInteraction] 카운트다운: ${i}`);
                 console.log(`[DEBUG] 카운트다운: ${i}`);
-                await new Promise(resolve => setTimeout(resolve, 1000));
+                await this.waitWithEarlyExit(1000);
             }
             if (this.onCountdownUpdate) {
                 this.onCountdownUpdate(0);

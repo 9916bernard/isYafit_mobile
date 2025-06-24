@@ -13,6 +13,7 @@ import RealtimeDataScreen from './RealtimeDataScreen';
 import LoadingScreen from './LoadingScreen';
 import { Colors, ButtonStyles, CardStyles, TextStyles, Shadows } from '../styles/commonStyles';
 import Toast from 'react-native-root-toast';
+import { Ionicons } from '@expo/vector-icons';
 
 
 // 0.8.0 FitShow 프로토콜 구현 개선 (FTMS indoor bike data 형식 사용)
@@ -40,6 +41,31 @@ function App() {
   const helpPopupAnim = useRef(new Animated.Value(0)).current;
   const screenWidth = Dimensions.get('window').width;
   const screenHeight = Dimensions.get('window').height;
+  const [language, setLanguage] = useState<'ko' | 'en' | 'zh'>('ko');
+
+  const languageOrder: ('ko' | 'en' | 'zh')[] = ['ko', 'en', 'zh'];
+  const languageLabels = { ko: 'KO', en: 'EN', zh: '中' };
+  const translations = {
+    title: { ko: 'IsYafit', en: 'IsYafit', zh: 'IsYafit' },
+    scan: { ko: '주변 장치 스캔', en: 'Scan Devices', zh: '扫描设备' },
+    scanning: { ko: '스캔 중...', en: 'Scanning...', zh: '正在扫描...' },
+    statusInit: { ko: '앱 테스트 중입니다.', en: 'App is in test mode.', zh: '应用测试中。' },
+    statusScan: { ko: 'FTMS 장치를 스캔 중...', en: 'Scanning for FTMS devices...', zh: '正在扫描FTMS设备...' },
+    statusScanDone: { ko: '스캔 완료. 장치를 선택하세요.', en: 'Scan complete. Select a device.', zh: '扫描完成。请选择设备。' },
+    sectionDevices: { ko: '발견된 장치', en: 'Discovered Devices', zh: '发现的设备' },
+    statusReady: {
+      ko: 'FTMS Manager 초기화 완료. 스캔을 시작할 수 있습니다.',
+      en: 'FTMS Manager initialized. You can start scanning.',
+      zh: 'FTMS管理器初始化完成。可以开始扫描。'
+    },
+  };
+
+  const handleToggleLanguage = () => {
+    setLanguage(prev => {
+      const idx = languageOrder.indexOf(prev);
+      return languageOrder[(idx + 1) % languageOrder.length];
+    });
+  };
 
   const requestPermissions = useCallback(async () => {
     if (Platform.OS === 'android') {
@@ -105,7 +131,7 @@ function App() {
           setStatusMessage('블루투스가 꺼져있습니다. 블루투스를 켜고 다시 시도하세요.');
         } else {
           setManagerInitialized(true);
-          setStatusMessage('FTMS Manager 초기화 완료. 스캔을 시작할 수 있습니다.');
+          setStatusMessage(translations.statusReady[language]);
         }
       } catch (error) {
         console.error('FTMSManager 초기화 오류:', error);
@@ -421,15 +447,19 @@ function App() {
       style={styles.headerGradient}
     >
       <View style={styles.headerContainer}>
-        <View style={styles.titleVersionContainer}>
-          <Text style={styles.title}>IsYafit</Text>
-          <View style={styles.versionBadge}>
-            <Text style={styles.version}>{APP_VERSION}</Text>
-          </View>
+        <View style={styles.titleVersionColumn}>
+          <Text style={styles.title}>{translations.title[language]}</Text>
+          <Text style={styles.versionPlain}>{APP_VERSION}</Text>
         </View>
-        <TouchableOpacity style={styles.bluetoothIconContainer} onPress={checkAndEnableBluetooth}>
-          <Icon name="bluetooth" size={24} color={Colors.primary} />
-        </TouchableOpacity>
+        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          <TouchableOpacity style={styles.languageButton} onPress={handleToggleLanguage}>
+            <Ionicons name="globe-outline" size={22} color={Colors.primary} />
+            <Text style={styles.languageLabel}>{languageLabels[language]}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.bluetoothIconContainer} onPress={checkAndEnableBluetooth}>
+            <Icon name="bluetooth" size={24} color={Colors.primary} />
+          </TouchableOpacity>
+        </View>
       </View>
       <Text style={styles.status}>{statusMessage}</Text>
       
@@ -450,14 +480,14 @@ function App() {
           <View style={styles.scanButtonContent}>
             {isScanning && <Icon name="radar" size={20} color={Colors.text} style={styles.scanIcon} />}
             <Text style={styles.scanButtonText}>
-              {isScanning ? "스캔 중..." : "주변 장치 스캔"}
+              {isScanning ? translations.scanning[language] : translations.scan[language]}
             </Text>
           </View>
         </LinearGradient>
       </TouchableOpacity>      <View style={styles.sectionHeader}>
         <View style={styles.sectionTitleContainer}>
           <Icon name="devices" size={20} color={Colors.primary} />
-          <Text style={styles.sectionTitle}>발견된 장치</Text>
+          <Text style={styles.sectionTitle}>{translations.sectionDevices[language]}</Text>
         </View>        <View style={styles.helpIconWrapper}>
           <TouchableOpacity 
             ref={helpIconRef}
@@ -525,7 +555,30 @@ function App() {
         )}
       </View>
     </TouchableOpacity>
-  );  return (
+  );
+
+  // Update status message when language changes, if it's a translatable main message
+  useEffect(() => {
+    const translatableKeys = ['statusInit', 'statusReady', 'statusScan', 'statusScanDone'];
+    const currentMessages = translatableKeys.map(key => translations[key][language]);
+    // If the current statusMessage is one of the previous language's translatable messages, update it
+    const allLangs = ['ko', 'en', 'zh'];
+    let foundKey = null;
+    for (const key of translatableKeys) {
+      for (const lang of allLangs) {
+        if (statusMessage === translations[key][lang]) {
+          foundKey = key;
+          break;
+        }
+      }
+      if (foundKey) break;
+    }
+    if (foundKey) {
+      setStatusMessage(translations[foundKey][language]);
+    }
+  }, [language]);
+
+  return (
     <TouchableWithoutFeedback onPress={() => isHelpPopupVisible && hideHelpPopup()}>
       <SafeAreaView style={styles.safeArea}>{/* Show loading screen for compatibility test */}
       {isLoadingCompatibilityTest && selectedDevice ? (
@@ -591,15 +644,19 @@ function App() {
                 style={styles.headerGradient}
               >
                 <View style={styles.headerContainer}>
-                  <View style={styles.titleVersionContainer}>
-                    <Text style={styles.title}>IsYafit</Text>
-                    <View style={styles.versionBadge}>
-                      <Text style={styles.version}>{APP_VERSION}</Text>
-                    </View>
+                  <View style={styles.titleVersionColumn}>
+                    <Text style={styles.title}>{translations.title[language]}</Text>
+                    <Text style={styles.versionPlain}>{APP_VERSION}</Text>
                   </View>
-                  <TouchableOpacity style={styles.bluetoothIconContainer} onPress={checkAndEnableBluetooth}>
-                    <Icon name="bluetooth" size={24} color={Colors.primary} />
-                  </TouchableOpacity>
+                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    <TouchableOpacity style={styles.languageButton} onPress={handleToggleLanguage}>
+                      <Ionicons name="globe-outline" size={22} color={Colors.primary} />
+                      <Text style={styles.languageLabel}>{languageLabels[language]}</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.bluetoothIconContainer} onPress={checkAndEnableBluetooth}>
+                      <Icon name="bluetooth" size={24} color={Colors.primary} />
+                    </TouchableOpacity>
+                  </View>
                 </View>
                 <Text style={styles.status}>{statusMessage}</Text>
 
@@ -622,7 +679,7 @@ function App() {
                         <View style={styles.scanButtonContent}>
                           {isScanning && <Icon name="radar" size={20} color={Colors.text} style={styles.scanIcon} />}
                           <Text style={styles.scanButtonText}>
-                            {isScanning ? "스캔 중..." : "FTMS 장치 스캔"}
+                            {isScanning ? translations.scanning[language] : translations.scan[language]}
                           </Text>
                         </View>
                       </LinearGradient>
@@ -774,9 +831,10 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start', // Align items to the start for better control over version text
     marginBottom: 25, // Increased margin
   },
-  titleVersionContainer: {
-    flexDirection: 'row', // Changed to row
-    alignItems: 'center', // Align items vertically in the center
+  titleVersionColumn: {
+    flexDirection: 'column',
+    alignItems: 'flex-start',
+    justifyContent: 'flex-start',
   },
   title: {
     fontSize: 36, // Slightly increased font size
@@ -786,14 +844,15 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
     marginRight: 10, // Add some margin to the right of the title
   },
-  version: {
-    fontSize: 12,
+  versionPlain: {
+    fontSize: 10, // Even smaller than before
     color: '#aaa',
-    backgroundColor: 'rgba(0,0,0,0.2)',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-    // Removed marginLeft and marginTop, alignment handled by flexDirection: 'row' and alignItems: 'center' in titleVersionContainer
+    marginTop: 0,
+    marginLeft: 0,
+    paddingHorizontal: 0,
+    paddingVertical: 0,
+    backgroundColor: 'transparent',
+    fontWeight: '400',
   },
   bluetoothIconContainer: {
     padding: 10,
@@ -1069,7 +1128,23 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
     textAlign: 'center',
-  },  sectionHeader: {
+  },
+  languageButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'transparent',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    marginRight: 8,
+    borderRadius: 12,
+  },
+  languageLabel: {
+    color: Colors.primary,
+    fontSize: 13,
+    fontWeight: 'bold',
+    marginLeft: 4,
+  },
+  sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -1077,7 +1152,6 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   deviceItemCard: {
-
     backgroundColor: Colors.secondary,
     marginHorizontal: 16,
     marginTop: 15,
