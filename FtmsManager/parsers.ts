@@ -183,4 +183,50 @@ export function parseTacxData(data: Buffer): IndoorBikeData {
             break;
     }
     return parsed;
+}
+
+// FitShow는 실제로는 자체 데이터 형식을 사용함 (C# 코드 기반)
+export function parseFitShowData(data: Buffer): IndoorBikeData {
+    const parsed: IndoorBikeData = { raw: data.toString('hex') };
+    
+    try {
+        console.log(`[FitShow Debug] Raw data length: ${data.length}, hex: ${data.toString('hex')}`);
+        
+        if (data.length < 12) {
+            console.log(`[FitShow Debug] Data too short: ${data.length} bytes, need at least 12 bytes`);
+            return parsed;
+        }
+        
+        // FitShow 실제 데이터 형식 (C# 코드 기반)
+        // bytes[2, 3]        Instantaneous Speed
+        // bytes[4, 5] / 2    Instantaneous Cadence  
+        // bytes[9, 10]       Resistance Level
+        // bytes[11]          Instantaneous Power
+        
+        // Speed (bytes[2, 3]) - km/h
+        const speed = (data[2] + (data[3] * 0xFF)) * 0.01;
+        parsed.instantaneousSpeed = speed;
+        
+        // Cadence (bytes[4, 5] / 2) - RPM
+        const cadence = (data[4] + (data[5] * 0xFF)) * 0.5;
+        parsed.instantaneousCadence = cadence;
+        
+        // Resistance (bytes[9, 10]) - level
+        const resistance = (data[9] + (data[10] * 0xFF)) * 0.1;
+        parsed.resistanceLevel = resistance;
+        
+        // Power (bytes[11]) - watts
+        const power = data[11];
+        parsed.instantaneousPower = power;
+        
+        // 배터리는 항상 100%로 고정
+        parsed.batteryLevel = 100;
+        
+        console.log(`[FitShow Debug] Parsed - Speed: ${speed} km/h, Cadence: ${cadence} RPM, Resistance: ${resistance}, Power: ${power}W`);
+        
+    } catch (error) {
+        console.error('[FitShow Debug] Parsing error:', error);
+    }
+    
+    return parsed;
 } 

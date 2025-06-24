@@ -15,8 +15,8 @@ import { Colors, ButtonStyles, CardStyles, TextStyles, Shadows } from '../styles
 import Toast from 'react-native-root-toast';
 
 
-// 0.6.0 FTMS CSC 까지 동작 확인 버전
-const APP_VERSION = 'v0.7.4';
+// 0.8.0 FitShow 프로토콜 구현 개선 (FTMS indoor bike data 형식 사용)
+const APP_VERSION = 'v0.8.0';
 
 function App() {
   const insets = useSafeAreaInsets();

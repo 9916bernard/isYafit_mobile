@@ -179,14 +179,17 @@ export function determineCompatibility(results: TestResults): TestResults {
     if (results.issuesFound?.some(issue => issue.includes('연결이 끊어졌습니다') || issue.includes('테스트 중단'))) {
         impossibleReasons.push('중지');
     }      // 2. Check cadence detection (불가능(RPM)) - REBORN은 cadence 검출 여부에 따라 판별
-    const priorityProtocols = ["MOBI", "tacx", "FITSHOW", "YAFIT_S3", "YAFIT_S4"];
+    const priorityProtocols = ["MOBI", "tacx", "YAFIT_S3", "YAFIT_S4"];
     const hasPriorityProtocol = results.supportedProtocols.some(protocol => priorityProtocols.includes(protocol));
     const hasReborn = results.supportedProtocols.includes("REBORN");
+    const hasFitShow = results.supportedProtocols.includes("FITSHOW");
     
     // REBORN은 cadence 검출 여부에 따라 판별, 다른 우선순위 프로토콜은 예외 처리
-    if (!results.dataFields?.cadence?.detected && !hasPriorityProtocol && !hasReborn) {
+    if (!results.dataFields?.cadence?.detected && !hasPriorityProtocol && !hasReborn && !hasFitShow) {
         impossibleReasons.push('RPM');
     } else if (!results.dataFields?.cadence?.detected && hasReborn) {
+        impossibleReasons.push('RPM');
+    } else if (!results.dataFields?.cadence?.detected && hasFitShow) {
         impossibleReasons.push('RPM');
     }
     

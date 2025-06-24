@@ -6,7 +6,9 @@ import {
     FTMS_SERVICE_UUID, FTMS_CONTROL_POINT_CHAR_UUID,
     REBORN_SERVICE_UUID, REBORN_WRITE_CHAR_UUID,
     TACX_SERVICE_UUID, TACX_WRITE_CHAR_UUID,
-    REQUEST_CONTROL, RESET, START, STOP, SET_RESISTANCE_LEVEL, SET_TARGET_POWER, SET_SIM_PARAMS
+    FITSHOW_SERVICE_UUID, FITSHOW_WRITE_CHAR_UUID,
+    REQUEST_CONTROL, RESET, START, STOP, SET_RESISTANCE_LEVEL, SET_TARGET_POWER, SET_SIM_PARAMS,
+    PAUSE
 } from './constants';
 
 // --- Tacx Packet Builder ---
@@ -72,6 +74,13 @@ function setTacxSimulationParameters(grade: number, crr: number): Buffer {
     return createTacxPacket(0x33, payload);
 }
 
+// --- FitShow Command Creators ---
+function setFitShowResistance(level: number): Buffer {
+    // FitShow 저항 설정: 1~32단 범위
+    const resistanceLevel = Math.min(32, Math.max(1, level));
+    return Buffer.from([0x04, resistanceLevel & 0xFF]);
+}
+
 export class CommandManager {
     private logManager: LogManager;
 
@@ -113,8 +122,14 @@ export class CommandManager {
                     );
                     break;
                 case ProtocolType.FITSHOW:
-                    this.logManager.logWarning(`Control point implementation not yet available for ${protocol} protocol`);
-                    throw new Error(`Control point implementation not yet available for ${protocol} protocol`);
+                    // FitShow는 CP response가 없으므로 즉시 성공으로 처리
+                    char = await device.writeCharacteristicWithResponseForService(
+                        FITSHOW_SERVICE_UUID,
+                        FITSHOW_WRITE_CHAR_UUID,
+                        data.toString('base64')
+                    );
+                    this.logManager.logSuccess("FitShow control command sent successfully (no CP response expected)");
+                    break;
                 default:
                     throw new Error(`Unsupported protocol for control commands: ${protocol}`);
             }
@@ -177,14 +192,38 @@ export class CommandManager {
     }
 
     async startMachine(device: Device, protocol: ProtocolType): Promise<void> {
-        this.logManager.logInfo("명령 전송: START (0x07) - 기기 시작");
-        await this.writeControlPoint(device, protocol, START);
+        if (protocol === ProtocolType.FITSHOW) {
+            this.logManager.logInfo("명령 전송: FITSHOW_START (0x02, 0x44, 0x02, 0x46, 0x03) - FitShow 기기 시작");
+            const startCommand = Buffer.from([0x02, 0x44, 0x02, 0x46, 0x03]);
+            await this.writeControlPoint(device, protocol, startCommand);
+        } else {
+            this.logManager.logInfo("명령 전송: START (0x07) - 기기 시작");
+            await this.writeControlPoint(device, protocol, START);
+        }
         await new Promise(resolve => setTimeout(resolve, 1000));
     }
 
     async stopMachine(device: Device, protocol: ProtocolType): Promise<void> {
-        this.logManager.logInfo("명령 전송: STOP (0x08) - 기기 정지");
-        await this.writeControlPoint(device, protocol, STOP);
+        if (protocol === ProtocolType.FITSHOW) {
+            this.logManager.logInfo("명령 전송: FITSHOW_STOP (0x02, 0x44, 0x04, 0x40, 0x03) - FitShow 기기 정지");
+            const stopCommand = Buffer.from([0x02, 0x44, 0x04, 0x40, 0x03]);
+            await this.writeControlPoint(device, protocol, stopCommand);
+        } else {
+            this.logManager.logInfo("명령 전송: STOP (0x08) - 기기 정지");
+            await this.writeControlPoint(device, protocol, STOP);
+        }
+        await new Promise(resolve => setTimeout(resolve, 1000));
+    }
+
+    async pauseMachine(device: Device, protocol: ProtocolType): Promise<void> {
+        if (protocol === ProtocolType.FITSHOW) {
+            this.logManager.logInfo("명령 전송: FITSHOW_PAUSE (0x02, 0x44, 0x03, 0x47, 0x03) - FitShow 기기 일시정지");
+            const pauseCommand = Buffer.from([0x02, 0x44, 0x03, 0x47, 0x03]);
+            await this.writeControlPoint(device, protocol, pauseCommand);
+        } else {
+            this.logManager.logInfo("명령 전송: PAUSE (0x09) - 기기 일시정지");
+            await this.writeControlPoint(device, protocol, PAUSE);
+        }
         await new Promise(resolve => setTimeout(resolve, 1000));
     }
 
@@ -193,6 +232,9 @@ export class CommandManager {
         if (protocol === ProtocolType.TACX) {
             this.logManager.logInfo(`명령 전송: SET_TACX_RESISTANCE (${level}%)`);
             command = setTacxResistance(level);
+        } else if (protocol === ProtocolType.FITSHOW) {
+            this.logManager.logInfo(`명령 전송: SET_FITSHOW_RESISTANCE (${level})`);
+            command = setFitShowResistance(level);
         } else {
             this.logManager.logInfo(`명령 전송: SET_RESISTANCE_LEVEL (${level})`);
             command = SET_RESISTANCE_LEVEL(level);

@@ -20,11 +20,18 @@ export const TACX_SERVICE_UUID = "6e40fec1-b5a3-f393-e0a9-e50e24dcca9e";
 export const TACX_READ_CHAR_UUID = "6e40fec2-b5a3-f393-e0a9-e50e24dcca9e";
 export const TACX_WRITE_CHAR_UUID = "6e40fec3-b5a3-f393-e0a9-e50e24dcca9e";
 
+// FitShow UUIDs
+export const FITSHOW_SERVICE_UUID = "0000fff0-0000-1000-8000-00805f9b34fb";
+export const FITSHOW_DATA_CHAR_UUID = "0000fff1-0000-1000-8000-00805f9b34fb";
+export const FITSHOW_WRITE_CHAR_UUID = "0000fff2-0000-1000-8000-00805f9b34fb";
+export const FITSHOW_BIKE_DATA_CHAR_UUID = "0000fff3-0000-1000-8000-00805f9b34fb";
+
 // FTMS Control Point Commands
 export const REQUEST_CONTROL = Buffer.from([0x00]);
 export const RESET = Buffer.from([0x01]);
 export const START = Buffer.from([0x07]);
 export const STOP = Buffer.from([0x08]);
+export const PAUSE = Buffer.from([0x09]);
 
 export const SET_RESISTANCE_LEVEL = (level: number): Buffer => Buffer.from([0x04, level & 0xFF]);
 export const SET_TARGET_POWER = (watts: number): Buffer => Buffer.from([0x05, watts & 0xFF, (watts >> 8) & 0xFF]);

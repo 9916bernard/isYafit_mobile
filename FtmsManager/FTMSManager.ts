@@ -4,11 +4,12 @@ import {
   FTMS_SERVICE_UUID, FTMS_FEATURE_CHAR_UUID, FTMS_CONTROL_POINT_CHAR_UUID, FTMS_INDOOR_BIKE_DATA_CHAR_UUID,
   MOBI_SERVICE_UUID, MOBI_DATA_CHAR_UUID,
   REBORN_SERVICE_UUID, REBORN_DATA_CHAR_UUID,
-  TACX_SERVICE_UUID, TACX_READ_CHAR_UUID
+  TACX_SERVICE_UUID, TACX_READ_CHAR_UUID,
+  FITSHOW_SERVICE_UUID, FITSHOW_DATA_CHAR_UUID, FITSHOW_BIKE_DATA_CHAR_UUID, FITSHOW_WRITE_CHAR_UUID
 } from './constants';
 import { ProtocolType } from './protocols';
 import { IndoorBikeData } from './types';
-import { parseIndoorBikeData, parseMobiData, parseCSCData, parseRebornData, parseTacxData } from './parsers';
+import { parseIndoorBikeData, parseMobiData, parseCSCData, parseRebornData, parseTacxData, parseFitShowData } from './parsers';
 import { LogManager, LogEntry } from './LogManager';
 import { BluetoothManager } from './BluetoothManager';
 import { ProtocolDetector } from './ProtocolDetector';
@@ -123,8 +124,8 @@ export class FTMSManager {
                 await this.subscribeToTacxNotifications(onControlPointResponse, onIndoorBikeData);
                 break;
             case ProtocolType.FITSHOW:
-                this.logManager.logWarning("FitShow protocol notifications not implemented yet");
-                throw new Error("FitShow protocol notifications not implemented yet");
+                await this.subscribeToFitShowNotifications(onControlPointResponse, onIndoorBikeData);
+                break;
             default:
                 throw new Error("Unsupported protocol for notifications");
         }
@@ -165,6 +166,14 @@ export class FTMSManager {
         this.isDeviceActive = false;
     }
 
+    async pauseMachine(): Promise<void> {
+        if (!this.supportsControlCommands()) {
+            this.logManager.logWarning(`Control commands not supported for ${this.detectedProtocol} protocol`);
+            throw new Error(`Control commands not supported for ${this.detectedProtocol} protocol`);
+        }
+        await this.commandManager.pauseMachine(this.connectedDevice!, this.detectedProtocol!);
+    }
+
     async setResistance(level: number): Promise<void> {
         if (!this.supportsControlCommands()) {
             this.logManager.logWarning(`Control commands not supported for ${this.detectedProtocol} protocol`);
@@ -196,17 +205,33 @@ export class FTMSManager {
             return;
         }
         try {
-            this.logManager.logInfo("Starting FTMS Test Sequence");
+            this.logManager.logInfo(`Starting ${this.detectedProtocol} Test Sequence`);
             if (!this.isDeviceActive) {
                 this.logManager.logWarning("Device not active, starting connection sequence first");
                 await this.requestControl();
                 await this.resetMachine();
                 await this.startMachine();
             }
-            this.logManager.logInfo("Setting resistance level to 100");
-            await this.setResistance(100);
-            await new Promise(resolve => setTimeout(resolve, 3000));
-            this.logManager.logSuccess("FTMS Test Sequence Completed - Device remains active");
+            
+            // 프로토콜별 테스트 시퀀스
+            switch (this.detectedProtocol) {
+                case ProtocolType.FITSHOW:
+                    this.logManager.logInfo("Setting FitShow resistance level to 16 (mid-range)");
+                    await this.setResistance(16);
+                    await new Promise(resolve => setTimeout(resolve, 2000));
+                    this.logManager.logInfo("Setting FitShow resistance level to 32 (max)");
+                    await this.setResistance(32);
+                    await new Promise(resolve => setTimeout(resolve, 2000));
+                    this.logManager.logInfo("Setting FitShow resistance level to 1 (min)");
+                    await this.setResistance(1);
+                    break;
+                default:
+                    this.logManager.logInfo("Setting resistance level to 100");
+                    await this.setResistance(100);
+                    await new Promise(resolve => setTimeout(resolve, 3000));
+            }
+            
+            this.logManager.logSuccess(`${this.detectedProtocol} Test Sequence Completed - Device remains active`);
         } catch (error) {
             this.logManager.logError(`Error during test sequence: ${error instanceof Error ? error.message : String(error)}`);
         }
@@ -300,7 +325,7 @@ export class FTMSManager {
                 this.logManager.logInfo("Tacx Neo protocol detected - initialization not implemented yet");
                 break;
             case ProtocolType.FITSHOW:
-                this.logManager.logInfo("FitShow protocol detected - initialization not implemented yet");
+                this.logManager.logInfo("FitShow protocol detected - 32-level resistance control supported");
                 break;
             default:
                 this.logManager.logWarning("Unknown protocol detected");
@@ -474,6 +499,61 @@ export class FTMSManager {
         );
     }
 
+    private async subscribeToFitShowNotifications(
+        onControlPointResponse: (data: Buffer) => void,
+        onIndoorBikeData: (data: IndoorBikeData) => void
+    ): Promise<void> {
+        // FitShow는 CP response가 없으므로 제어 응답 구독 제거
+        // C# 코드를 보면 FitShow bike data characteristic을 사용하지만, 로그에서는 FTMS characteristic에서도 데이터를 받음
+        // 두 characteristic 모두 시도
+        
+        this.logManager.logInfo("Starting FitShow data subscription...");
+        
+        // 1. FitShow bike data characteristic 시도 (C# 코드 기반)
+        this.indoorBikeDataSubscription = this.connectedDevice!.monitorCharacteristicForService(
+            FITSHOW_SERVICE_UUID,
+            FITSHOW_BIKE_DATA_CHAR_UUID, // 0000fff3
+            (error, characteristic) => {
+                if (error) {
+                    console.error("FitShow Bike Data Notification error:", error);
+                    this.logManager.logError(`FitShow Bike Data Notification error: ${error.message}`);
+                    return;
+                }
+                if (characteristic?.value) {
+                    const buffer = Buffer.from(characteristic.value, 'base64');
+                    this.logManager.logInfo(`[FitShow Bike Raw] ${buffer.toString('hex')}`);
+                    const parsedData = parseFitShowData(buffer);
+                    onIndoorBikeData(parsedData);
+                }
+            }
+        );
+        
+        // 2. FTMS indoor bike data characteristic도 시도 (로그에서 데이터 수신 확인됨)
+        try {
+            this.connectedDevice!.monitorCharacteristicForService(
+                FTMS_SERVICE_UUID,
+                FTMS_INDOOR_BIKE_DATA_CHAR_UUID,
+                (error, characteristic) => {
+                    if (error) {
+                        console.error("FitShow FTMS Data Notification error:", error);
+                        return;
+                    }
+                    if (characteristic?.value) {
+                        const buffer = Buffer.from(characteristic.value, 'base64');
+                        this.logManager.logInfo(`[FitShow FTMS Raw] ${buffer.toString('hex')}`);
+                        const parsedData = parseFitShowData(buffer);
+                        onIndoorBikeData(parsedData);
+                    }
+                }
+            );
+            this.logManager.logInfo("FitShow FTMS data subscription started");
+        } catch (error) {
+            this.logManager.logWarning(`FitShow FTMS subscription failed: ${error}`);
+        }
+        
+        this.logManager.logInfo("FitShow data subscriptions completed (both FitShow bike and FTMS characteristics)");
+    }
+
     // --- Connection Sequences ---
     private async connectSequenceFTMS(): Promise<boolean> {
         this.logManager.logInfo("Running FTMS connection sequence");
@@ -528,14 +608,47 @@ export class FTMSManager {
         this.logManager.logInfo("Running FitShow connection sequence...");
         try {
             this.logManager.logInfo("Starting FitShow Connection Sequence");
-            this.logManager.logWarning("FitShow protocol implementation is not complete - using basic control sequence");
-            await this.requestControl();
-            await this.resetMachine();
-            await this.startMachine();
-            this.logManager.logSuccess("FitShow Connection Sequence Completed");
+            
+            // FitShow 디바이스 초기화 명령 (C# 코드 기반)
+            this.logManager.logInfo("Sending FitShow device init command...");
+            try {
+                const initCommand = Buffer.from([0x02, 0x44, 0x01, 0x45, 0x03]);
+                await this.connectedDevice!.writeCharacteristicWithResponseForService(
+                    FITSHOW_SERVICE_UUID,
+                    FITSHOW_WRITE_CHAR_UUID,
+                    initCommand.toString('base64')
+                );
+                this.logManager.logSuccess("FitShow device init command sent");
+            } catch (error) {
+                this.logManager.logWarning(`FitShow device init command failed: ${error}`);
+            }
+            
+            // 3초 대기 후 시작 명령 전송 (C# 코드와 동일)
+            await new Promise(resolve => setTimeout(resolve, 3000));
+            
+            // FitShow 디바이스 시작 명령
+            this.logManager.logInfo("Sending FitShow device start command...");
+            try {
+                const startCommand = Buffer.from([0x02, 0x44, 0x02, 0x46, 0x03]);
+                await this.connectedDevice!.writeCharacteristicWithResponseForService(
+                    FITSHOW_SERVICE_UUID,
+                    FITSHOW_WRITE_CHAR_UUID,
+                    startCommand.toString('base64')
+                );
+                this.logManager.logSuccess("FitShow device start command sent");
+            } catch (error) {
+                this.logManager.logWarning(`FitShow device start command failed: ${error}`);
+            }
+            
+            // 잠시 대기하여 데이터 전송 시작 확인
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            
+            this.logManager.logSuccess("FitShow Connection Sequence Completed - Device is now active and ready for commands");
+            this.isDeviceActive = true;
             return true;
         } catch (error) {
             this.logManager.logError(`FitShow connection sequence error: ${error instanceof Error ? error.message : String(error)}`);
+            // FitShow는 연결 실패해도 기본적으로 활성화 상태로 설정 (데이터 수신 가능)
             this.isDeviceActive = true;
             return true;
         }
