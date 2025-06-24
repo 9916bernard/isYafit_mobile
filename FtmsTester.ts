@@ -86,7 +86,7 @@ export class FTMSTester {
     // Main testing flow
     async runDeviceTest(
         device: Device, 
-        duration: number = 30000,
+        duration: number = 20000,
         onProgressUpdate?: (progress: number, message: string) => void,
         onTestComplete?: (results: TestResults) => void
     ): Promise<TestResults> {
@@ -371,47 +371,23 @@ export class FTMSTester {
             const serviceUUIDs = services.map(s => s.uuid.toLowerCase());
             this.testResults.deviceInfo.services = serviceUUIDs;
             
-            // FtmsManager에서 이미 우선순위에 따라 프로토콜을 결정했으므로 그 결과를 사용
-            const detectedProtocol = this.ftmsManager.getDetectedProtocol();
+            // FtmsManager에서 우선순위에 따라 결정된 프로토콜 목록을 가져옴
+            const primaryProtocol = this.ftmsManager.getDetectedProtocol();
+            const allSupportedProtocols = this.ftmsManager.getAllDetectedProtocols();
             
-            if (detectedProtocol) {
-                // 우선순위에 따른 프로토콜 설정
-                this.testResults.supportedProtocols = [detectedProtocol];               
-                switch (detectedProtocol) {
-                    case 'MOBI':
-                        this.testResults.deviceInfo.protocol = "MOBI";
-                        break;
-                    case 'REBORN':
-                        this.testResults.deviceInfo.protocol = "REBORN";
-                        break;
-                    case 'TACX':
-                        this.testResults.deviceInfo.protocol = "TACX";
-                        break;
-                    case 'FITSHOW':
-                        this.testResults.deviceInfo.protocol = "FITSHOW";
-                        break;
-                    case 'YAFIT_S3':
-                        this.testResults.deviceInfo.protocol = "YAFIT_S3";
-                        break;
-                    case 'YAFIT_S4':
-                        this.testResults.deviceInfo.protocol = "YAFIT_S4";
-                        break;
-                    case 'FTMS':
-                        this.testResults.deviceInfo.protocol = "FTMS";
-                        break;
-                    case 'CSC':
-                        this.testResults.deviceInfo.protocol = "CSC";
-                        break;
-                    default:
-                        this.testResults.deviceInfo.protocol = `${detectedProtocol}`;
-                }
+            this.logInteraction(`INFO - FTMSTester: All detected protocols: ${allSupportedProtocols.join(', ')}`);
+            this.logInteraction(`INFO - FTMSTester: Primary protocol for testing: ${primaryProtocol}`);
+
+            if (primaryProtocol) {
+                // 모든 지원 프로토콜을 결과에 기록
+                this.testResults.supportedProtocols = allSupportedProtocols;
+                // 테스트에 사용될 주 프로토콜을 기록
+                this.testResults.deviceInfo.protocol = primaryProtocol;
                 
-                this.logInteraction(`INFO - FTMSTester: Protocol selected by priority: ${detectedProtocol}`);
-                this.logInteraction(`INFO - FTMSTester: Priority order: MOBI > REBORN > TACX > FITSHOW > YAFIT_S3 > YAFIT_S4 > FTMS > CSC`);
-                
-                // Read FTMS features if FTMS protocol or YAFIT_S3/YAFIT_S4 is selected
-                if (detectedProtocol === 'FTMS' || detectedProtocol === 'YAFIT_S3' || detectedProtocol === 'YAFIT_S4') {
-                    this.logInteraction(`INFO - FTMSTester: Reading FTMS features for ${detectedProtocol}.`);
+                // Read FTMS features if an FTMS-based protocol is selected
+                const ftmsBased = [ProtocolType.FTMS, ProtocolType.YAFIT_S3, ProtocolType.YAFIT_S4, ProtocolType.FITSHOW];
+                if (ftmsBased.includes(primaryProtocol)) {
+                    this.logInteraction(`INFO - FTMSTester: Reading FTMS features for ${primaryProtocol}.`);
                     await this.readFtmsFeatures();
                 }
             } else {
@@ -698,94 +674,43 @@ export class FTMSTester {
             
             const detectedProtocol = this.ftmsManager.getDetectedProtocol();
             
-            if (detectedProtocol === ProtocolType.TACX) {
-                // Tacx-specific control tests
-                this.logInteraction('INFO - [testControlPoints] Tacx protocol detected. Testing Tacx-specific control commands.');
-                
-                // Test SET_RESISTANCE_LEVEL first
-                if (!this.checkConnectionAndStopIfNeeded()) return;
-                await this.testSingleControlCommand('SET_RESISTANCE_LEVEL', async () => {
-                    const testResistance = 100;
-                    this.logInteraction(`INFO - [testControlPoints] Executing Tacx SET_RESISTANCE_LEVEL with value: ${testResistance}`);
-                    await this.ftmsManager.setResistance(testResistance);
-                    return `Tacx resistance level: ${testResistance}`;
-                });
-                
-                // Test SET_TARGET_POWER second
-                if (!this.checkConnectionAndStopIfNeeded()) return;
-                await this.testSingleControlCommand('SET_TARGET_POWER', async () => {
-                    const targetPower = 100;
-                    this.logInteraction(`INFO - [testControlPoints] Executing Tacx SET_TARGET_POWER with value: ${targetPower}W`);
-                    await this.ftmsManager.setTargetPower(targetPower);
-                    return `Tacx target power: ${targetPower}W`;
-                });
-                
-                // Wait for SET_TARGET_POWER to show its effects
-                if (!this.checkConnectionAndStopIfNeeded()) return;
-                this.logInteraction('INFO - [testControlPoints] Waiting for Tacx SET_TARGET_POWER to demonstrate continuous resistance changes...');
-                await new Promise(resolve => setTimeout(resolve, 8000));
-                
-                // Test SET_SIM_PARAMS third
-                if (!this.checkConnectionAndStopIfNeeded()) return;
-                await this.testSingleControlCommand('SET_SIM_PARAMS', async () => {
-                    const grade = 5;
-                    const windSpeed = 0;
-                    const crr = 0.004;
-                    const cw = 0.5;
-                    this.logInteraction(`INFO - [testControlPoints] Executing Tacx SET_SIM_PARAMS with Grade: ${grade}%, Wind: ${windSpeed} km/h, CRR: ${crr}, CW: ${cw}`);
-                    await this.ftmsManager.setSimulationParameters(windSpeed, grade, crr, cw);
-                    return `Tacx simulation - Grade: ${grade}%, Wind: ${windSpeed} km/h, CRR: ${crr}, CW: ${cw}`;
-                });
-                
-                // Test SET_RESISTANCE_LEVEL again to return to normal mode
-                if (!this.checkConnectionAndStopIfNeeded()) return;
-                await this.testSingleControlCommand('SET_RESISTANCE_LEVEL', async () => {
-                    const testResistance = 50;
-                    this.logInteraction(`INFO - [testControlPoints] Executing Tacx SET_RESISTANCE_LEVEL with value: ${testResistance} (returning to normal mode)`);
-                    await this.ftmsManager.setResistance(testResistance);
-                    return `Tacx resistance level: ${testResistance} (normal mode)`;
-                });
-                
-            } else {
-                // Standard FTMS control tests (original logic)
-                this.logInteraction('INFO - [testControlPoints] Control point testing started. Testing order: SET_SIM_PARAMS -> SET_TARGET_POWER -> SET_RESISTANCE_LEVEL (to return to normal mode)');
+            this.logInteraction('INFO - [testControlPoints] Control point testing started. Testing order: SET_SIM_PARAMS -> SET_TARGET_POWER -> SET_RESISTANCE_LEVEL (to return to normal mode)');
 
-                // Test SET_SIM_PARAMS first
-                if (!this.checkConnectionAndStopIfNeeded()) return;
-                await this.testSingleControlCommand('SET_SIM_PARAMS', async () => {
-                    const grade = 10;
-                    const windSpeed = 0;
-                    const crr = 0.004;
-                    const cw = 0.5;
-                    this.logInteraction(`INFO - [testControlPoints] Executing SET_SIM_PARAMS with Grade: ${grade}%, Wind: ${windSpeed} km/h, CRR: ${crr}, CW: ${cw}`);
-                    await this.ftmsManager.setSimulationParameters(windSpeed, grade, crr, cw);
-                    return `Grade: ${grade}%, Wind: ${windSpeed} km/h, CRR: ${crr}, CW: ${cw}`;
-                });
-                  
-                // Test SET_TARGET_POWER second
-                if (!this.checkConnectionAndStopIfNeeded()) return;
-                await this.testSingleControlCommand('SET_TARGET_POWER', async () => {
-                    const targetPower = 100;
-                    this.logInteraction(`INFO - [testControlPoints] Executing SET_TARGET_POWER with value: ${targetPower}W (will demonstrate continuous resistance changes)`);
-                    await this.ftmsManager.setTargetPower(targetPower);
-                    return `Target power: ${targetPower}W`;
-                });
-                
-                // Wait for SET_TARGET_POWER to show its effects
-                if (!this.checkConnectionAndStopIfNeeded()) return;
-                this.logInteraction('INFO - [testControlPoints] Waiting for SET_TARGET_POWER to demonstrate continuous resistance changes...');
-                await new Promise(resolve => setTimeout(resolve, 8000));
+            // Test SET_SIM_PARAMS first
+            if (!this.checkConnectionAndStopIfNeeded()) return;
+            await this.testSingleControlCommand('SET_SIM_PARAMS', async () => {
+                const grade = 10;
+                const windSpeed = 0;
+                const crr = 0.004;
+                const cw = 0.5;
+                this.logInteraction(`INFO - [testControlPoints] Executing SET_SIM_PARAMS with Grade: ${grade}%, Wind: ${windSpeed} km/h, CRR: ${crr}, CW: ${cw}`);
+                await this.ftmsManager.setSimulationParameters(windSpeed, grade, crr, cw);
+                return `Grade: ${grade}%, Wind: ${windSpeed} km/h, CRR: ${crr}, CW: ${cw}`;
+            });
+              
+            // Test SET_TARGET_POWER second
+            if (!this.checkConnectionAndStopIfNeeded()) return;
+            await this.testSingleControlCommand('SET_TARGET_POWER', async () => {
+                const targetPower = 50;
+                this.logInteraction(`INFO - [testControlPoints] Executing SET_TARGET_POWER with value: ${targetPower}W (will demonstrate continuous resistance changes)`);
+                await this.ftmsManager.setTargetPower(targetPower);
+                return `Target power: ${targetPower}W`;
+            });
+            
+            // Wait for SET_TARGET_POWER to show its effects
+            if (!this.checkConnectionAndStopIfNeeded()) return;
+            this.logInteraction('INFO - [testControlPoints] Waiting for SET_TARGET_POWER to demonstrate continuous resistance changes...');
+            await new Promise(resolve => setTimeout(resolve, 4000));
 
-                // Test SET_RESISTANCE_LEVEL for functionality testing
-                if (!this.checkConnectionAndStopIfNeeded()) return;
-                this.logInteraction('INFO - [testControlPoints] Testing SET_RESISTANCE_LEVEL functionality');
-                await this.testSingleControlCommand('SET_RESISTANCE_LEVEL', async () => {
-                    const testResistance = 20; // Test with different resistance level
-                    this.logInteraction(`INFO - [testControlPoints] Executing SET_RESISTANCE_LEVEL with value: ${testResistance} for functionality test`);
-                    await this.ftmsManager.setResistance(testResistance);
-                    return `Resistance level: ${testResistance} (functionality test)`;
-                });
-            }
+            // Test SET_RESISTANCE_LEVEL for functionality testing
+            if (!this.checkConnectionAndStopIfNeeded()) return;
+            this.logInteraction('INFO - [testControlPoints] Testing SET_RESISTANCE_LEVEL functionality');
+            await this.testSingleControlCommand('SET_RESISTANCE_LEVEL', async () => {
+                const testResistance = 40; // Test with different resistance level
+                this.logInteraction(`INFO - [testControlPoints] Executing SET_RESISTANCE_LEVEL with value: ${testResistance} for functionality test`);
+                await this.ftmsManager.setResistance(testResistance);
+                return `Resistance level: ${testResistance} (functionality test)`;
+            });
             
             // Wait for resistance change to be observed and any delayed responses
             this.logInteraction('INFO - [testControlPoints] Waiting for final resistance changes and delayed responses...');
@@ -813,7 +738,12 @@ export class FTMSTester {
             // Clear previous command state and set new command
             this.logInteraction(`INFO - [testSingleControlCommand] Starting ${commandName} test`);
             this.logInteraction(`DEBUG - [testSingleControlCommand] Previous commandPending state: ${this.resistanceTracking.commandPending}, lastCommandType: ${this.resistanceTracking.lastCommandType}`);
-            
+
+            // Add visually distinctive log for control command execution
+            // Mint color: #3EB489 (or use a special tag for the app to color it)
+            // Emoji for control: 🟢
+            this.logInteraction(`[CONTROL_COMMAND] 🟢 제어 명령 실행: ${commandName}`);
+
             this.resistanceTracking = {
                 commandPending: true,
                 lastCommandType: commandName,
@@ -844,7 +774,8 @@ export class FTMSTester {
                 const existingStatus = this.testResults.controlTests[trackedCommandName].status;
                 this.logInteraction(`DEBUG - [testSingleControlCommand] ${trackedCommandName} command sent, but result already exists with status: ${existingStatus}. Not overwriting.`);
             }
-              // Wait for response (longer timeout for SET_TARGET_POWER)
+
+            // Wait for response (longer timeout for SET_TARGET_POWER)
             const waitTime = trackedCommandName === 'SET_TARGET_POWER' ? 5000 : 3000;
             this.logInteraction(`DEBUG - [testSingleControlCommand] Waiting ${waitTime}ms for ${trackedCommandName} response...`);
 

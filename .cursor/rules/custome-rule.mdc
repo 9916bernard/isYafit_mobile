@@ -1,0 +1,13 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+### YOU MUST
+- Only modify code that is **directly related to the user’s request**.
+- Do **not** edit any other part of the code that is **not required** for the user’s request.
+- Ensure that your edits do **not unintentionally change other functionality** outside the intended scope.
+
+### IF UNSURE
+
+Ask the user for clarification **instead of making assumptions**.

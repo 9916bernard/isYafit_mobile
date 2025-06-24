@@ -8,7 +8,7 @@ import {
 } from './constants';
 import { ProtocolType } from './protocols';
 import { IndoorBikeData } from './types';
-import { parseIndoorBikeData, parseMobiData, parseCSCData, parseRebornData, parseTacxData } from './parsers';
+import { parseIndoorBikeData, parseMobiData, parseCSCData, parseRebornData, parseTacxData, parseTacxControlResponse } from './parsers';
 import { LogManager, LogEntry } from './LogManager';
 import { BluetoothManager } from './BluetoothManager';
 import { ProtocolDetector } from './ProtocolDetector';
@@ -29,6 +29,7 @@ export class FTMSManager {
     private ftmsFeatureBits: number = 0;
     private isDeviceActive: boolean = false;
     private detectedProtocol: ProtocolType | null = null;
+    private allDetectedProtocols: ProtocolType[] = [];
 
     constructor() {
         this.logManager = new LogManager();
@@ -105,6 +106,8 @@ export class FTMSManager {
         
         switch (this.detectedProtocol) {
             case ProtocolType.FTMS:
+            case ProtocolType.YAFIT_S3:
+            case ProtocolType.YAFIT_S4:
                 await this.subscribeToFTMSNotifications(onControlPointResponse, onIndoorBikeData);
                 break;
             case ProtocolType.CSC:
@@ -117,7 +120,7 @@ export class FTMSManager {
                 await this.subscribeToRebornNotifications(onIndoorBikeData);
                 break;
             case ProtocolType.TACX:
-                await this.subscribeToTacxNotifications(onIndoorBikeData);
+                await this.subscribeToTacxNotifications(onControlPointResponse, onIndoorBikeData);
                 break;
             case ProtocolType.FITSHOW:
                 this.logManager.logWarning("FitShow protocol notifications not implemented yet");
@@ -249,6 +252,10 @@ export class FTMSManager {
         return this.detectedProtocol;
     }
 
+    getAllDetectedProtocols(): ProtocolType[] {
+        return this.allDetectedProtocols;
+    }
+
     getLogs(): LogEntry[] {
         return this.logManager.getLogs();
     }
@@ -264,14 +271,17 @@ export class FTMSManager {
     // --- Private Methods ---
     private async detectProtocol(): Promise<ProtocolType> {
         if (!this.connectedDevice) {
-            throw new Error("Device not connected");
+            this.logManager.logError("Cannot detect protocol, no device connected");
+            throw new Error("No device connected");
         }
         this.detectedProtocol = await this.protocolDetector.detectProtocol(this.connectedDevice);
+        this.allDetectedProtocols = this.protocolDetector.detectAllProtocols();
+        this.logManager.logInfo(`All detected protocols: ${this.allDetectedProtocols.join(', ')}`);
         return this.detectedProtocol;
     }
 
     private async initializeProtocol(): Promise<void> {
-        if (!this.detectedProtocol) return;
+        if (!this.connectedDevice) return;
         
         switch (this.detectedProtocol) {
             case ProtocolType.FTMS:
@@ -437,38 +447,50 @@ export class FTMSManager {
     }
 
     private async subscribeToTacxNotifications(
+        onControlPointResponse: (data: Buffer) => void,
         onIndoorBikeData: (data: IndoorBikeData) => void
     ): Promise<void> {
-        if (!this.connectedDevice) return;
+        if (!this.connectedDevice) throw new Error("Device not connected.");
+        
+        this.logManager.logInfo("Subscribing to Tacx data notifications");
 
-        try {
-            this.indoorBikeDataSubscription = this.connectedDevice.monitorCharacteristicForService(
-                TACX_SERVICE_UUID,
-                TACX_READ_CHAR_UUID,
-                (error, characteristic) => {
-                    if (error) {
-                        this.logManager.logError(`Tacx data notification error: ${error.message}`);
-                        return;
-                    }
-                    if (characteristic?.value) {
-                        const data = Buffer.from(characteristic.value, 'base64');
+        this.indoorBikeDataSubscription = this.connectedDevice.monitorCharacteristicForService(
+            TACX_SERVICE_UUID,
+            TACX_READ_CHAR_UUID,
+            (error, characteristic) => {
+                if (error) {
+                    this.logManager.logError(`Tacx notification error: ${error.message}`);
+                    return;
+                }
+                if (characteristic?.value) {
+                    const data = Buffer.from(characteristic.value, 'base64');
+                    this.logManager.logInfo(`[Tacx Raw] ${data.toString('hex')}`);
+                    
+                    // Check if it's a control response
+                    const controlResponse = parseTacxControlResponse(data);
+                    if (controlResponse) {
+                        this.logManager.logInfo(`[Tacx CP Response] Success: ${controlResponse.success}, Data: ${controlResponse.received.join(',')}`);
+                        // To make it compatible with the standard CP response handler,
+                        // we need to construct a buffer similar to the FTMS CP response.
+                        // Op Code (byte 1), Result Code (byte 2)
+                        // We'll use a fake Op Code (e.g., 0xAA) since Tacx doesn't provide one.
+                        // Result code: 0x01 for success, 0x02 for fail (as an example)
+                        const resultCode = controlResponse.success ? 0x01 : 0x02;
+                        const responseBuffer = Buffer.from([0x80, 0xAA, resultCode]);
+                        onControlPointResponse(responseBuffer);
+                    } else {
+                        // Otherwise, it's regular bike data
                         const parsedData = parseTacxData(data);
-                        if (Object.keys(parsedData).length > 1) {
-                            onIndoorBikeData(parsedData);
-                        }
+                        onIndoorBikeData(parsedData);
                     }
                 }
-            );
-            this.logManager.logInfo("Subscribed to Tacx data notifications");
-        } catch (error) {
-            this.logManager.logError(`Failed to subscribe to Tacx notifications: ${error instanceof Error ? error.message : String(error)}`);
-            throw error;
-        }
+            }
+        );
     }
 
     // --- Connection Sequences ---
     private async connectSequenceFTMS(): Promise<boolean> {
-        this.logManager.logInfo("Running FTMS connection sequence...");
+        this.logManager.logInfo("Running FTMS connection sequence");
         try {
             this.logManager.logInfo("Starting FTMS Connection Sequence");
             await this.requestControl();

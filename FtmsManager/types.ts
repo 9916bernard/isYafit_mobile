@@ -19,4 +19,6 @@ export interface IndoorBikeData {
     // Mobi specific fields
     gearLevel?: number;
     batteryLevel?: number;
+    // Tacx Specific
+    accumulatedPower?: number;
 } 

@@ -69,6 +69,23 @@ export class ProtocolDetector {
         this._isFTMSSensor = false;
     }
 
+    public detectAllProtocols(): ProtocolType[] {
+        const detected: ProtocolType[] = [];
+        if (this._isMobiSensor) detected.push(ProtocolType.MOBI);
+        if (this._isRebornSensor) detected.push(ProtocolType.REBORN);
+        if (this._isTacxNeoSensor) detected.push(ProtocolType.TACX);
+        if (this._isFSSensor) detected.push(ProtocolType.FITSHOW);
+        if (this._isS3Sensor) detected.push(ProtocolType.YAFIT_S3);
+        if (this._isS4Sensor) detected.push(ProtocolType.YAFIT_S4);
+        if (this._isFTMSSensor) detected.push(ProtocolType.FTMS);
+
+        // Fallback to CSC if no other protocol is detected
+        if (detected.length === 0) {
+            detected.push(ProtocolType.CSC);
+        }
+        return detected;
+    }
+
     private determineProtocolByPriority(): ProtocolType {
         if (this.isMobiSensor()) {
             this.logManager.logInfo("Detected Mobi sensor - using Mobi protocol");
@@ -84,10 +101,10 @@ export class ProtocolDetector {
             return ProtocolType.FITSHOW;
         } else if (this._isS3Sensor) {
             this.logManager.logInfo("Detected YafitS3 sensor - using FTMS protocol");
-            return ProtocolType.FTMS;
+            return ProtocolType.YAFIT_S3;
         } else if (this._isS4Sensor) {
             this.logManager.logInfo("Detected YafitS4 sensor - using FTMS protocol");
-            return ProtocolType.FTMS;
+            return ProtocolType.YAFIT_S4;
         } else if (this._isFTMSSensor) {
             this.logManager.logInfo("Detected FTMS sensor - using standard FTMS protocol");
             return ProtocolType.FTMS;

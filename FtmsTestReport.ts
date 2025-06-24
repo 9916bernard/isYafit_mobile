@@ -166,6 +166,11 @@ export function determineCompatibility(results: TestResults): TestResults {
     const updatedResults = { ...results };
     
     // Initialize arrays for detailed compatibility analysis
+    const ftmsBasedProtocols = ["FTMS", "YAFIT_S3", "YAFIT_S4", "FITSHOW", "TACX", "REBORN"];
+    const hasFTMS = results.supportedProtocols.some(p => ftmsBasedProtocols.includes(p));
+    const hasCSC = results.supportedProtocols.includes("CSC");
+    const hasMobi = results.supportedProtocols.includes("MOBI");
+
     const impossibleReasons: string[] = [];
     const partialReasons: string[] = [];
     const warningReasons: string[] = [];
@@ -184,10 +189,12 @@ export function determineCompatibility(results: TestResults): TestResults {
     } else if (!results.dataFields?.cadence?.detected && hasReborn) {
         impossibleReasons.push('RPM');
     }
-      // 3. Check protocol support (불가능(프로토콜)) - 우선순위 프로토콜도 지원 프로토콜로 인정
-    const hasFTMS = results.supportedProtocols.includes("FTMS");
-    const hasCSC = results.supportedProtocols.includes("CSC");
     
+    // REBORN 프로토콜의 경우 제어 명령이 불가능하므로 부분 호환으로 분류
+    if (hasReborn) {
+        partialReasons.push('제어명령');
+    }
+      // 3. Check protocol support (불가능(프로토콜)) - 우선순위 프로토콜도 지원 프로토콜로 인정
     if (!hasFTMS && !hasCSC && !hasPriorityProtocol && !hasReborn) {
         impossibleReasons.push('프로토콜');
     } else if ((!hasFTMS && hasCSC) || hasPriorityProtocol || hasReborn) {
@@ -324,6 +331,9 @@ function generateDetailedReasons(reasonCodes: string[], compatLevel: string, res
         if (uniqueCodes.includes('SIM')) {
             issues.push("SIM 모드는 플레이 하실 수 없습니다");
         }
+        if (uniqueCodes.includes('제어명령')) {
+            issues.push("제어 명령이 지원되지 않습니다");
+        }
         
         if (issues.length > 0) {
             resultMessage = baseMessage + " 하지만 " + issues.join(", ") + ".";
@@ -339,7 +349,7 @@ function generateDetailedReasons(reasonCodes: string[], compatLevel: string, res
     
     // REBORN 프로토콜의 제한사항을 별도로 추가
     if (results.supportedProtocols.includes("REBORN")) {
-        detailedReasons.push("Reborn 프로토콜은 제어 명령이 불가능합니다. SIM,ERG,유저의 기어 변경이 불가능합니다.");
+        detailedReasons.push("Reborn 프로토콜은 제어 명령이 불가능합니다. SIM, ERG, 유저의 기어 변경이 불가능합니다.");
     }
     
     return detailedReasons;
