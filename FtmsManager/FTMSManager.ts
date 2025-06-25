@@ -246,6 +246,8 @@ export class FTMSManager {
             this.logManager.logInfo(`Starting connection sequence for ${this.detectedProtocol} protocol`);
             switch (this.detectedProtocol) {
                 case ProtocolType.FTMS:
+                case ProtocolType.YAFIT_S3:
+                case ProtocolType.YAFIT_S4:
                     return await this.connectSequenceFTMS();
                 case ProtocolType.MOBI:
                     return await this.connectSequenceMobi();
@@ -278,6 +280,8 @@ export class FTMSManager {
             this.logManager.logInfo(`Starting realtime data connection sequence for ${this.detectedProtocol} protocol`);
             switch (this.detectedProtocol) {
                 case ProtocolType.FTMS:
+                case ProtocolType.YAFIT_S3:
+                case ProtocolType.YAFIT_S4:
                     return await this.connectSequenceFTMSRealtimeData();
                 case ProtocolType.MOBI:
                     return await this.connectSequenceMobi();

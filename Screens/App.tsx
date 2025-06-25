@@ -20,7 +20,7 @@ import { setLanguage, initializeLanguage } from '../utils/i18n';
 
 
 // 0.8.0 FitShow 프로토콜 구현 개선 (FTMS indoor bike data 형식 사용)
-const APP_VERSION = 'v0.8.3';
+const APP_VERSION = 'v0.8.5';
 
 function App() {
   const { t, i18n } = useTranslation();
@@ -600,7 +600,7 @@ function App() {
           device={connectedDevice}
           ftmsManager={ftmsManagerRef.current}
           onBack={handleBackFromRealtimeData}
-          onConnectionError={handleRealtimeDataConnectionError}
+          //onConnectionError={handleRealtimeDataConnectionError}
         />
       ) :      /* Show the test screen when a device is connected and test is requested */
       showTestScreen && connectedDevice && ftmsManagerRef.current ? (

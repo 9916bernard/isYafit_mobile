@@ -4,21 +4,18 @@ import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { Device } from 'react-native-ble-plx';
 import { FTMSManager } from '../FtmsManager';
 import { useSafeAreaStyles, Colors } from '../styles/commonStyles';
-import Toast from 'react-native-root-toast';
 import { useTranslation } from 'react-i18next';
 
 interface RealtimeDataScreenProps {
   device: Device;
   ftmsManager: FTMSManager;
   onBack: () => void;
-  onConnectionError?: () => void;
 }
 
 const RealtimeDataScreen: React.FC<RealtimeDataScreenProps> = ({ 
   device, 
   ftmsManager, 
-  onBack,
-  onConnectionError
+  onBack 
 }) => {
   const { t } = useTranslation();
   const [bikeData, setBikeData] = useState<any>(null);
@@ -42,9 +39,14 @@ const RealtimeDataScreen: React.FC<RealtimeDataScreenProps> = ({
     
     spin();
   }, [spinValue]);
+
   useEffect(() => {
-    const setupDeviceConnection = async () => {
+    const connectToDevice = async () => {
       try {
+        setStatusMessage(t('realtimeData.status.connecting'));
+        // await ftmsManager.disconnectDevice(); // Consider if this is needed here or if connectToDevice handles it
+        const connectedDevice = await ftmsManager.connectToDevice(device.id);
+        
         setStatusMessage(t('realtimeData.status.subscribing'));
         await ftmsManager.subscribeToNotifications(
           (cpResponse) => {
@@ -62,7 +64,7 @@ const RealtimeDataScreen: React.FC<RealtimeDataScreenProps> = ({
         );
         
         setStatusMessage(t('realtimeData.status.runningSequence'));
-        const success = await ftmsManager.connectSequenceForRealtimeData();
+        const success = await ftmsManager.connectSequence();
         if (success) {
           setIsConnected(true);
           setStatusMessage(t('realtimeData.status.receiving'));
@@ -70,52 +72,20 @@ const RealtimeDataScreen: React.FC<RealtimeDataScreenProps> = ({
           setStatusMessage(t('realtimeData.status.sequenceFailed'));
         }
       } catch (error) {
-        console.error("Setup error:", error);
+        console.error("Connection error:", error);
         setStatusMessage(`${t('common.error')}: ${error instanceof Error ? error.message : String(error)}`);
-        
-        // 설정 오류 시 콜백 호출
-        if (onConnectionError) {
-          onConnectionError();
-        }
       }
     };
 
-    setupDeviceConnection();    return () => {
+    connectToDevice();
+
+    return () => {
       // Cleanup
-      ftmsManager.disconnectDevice().then(() => {
-        // 토스트 메시지 표시
-        Toast.show(t('app.status.disconnected'), {
-          duration: Toast.durations.SHORT,
-          position: Toast.positions.BOTTOM,
-          shadow: true,
-          animation: true,
-          hideOnPress: true,
-          delay: 0,
-          backgroundColor: '#333',
-          textColor: '#fff',
-        });
-      }).catch(console.error);
+      ftmsManager.disconnectDevice().catch(console.error);
     };
-  }, [device, ftmsManager, onConnectionError, t]);
-    const handleBackPress = async () => {
-    try {
-      await ftmsManager.disconnectDevice();
-      
-      // 토스트 메시지 표시
-      Toast.show(t('app.status.disconnected'), {
-        duration: Toast.durations.SHORT,
-        position: Toast.positions.BOTTOM,
-        shadow: true,
-        animation: true,
-        hideOnPress: true,
-        delay: 0,
-        backgroundColor: '#333',
-        textColor: '#fff',
-      });
-    } catch (error) {
-      console.error('Disconnect error:', error);
-    }
-    
+  }, [device, ftmsManager, t]);
+  
+  const handleBackPress = async () => {
     onBack();
   };
 
@@ -353,6 +323,3 @@ const styles = StyleSheet.create({  safeArea: {
 });
 
 export default RealtimeDataScreen;
-
-
-
