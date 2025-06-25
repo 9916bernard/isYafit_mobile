@@ -217,6 +217,10 @@ const resources = {
         title: '과거 보고서',
         noSavedReports: '저장된 보고서가 없습니다',
         loadingReports: '보고서를 불러오는 중...',
+        confirmDelete: '정말로 이 보고서를 삭제하시겠습니까?',
+        deleteSuccess: '보고서가 삭제되었습니다.',
+        deleteError: '보고서 삭제에 실패했습니다.',
+        emptyStateDescription: '호환성 테스트를 완료하면 여기에 보고서가 저장됩니다',
       },
       
       // 로그 화면
@@ -225,6 +229,127 @@ const resources = {
         noLogs: '로그가 없습니다.',
         realtimeLogs: '실시간 로그',
         deviceInfo: '장치:',
+      },
+      
+      // Test Report Screen
+      testReport: {
+        title: '테스트 보고서',
+        shareReport: '보고서 공유',
+        deviceInfo: '장치 정보',
+        protocol: '프로토콜',
+        supportedProtocols: '지원 프로토콜',
+        resultTitle: '테스트 결과',
+        limitationTitle: '제한사항:',
+        limitations: {
+          reborn: '• Reborn 프로토콜은 제어 명령이 불가능합니다. SIM, ERG, 유저의 기어 변경이 불가능합니다.',
+          fitshow: '• FitShow 프로토콜은 Yafit에서 제어명령을 지원하지 않습니다. ERG, SIM, 유저의 기어 제어가 불가능합니다.',
+          resistance: '• Resistance가 검출되지 않아 기본 기어값으로 설정',
+          gearChange: '• 기어 변경 불가능',
+          ergMode: '• ERG 모드 사용 불가능',
+          simMode: '• SIM 모드 사용 불가능',
+          unexpectedResistance: '• 의도하지 않은 저항 변경이 발생했습니다. 기기 자체 모드가 설정되어있는지 확인해주세요',
+        },
+        compatibilityDetails: '호환성 평가 상세',
+        problems: '문제점',
+        limitationReasons: {
+          userGearControl: '유저가 기어 조절 불가',
+          ergModeUnavailable: 'ERG 모드 사용 불가',
+          simModeUnavailable: 'SIM 모드 사용 불가',
+          notWorking: '미작동',
+          notSupported: '미지원',
+        },
+        supportRange: '지원 범위',
+        noSupportRangeData: '지원 범위 데이터 없음',
+        supportFeatures: '지원 기능',
+        noSupportFeaturesData: '지원 기능 데이터 없음',
+        detectedDataFields: '감지된 데이터 필드',
+        controlTestResult: '제어 테스트 결과',
+        resistanceChangeLog: '저항 변화 로그',
+        interactionLog: '상호작용 로그',
+        copyLog: '로그 복사',
+        noInteractionLog: '상호작용 로그 없음',
+        testInfo: '테스트 정보',
+        testCompletion: '테스트 완료:',
+        completionTime: '완료 시간:',
+        reportId: '보고서 ID:',
+        noControlTestData: '제어 테스트 데이터 없음',
+        noDataFieldsDetected: '감지된 데이터 필드 없음',
+        noResistanceChangeData: '저항 변화 데이터 없음',
+        tableHeaders: {
+          name: '이름',
+          detected: '감지',
+          minValue: '최소값',
+          maxValue: '최대값',
+          currentValue: '현재값',
+          min: '최소',
+          max: '최대',
+          current: '현재',
+          time: '시간',
+          previousValue: '이전값',
+          changeReason: '변경 사유',
+        },
+        controlCommands: {
+          resistanceLevel: '저항 레벨 설정',
+          targetPower: '목표 파워 설정',
+          simParams: '경사도 시뮬레이션',
+        },
+        status: {
+          success: '성공',
+          failed: '실패',
+          notSupported: '미지원',
+          pending: '대기 중',
+        },
+        testTime: '테스트 시간:',
+        logActions: {
+          showFullLog: '전체 로그 보기',
+          hideLog: '로그 숨기기',
+        },
+        share: {
+          title: 'IsYafit 호환성 보고서',
+          deviceInfo: '장치 정보',
+          deviceName: '장치명:',
+          address: '주소:',
+          mainProtocol: '주요 프로토콜:',
+          supportedProtocols: '지원 프로토콜:',
+          testInfo: '테스트 정보',
+          testCompleted: '테스트 완료:',
+          testDateTime: '테스트 일시:',
+          compatibility: '호환성 판정:',
+          judgmentReason: '판정 사유:',
+          controlTestResults: '제어 테스트 결과',
+          limitations: '제한사항',
+          impossibleReasons: '불가능 사유',
+          features: '지원 기능',
+          supportRanges: '지원 범위',
+          speed: '속도',
+          incline: '경사도',
+          resistance: '저항',
+          power: '파워',
+          detectedDataFields: '감지된 데이터 필드',
+          resistanceChanges: '저항 변화 이력',
+          range: '범위',
+          increment: '증분',
+          time: '시간',
+          oldValue: '이전값',
+          newValue: '현재값',
+          cause: '원인',
+          autoChange: '자동 변경',
+        },
+        clipboard: {
+          success: '성공',
+          error: '오류',
+          info: '정보',
+          copySuccess: '상호작용 로그가 클립보드에 복사되었습니다.',
+          copyError: '로그 복사에 실패했습니다.',
+          noLogs: '복사할 로그가 없습니다.',
+        },
+        compatibilityLevels: {
+          fullyCompatible: '완전 호환',
+          partiallyCompatible: '부분 호환',
+          needsModification: '수정 필요',
+          impossible: '불가능',
+          evaluationImpossible: '평가 불가',
+        },
       },
       
       // 이용약관
@@ -243,128 +368,6 @@ IsYafit은 피트니스 장치와의 연결을 제공하는 모바일 애플리�
 3. 개인정보 보호
 - 수집된 데이터는 앱 내에서만 사용되며 외부로 전송되지 않습니다.
 - 장치 정보 및 운동 데이터는 사용자의 기기에만 저장됩니다.`,
-      },
-      
-      // 测试报告屏幕
-      testReport: {
-        title: '测试报告',
-        shareReport: '分享报告',
-        deviceInfo: '设备信息',
-        protocol: '协议',
-        supportedProtocols: '支持的协议',
-        resultTitle: '测试结果',
-        limitationTitle: '限制：',
-        limitations: {
-          reborn: '• Reborn协议控制命令不可用。SIM、ERG、用户齿轮更改不可用。',
-          fitshow: '• FitShow协议在Yafit中不支持控制命令。ERG、SIM、用户齿轮控制不可用。',
-          resistance: '• 未检测到阻力，设置为默认齿轮值',
-          gearChange: '• 齿轮更改不可用',
-          ergMode: '• ERG模式不可用',
-          simMode: '• SIM模式不可用',
-          unexpectedResistance: '• 发生意外阻力变化。请检查设备是否处于自身模式。',
-        },
-        compatibilityDetails: '兼容性评估详情',
-        problems: '问题',
-        limitationReasons: {
-          userGearControl: '用户齿轮控制不可用',
-          ergModeUnavailable: 'ERG模式不可用',
-          simModeUnavailable: 'SIM模式不可用',
-          notWorking: '不工作',
-          notSupported: '不支持',
-        },
-        supportRange: '支持范围',
-        noSupportRangeData: '无支持范围数据',
-        supportFeatures: '支持功能',
-        noSupportFeaturesData: '无支持功能数据',
-        detectedDataFields: '检测到的数据字段',
-        controlTestResult: '控制测试结果',
-        resistanceChangeLog: '阻力变化日志',
-        interactionLog: '交互日志',
-        copyLog: '复制日志',
-        noInteractionLog: '无交互日志',
-        testInfo: '测试信息',
-        testCompletion: '测试完成：',
-        completionTime: '完成时间：',
-        reportId: '报告ID：',
-        noControlTestData: '无控制测试数据',
-        noDataFieldsDetected: '未检测到数据字段',
-        noResistanceChangeData: '无阻力变化数据',
-        tableHeaders: {
-          name: '名称',
-          detected: '检测',
-          minValue: '最小值',
-          maxValue: '最大值',
-          currentValue: '当前值',
-          min: '最小',
-          max: '最大',
-          current: '当前',
-          time: '时间',
-          previousValue: '之前值',
-          changeReason: '变更原因',
-        },
-        controlCommands: {
-          resistanceLevel: '阻力等级设置',
-          targetPower: '目标功率设置',
-          simParams: '倾斜模拟',
-        },
-        status: {
-          success: '成功',
-          failed: '失败',
-          notSupported: '不支持',
-          pending: '等待中',
-        },
-        testTime: '测试时间：',
-        logActions: {
-          showFullLog: '显示完整日志',
-          hideLog: '隐藏日志',
-        },
-        share: {
-          title: 'IsYafit兼容性报告',
-          deviceInfo: '设备信息',
-          deviceName: '设备名称：',
-          address: '地址：',
-          mainProtocol: '主要协议：',
-          services: '服务：',
-          supportedProtocols: '支持的协议：',
-          testInfo: '测试信息',
-          testCompleted: '测试完成：',
-          testDateTime: '测试日期/时间：',
-          compatibility: '兼容性评估：',
-          judgmentReason: '评估原因：',
-          controlTestResults: '控制测试结果',
-          limitations: '限制',
-          impossibleReasons: '不可能原因',
-          features: '支持的功能',
-          supportRanges: '支持范围',
-          speed: '速度',
-          incline: '倾斜',
-          resistance: '阻力',
-          power: '功率',
-          detectedDataFields: '检测到的数据字段',
-          resistanceChanges: '阻力变化历史',
-          range: '范围',
-          increment: '增量',
-          time: '时间',
-          oldValue: '旧值',
-          newValue: '新值',
-          cause: '原因',
-          autoChange: '自动变化',
-        },
-        clipboard: {
-          success: '成功',
-          error: '错误',
-          info: '信息',
-          copySuccess: '交互日志已复制到剪贴板。',
-          copyError: '复制日志失败。',
-          noLogs: '没有可复制的日志。',
-        },
-        compatibilityLevels: {
-          fullyCompatible: '完全兼容',
-          partiallyCompatible: '部分兼容',
-          needsModification: '需要修改',
-          impossible: '不可能',
-          evaluationImpossible: '评估不可能',
-        },
       },
     },
   },
@@ -581,6 +584,10 @@ IsYafit은 피트니스 장치와의 연결을 제공하는 모바일 애플리�
         title: 'Past Reports',
         noSavedReports: 'No saved reports',
         loadingReports: 'Loading reports...',
+        confirmDelete: 'Are you sure you want to delete this report?',
+        deleteSuccess: 'Report has been deleted.',
+        deleteError: 'Failed to delete report.',
+        emptyStateDescription: 'Reports will be saved here when you complete compatibility tests',
       },
       
       // Logs Screen
@@ -589,24 +596,6 @@ IsYafit은 피트니스 장치와의 연결을 제공하는 모바일 애플리�
         noLogs: 'No logs.',
         realtimeLogs: 'Real-time Logs',
         deviceInfo: 'Device:',
-      },
-      
-      // Terms of Service
-      terms: {
-        title: 'IsYafit App Terms of Service',
-        content: `IsYafit App Terms of Service
-
-1. Service Overview
-IsYafit is a mobile application that provides connectivity with fitness devices.
-
-2. Service Usage
-- This app communicates with fitness devices through Bluetooth connection.
-- Location permission is required for Bluetooth scanning.
-- Real-time exercise data can be collected from connected devices.
-
-3. Privacy Protection
-- Collected data is used only within the app and is not transmitted externally.
-- Device information and exercise data are stored only on the user's device.`,
       },
       
       // Test Report Screen
@@ -630,7 +619,7 @@ IsYafit is a mobile application that provides connectivity with fitness devices.
         compatibilityDetails: 'Compatibility Assessment Details',
         problems: 'Problems',
         limitationReasons: {
-          userGearControl: 'User gear control not possible',
+          userGearControl: 'User gear control not available',
           ergModeUnavailable: 'ERG mode not available',
           simModeUnavailable: 'SIM mode not available',
           notWorking: 'Not working',
@@ -638,8 +627,8 @@ IsYafit is a mobile application that provides connectivity with fitness devices.
         },
         supportRange: 'Support Range',
         noSupportRangeData: 'No support range data',
-        supportFeatures: 'Supported Features',
-        noSupportFeaturesData: 'No supported feature data',
+        supportFeatures: 'Support Features',
+        noSupportFeaturesData: 'No support features data',
         detectedDataFields: 'Detected Data Fields',
         controlTestResult: 'Control Test Result',
         resistanceChangeLog: 'Resistance Change Log',
@@ -688,18 +677,17 @@ IsYafit is a mobile application that provides connectivity with fitness devices.
           deviceName: 'Device Name:',
           address: 'Address:',
           mainProtocol: 'Main Protocol:',
-          services: 'Services:',
           supportedProtocols: 'Supported Protocols:',
           testInfo: 'Test Information',
           testCompleted: 'Test Completed:',
           testDateTime: 'Test Date/Time:',
           compatibility: 'Compatibility Assessment:',
-          judgmentReason: 'Judgment Reason:',
+          judgmentReason: 'Assessment Reason:',
           controlTestResults: 'Control Test Results',
           limitations: 'Limitations',
           impossibleReasons: 'Impossible Reasons',
-          features: 'Supported Features',
-          supportRanges: 'Supported Ranges',
+          features: 'Support Features',
+          supportRanges: 'Support Ranges',
           speed: 'Speed',
           incline: 'Incline',
           resistance: 'Resistance',
@@ -718,8 +706,8 @@ IsYafit is a mobile application that provides connectivity with fitness devices.
           success: 'Success',
           error: 'Error',
           info: 'Info',
-          copySuccess: 'Interaction log copied to clipboard.',
-          copyError: 'Copy log failed.',
+          copySuccess: 'Interaction log has been copied to clipboard.',
+          copyError: 'Failed to copy log.',
           noLogs: 'No logs to copy.',
         },
         compatibilityLevels: {
@@ -729,6 +717,24 @@ IsYafit is a mobile application that provides connectivity with fitness devices.
           impossible: 'Impossible',
           evaluationImpossible: 'Evaluation Impossible',
         },
+      },
+      
+      // Terms of Service
+      terms: {
+        title: 'IsYafit App Terms of Service',
+        content: `IsYafit App Terms of Service
+
+1. Service Overview
+IsYafit is a mobile application that provides connectivity with fitness devices.
+
+2. Service Usage
+- This app communicates with fitness devices through Bluetooth connection.
+- Location permission is required for Bluetooth scanning.
+- Real-time exercise data can be collected from connected devices.
+
+3. Privacy Protection
+- Collected data is used only within the app and is not transmitted externally.
+- Device information and exercise data are stored only on the user's device.`,
       },
     },
   },
@@ -945,6 +951,10 @@ IsYafit is a mobile application that provides connectivity with fitness devices.
         title: '历史报告',
         noSavedReports: '无保存的报告',
         loadingReports: '加载报告中...',
+        confirmDelete: '确定要删除此报告吗？',
+        deleteSuccess: '报告已删除。',
+        deleteError: '删除报告失败。',
+        emptyStateDescription: '完成兼容性测试后，报告将保存在这里',
       },
       
       // 日志屏幕
@@ -955,25 +965,7 @@ IsYafit is a mobile application that provides connectivity with fitness devices.
         deviceInfo: '设备:',
       },
       
-      // 服务条款
-      terms: {
-        title: 'IsYafit应用服务条款',
-        content: `IsYafit应用服务条款
-
-1. 服务概述
-IsYafit是一个提供与健身设备连接的移动应用程序。
-
-2. 服务使用
-- 本应用通过蓝牙连接与健身设备通信。
-- 蓝牙扫描需要位置权限。
-- 可以从连接的设备收集实时运动数据。
-
-3. 隐私保护
-- 收集的数据仅在应用内使用，不会向外传输。
-- 设备信息和运动数据仅存储在用户设备上。`,
-      },
-      
-      // 测试报告屏幕
+      // Test Report Screen
       testReport: {
         title: '测试报告',
         shareReport: '分享报告',
@@ -1052,7 +1044,6 @@ IsYafit是一个提供与健身设备连接的移动应用程序。
           deviceName: '设备名称：',
           address: '地址：',
           mainProtocol: '主要协议：',
-          services: '服务：',
           supportedProtocols: '支持的协议：',
           testInfo: '测试信息',
           testCompleted: '测试完成：',
@@ -1093,6 +1084,24 @@ IsYafit是一个提供与健身设备连接的移动应用程序。
           impossible: '不可能',
           evaluationImpossible: '评估不可能',
         },
+      },
+      
+      // 服务条款
+      terms: {
+        title: 'IsYafit应用服务条款',
+        content: `IsYafit应用服务条款
+
+1. 服务概述
+IsYafit是一个提供与健身设备连接的移动应用程序。
+
+2. 服务使用
+- 本应用通过蓝牙连接与健身设备通信。
+- 蓝牙扫描需要位置权限。
+- 可以从连接的设备收集实时运动数据。
+
+3. 隐私保护
+- 收集的数据仅在应用内使用，不会向外传输。
+- 设备信息和运动数据仅存储在用户设备上。`,
       },
     },
   },

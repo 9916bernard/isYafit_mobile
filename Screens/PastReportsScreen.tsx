@@ -29,6 +29,30 @@ const PastReportsScreen: React.FC<PastReportsScreenProps> = ({ onBack }) => {
   const [selectedReport, setSelectedReport] = useState<SavedReport | null>(null);
   const safeAreaStyles = useSafeAreaStyles();
 
+  // 호환성 레벨을 현재 언어에 맞게 변환하는 함수
+  const translateCompatibilityLevel = (level: string): string => {
+    // 저장된 레벨을 현재 언어의 키로 매핑
+    const levelMapping: { [key: string]: string } = {
+      // 한국어 -> 현재 언어
+      '완전 호환': t('test.compatibilityLevels.fullyCompatible'),
+      '부분 호환': t('test.compatibilityLevels.partiallyCompatible'),
+      '수정 필요': t('test.compatibilityLevels.needsModification'),
+      '불가능': t('test.compatibilityLevels.impossible'),
+      // 영어 -> 현재 언어
+      'Fully Compatible': t('test.compatibilityLevels.fullyCompatible'),
+      'Partially Compatible': t('test.compatibilityLevels.partiallyCompatible'),
+      'Needs Modification': t('test.compatibilityLevels.needsModification'),
+      'Impossible': t('test.compatibilityLevels.impossible'),
+      // 중국어 -> 현재 언어
+      '完全兼容': t('test.compatibilityLevels.fullyCompatible'),
+      '部分兼容': t('test.compatibilityLevels.partiallyCompatible'),
+      '需要修改': t('test.compatibilityLevels.needsModification'),
+      '不可能': t('test.compatibilityLevels.impossible'),
+    };
+    
+    return levelMapping[level] || level;
+  };
+
   const loadReports = async () => {
     try {
       const savedReports = await ReportStorage.getReports();
@@ -53,7 +77,7 @@ const PastReportsScreen: React.FC<PastReportsScreenProps> = ({ onBack }) => {
   const handleDeleteReport = async (reportId: string) => {
     Alert.alert(
       t('common.confirm'),
-      '정말로 이 보고서를 삭제하시겠습니까?',
+      t('pastReports.confirmDelete'),
       [
         { text: t('common.cancel'), style: 'cancel' },
         {
@@ -64,9 +88,9 @@ const PastReportsScreen: React.FC<PastReportsScreenProps> = ({ onBack }) => {
               const success = await ReportStorage.deleteReport(reportId);
               if (success) {
                 setReports(prev => prev.filter(report => report.id !== reportId));
-                Alert.alert('완료', '보고서가 삭제되었습니다.');
+                Alert.alert(t('common.success'), t('pastReports.deleteSuccess'));
               } else {
-                Alert.alert('오류', '보고서 삭제에 실패했습니다.');
+                Alert.alert(t('common.error'), t('pastReports.deleteError'));
               }
             } catch (error) {
               console.error('Failed to delete report:', error);
@@ -79,7 +103,7 @@ const PastReportsScreen: React.FC<PastReportsScreenProps> = ({ onBack }) => {
 
   const handleShareReport = async (report: SavedReport) => {
     try {
-      const reportText = `테스트 보고서\n장치: ${report.deviceName}\n프로토콜: ${report.results.deviceInfo.protocol || 'Unknown'}\n완료 시간: ${new Date(report.timestamp).toLocaleString()}`;
+      const reportText = `${t('testReport.share.title')}\n${t('testReport.share.deviceName')} ${report.deviceName}\n${t('testReport.share.mainProtocol')} ${report.results.deviceInfo.protocol || t('common.unknown')}\n${t('testReport.share.testDateTime')} ${new Date(report.timestamp).toLocaleString()}`;
       
       await Share.share({
         message: reportText,
@@ -91,14 +115,17 @@ const PastReportsScreen: React.FC<PastReportsScreenProps> = ({ onBack }) => {
   };
 
   const getCompatibilityColor = (level: string): string => {
-    switch (level) {
-      case '완전 호환':
+    // 변환된 레벨을 사용하여 색상 결정
+    const translatedLevel = translateCompatibilityLevel(level);
+    
+    switch (translatedLevel) {
+      case t('test.compatibilityLevels.fullyCompatible'):
         return '#00c663';
-      case '부분 호환':
+      case t('test.compatibilityLevels.partiallyCompatible'):
         return '#f59e0b';
-      case '수정 필요':
+      case t('test.compatibilityLevels.needsModification'):
         return '#ef4444';
-      case '불가능':
+      case t('test.compatibilityLevels.impossible'):
         return '#6b7280';
       default:
         return '#9ca3af';
@@ -151,7 +178,7 @@ const PastReportsScreen: React.FC<PastReportsScreenProps> = ({ onBack }) => {
                 { color: getCompatibilityColor(item.compatibilityLevel) },
               ]}
             >
-              {item.compatibilityLevel}
+              {translateCompatibilityLevel(item.compatibilityLevel)}
             </Text>
           </View>
         </View>
@@ -172,7 +199,7 @@ const PastReportsScreen: React.FC<PastReportsScreenProps> = ({ onBack }) => {
       <Icon name="file-document-outline" size={64} color={Colors.textSecondary} />
       <Text style={styles.emptyStateTitle}>{t('pastReports.noSavedReports')}</Text>
       <Text style={styles.emptyStateSubtitle}>
-        호환성 테스트를 완료하면 여기에 보고서가 저장됩니다
+        {t('pastReports.emptyStateDescription')}
       </Text>
     </View>
   );

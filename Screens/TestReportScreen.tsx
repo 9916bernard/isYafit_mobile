@@ -34,6 +34,37 @@ const TestReportScreen: React.FC<TestReportScreenProps> = ({ results, onClose })
   const fadeAnim = React.useRef(new Animated.Value(0)).current;
   const slideAnim = React.useRef(new Animated.Value(30)).current;
   
+  // 호환성 레벨을 현재 언어에 맞게 변환하는 함수
+  const translateCompatibilityLevel = (level: string): string => {
+    // 저장된 레벨을 현재 언어의 키로 매핑
+    const levelMapping: { [key: string]: string } = {
+      // 한국어 -> 현재 언어
+      '완전 호환': t('test.compatibilityLevels.fullyCompatible'),
+      '부분 호환': t('test.compatibilityLevels.partiallyCompatible'),
+      '수정 필요': t('test.compatibilityLevels.needsModification'),
+      '불가능': t('test.compatibilityLevels.impossible'),
+      // 영어 -> 현재 언어
+      'Fully Compatible': t('test.compatibilityLevels.fullyCompatible'),
+      'Partially Compatible': t('test.compatibilityLevels.partiallyCompatible'),
+      'Needs Modification': t('test.compatibilityLevels.needsModification'),
+      'Impossible': t('test.compatibilityLevels.impossible'),
+      // 중국어 -> 현재 언어
+      '完全兼容': t('test.compatibilityLevels.fullyCompatible'),
+      '部分兼容': t('test.compatibilityLevels.partiallyCompatible'),
+      '需要修改': t('test.compatibilityLevels.needsModification'),
+      '不可能': t('test.compatibilityLevels.impossible'),
+    };
+    
+    return levelMapping[level] || level;
+  };
+
+  // 호환성 레벨이 특정 레벨인지 확인하는 헬퍼 함수
+  const isCompatibilityLevel = (level: string, targetLevel: 'fullyCompatible' | 'partiallyCompatible' | 'needsModification' | 'impossible'): boolean => {
+    const targetKey = t(`test.compatibilityLevels.${targetLevel}`);
+    const translatedLevel = translateCompatibilityLevel(level);
+    return translatedLevel === targetKey;
+  };
+  
   React.useEffect(() => {
     // Entrance animation
     Animated.parallel([
@@ -387,14 +418,16 @@ const TestReportScreen: React.FC<TestReportScreenProps> = ({ results, onClose })
     }
   };  // Helper function to get compatibility color based on level
 const getCompatibilityColor = (compatibilityLevel?: string): string => {
-  switch (compatibilityLevel) {
-    case '완전 호환':
+  const translatedLevel = translateCompatibilityLevel(compatibilityLevel || '');
+  
+  switch (translatedLevel) {
+    case t('test.compatibilityLevels.fullyCompatible'):
       return '#4CAF50';
-    case '부분 호환':
+    case t('test.compatibilityLevels.partiallyCompatible'):
       return '#FF9800';
-    case '수정 필요':
+    case t('test.compatibilityLevels.needsModification'):
       return '#2196F3';
-    case '불가능':
+    case t('test.compatibilityLevels.impossible'):
       return '#F44336';
     default:
       return '#666';
@@ -444,13 +477,10 @@ const getCompatibilityColor = (compatibilityLevel?: string): string => {
                   </Text>
                   <View style={[
                     styles.compatibilityBadge,
-                    {                      backgroundColor: 
-                        results.compatibilityLevel === '완전 호환' ? '#4CAF50' :
-                        results.compatibilityLevel === '부분 호환' ? '#FF9800' :
-                        results.compatibilityLevel === '수정 필요' ? '#2196F3' : '#F44336'
-                    }
-                  ]}>                    <Text style={styles.compatibilityText}>
-                      {results.compatibilityLevel || '평가 불가'}
+                    { backgroundColor: getCompatibilityColor(results.compatibilityLevel) }
+                  ]}>
+                    <Text style={styles.compatibilityText}>
+                      {translateCompatibilityLevel(results.compatibilityLevel || '평가 불가')}
                     </Text>
                   </View>
                 </View>
@@ -488,11 +518,11 @@ const getCompatibilityColor = (compatibilityLevel?: string): string => {
                   </View>                  
                   {/* 제한사항 섹션 - 불가능한 경우 제외하고 표시 */}
                   {results.compatibilityLevel && 
-                   results.compatibilityLevel !== '완전 호환' && 
-                   results.compatibilityLevel !== '불가능' && (
+                   !isCompatibilityLevel(results.compatibilityLevel, 'fullyCompatible') && 
+                   !isCompatibilityLevel(results.compatibilityLevel, 'impossible') && (
                     <View style={styles.limitationSection}>
                       <Text style={styles.limitationTitle}>{t('testReport.limitationTitle')}</Text>
-                        {(results.compatibilityLevel === '부분 호환' || results.compatibilityLevel === '수정 필요') && (
+                        {(isCompatibilityLevel(results.compatibilityLevel, 'partiallyCompatible') || isCompatibilityLevel(results.compatibilityLevel, 'needsModification')) && (
                         <>
                           {/* Reborn 프로토콜 제한사항 */}
                           {results.supportedProtocols.includes('REBORN') && (
@@ -577,7 +607,7 @@ const getCompatibilityColor = (compatibilityLevel?: string): string => {
               </View>
             </View>
           )}          {/* Limitation Reasons - 제한 사유 (불가능한 경우 제외) */}
-          {results.compatibilityLevel !== '불가능' && 
+          {!isCompatibilityLevel(results.compatibilityLevel || '', 'impossible') && 
            results.controlTests && 
            Object.entries(results.controlTests).some(([_, test]) => test.status !== 'OK') && (
             <View style={styles.section}>

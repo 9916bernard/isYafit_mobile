@@ -268,6 +268,38 @@ export class FTMSManager {
         }
     }
 
+    // 실시간 데이터 모드를 위한 새로운 메서드 - 제어 명령 없이 데이터 구독만
+    async connectSequenceForRealtimeData(): Promise<boolean> {
+        if (!this.connectedDevice) {
+            this.logManager.logError("No device connected to run realtime data connection sequence");
+            return false;
+        }
+        try {
+            this.logManager.logInfo(`Starting realtime data connection sequence for ${this.detectedProtocol} protocol`);
+            switch (this.detectedProtocol) {
+                case ProtocolType.FTMS:
+                    return await this.connectSequenceFTMSRealtimeData();
+                case ProtocolType.MOBI:
+                    return await this.connectSequenceMobi();
+                case ProtocolType.REBORN:
+                    return await this.connectSequenceReborn();
+                case ProtocolType.TACX:
+                    return await this.connectSequenceTacxNeo();
+                case ProtocolType.FITSHOW:
+                    return await this.connectSequenceFitShowRealtimeData();
+                case ProtocolType.CSC:
+                    return await this.connectSequenceCSC();
+                default:
+                    this.logManager.logError("Unsupported protocol for realtime data connection sequence");
+                    return false;
+            }
+        } catch (error) {
+            this.logManager.logError(`Error during realtime data connection sequence: ${error instanceof Error ? error.message : String(error)}`);
+            this.isDeviceActive = false;
+            return false;
+        }
+    }
+
     // --- Getters ---
     getConnectedDevice(): Device | null {
         return this.connectedDevice;
@@ -570,6 +602,33 @@ export class FTMSManager {
         }
     }
 
+    // 실시간 데이터 모드를 위한 FTMS 연결 시퀀스 - 제어 명령 없이 데이터 구독만
+    private async connectSequenceFTMSRealtimeData(): Promise<boolean> {
+        this.logManager.logInfo("Running FTMS realtime data connection sequence");
+        try {
+            this.logManager.logInfo("Starting FTMS Realtime Data Connection Sequence");
+            
+            // 실시간 데이터 모드에서는 제어 명령을 선택적으로 실행
+            // 일부 디바이스에서는 제어 명령이 필요할 수 있음
+            try {
+                this.logManager.logInfo("Attempting minimal control sequence for realtime data mode");
+                await this.requestControl();
+                // resetMachine과 startMachine은 건너뛰고 바로 활성화
+                this.isDeviceActive = true;
+                this.logManager.logSuccess("FTMS Realtime Data Connection Sequence Completed - Device ready for data monitoring");
+            } catch (controlError) {
+                this.logManager.logWarning(`Control commands failed in realtime data mode: ${controlError instanceof Error ? controlError.message : String(controlError)}`);
+                this.logManager.logInfo("Continuing without control commands - device may still provide data");
+                this.isDeviceActive = true;
+            }
+            
+            return true;
+        } catch (error) {
+            this.logManager.logError(`FTMS realtime data connection sequence error: ${error instanceof Error ? error.message : String(error)}`);
+            return false;
+        }
+    }
+
     private async connectSequenceMobi(): Promise<boolean> {
         this.logManager.logInfo("Mobi protocol connection sequence - read-only mode");
         this.isDeviceActive = true;
@@ -648,6 +707,66 @@ export class FTMSManager {
             return true;
         } catch (error) {
             this.logManager.logError(`FitShow connection sequence error: ${error instanceof Error ? error.message : String(error)}`);
+            // FitShow는 연결 실패해도 기본적으로 활성화 상태로 설정 (데이터 수신 가능)
+            this.isDeviceActive = true;
+            return true;
+        }
+    }
+
+    // 실시간 데이터 모드를 위한 FitShow 연결 시퀀스 - 제어 명령 없이 데이터 구독만
+    private async connectSequenceFitShowRealtimeData(): Promise<boolean> {
+        this.logManager.logInfo("Running FitShow realtime data connection sequence");
+        try {
+            this.logManager.logInfo("Starting FitShow Realtime Data Connection Sequence");
+            
+            // 실시간 데이터 모드에서는 제어 명령을 선택적으로 실행
+            try {
+                this.logManager.logInfo("Attempting minimal FitShow control sequence for realtime data mode");
+                
+                // FitShow 디바이스 초기화 명령 (C# 코드 기반)
+                this.logManager.logInfo("Sending FitShow device init command...");
+                try {
+                    const initCommand = Buffer.from([0x02, 0x44, 0x01, 0x45, 0x03]);
+                    await this.connectedDevice!.writeCharacteristicWithResponseForService(
+                        FITSHOW_SERVICE_UUID,
+                        FITSHOW_WRITE_CHAR_UUID,
+                        initCommand.toString('base64')
+                    );
+                    this.logManager.logSuccess("FitShow device init command sent");
+                } catch (error) {
+                    this.logManager.logWarning(`FitShow device init command failed: ${error}`);
+                }
+                
+                // 3초 대기 후 시작 명령 전송 (C# 코드와 동일)
+                await new Promise(resolve => setTimeout(resolve, 3000));
+                
+                // FitShow 디바이스 시작 명령
+                this.logManager.logInfo("Sending FitShow device start command...");
+                try {
+                    const startCommand = Buffer.from([0x02, 0x44, 0x02, 0x46, 0x03]);
+                    await this.connectedDevice!.writeCharacteristicWithResponseForService(
+                        FITSHOW_SERVICE_UUID,
+                        FITSHOW_WRITE_CHAR_UUID,
+                        startCommand.toString('base64')
+                    );
+                    this.logManager.logSuccess("FitShow device start command sent");
+                } catch (error) {
+                    this.logManager.logWarning(`FitShow device start command failed: ${error}`);
+                }
+                
+                // 잠시 대기하여 데이터 전송 시작 확인
+                await new Promise(resolve => setTimeout(resolve, 2000));
+                
+            } catch (controlError) {
+                this.logManager.logWarning(`FitShow control commands failed in realtime data mode: ${controlError instanceof Error ? controlError.message : String(controlError)}`);
+                this.logManager.logInfo("Continuing without FitShow control commands - device may still provide data");
+            }
+            
+            this.isDeviceActive = true;
+            this.logManager.logSuccess("FitShow Realtime Data Connection Sequence Completed - Device ready for data monitoring");
+            return true;
+        } catch (error) {
+            this.logManager.logError(`FitShow realtime data connection sequence error: ${error instanceof Error ? error.message : String(error)}`);
             // FitShow는 연결 실패해도 기본적으로 활성화 상태로 설정 (데이터 수신 가능)
             this.isDeviceActive = true;
             return true;

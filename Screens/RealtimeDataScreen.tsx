@@ -62,7 +62,7 @@ const RealtimeDataScreen: React.FC<RealtimeDataScreenProps> = ({
         );
         
         setStatusMessage(t('realtimeData.status.runningSequence'));
-        const success = await ftmsManager.connectSequence();
+        const success = await ftmsManager.connectSequenceForRealtimeData();
         if (success) {
           setIsConnected(true);
           setStatusMessage(t('realtimeData.status.receiving'));

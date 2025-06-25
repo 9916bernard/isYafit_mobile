@@ -32,14 +32,37 @@ import { useTranslation } from 'react-i18next';
 
 // Helper function to get compatibility color based on level
 const getCompatibilityColor = (compatibilityLevel?: string): string => {
-  switch (compatibilityLevel) {
-    case '완전 호환':
+  // TestScreen 컴포넌트 내부에서 사용되므로 translateCompatibilityLevel 함수를 직접 정의
+  const translateCompatibilityLevel = (level: string): string => {
+    // 이 함수는 컴포넌트 내부에서 정의되어야 하므로 여기서는 기본 매핑만 사용
+    const levelMapping: { [key: string]: string } = {
+      '완전 호환': 'fullyCompatible',
+      '부분 호환': 'partiallyCompatible',
+      '수정 필요': 'needsModification',
+      '불가능': 'impossible',
+      'Fully Compatible': 'fullyCompatible',
+      'Partially Compatible': 'partiallyCompatible',
+      'Needs Modification': 'needsModification',
+      'Impossible': 'impossible',
+      '完全兼容': 'fullyCompatible',
+      '部分兼容': 'partiallyCompatible',
+      '需要修改': 'needsModification',
+      '不可能': 'impossible',
+    };
+    
+    return levelMapping[level] || level;
+  };
+
+  const translatedLevel = translateCompatibilityLevel(compatibilityLevel || '');
+  
+  switch (translatedLevel) {
+    case 'fullyCompatible':
       return '#4CAF50';
-    case '부분 호환':
+    case 'partiallyCompatible':
       return '#FF9800';
-    case '수정 필요':
+    case 'needsModification':
       return '#2196F3';
-    case '불가능':
+    case 'impossible':
       return '#F44336';
     default:
       return '#666666';
@@ -90,6 +113,37 @@ const TestScreen: React.FC<TestScreenProps> = ({ device, ftmsManager, onClose, i
   const helpIconRef = useRef(null);
   const helpPopupAnim = useRef(new Animated.Value(0)).current;
   const screenWidth = Dimensions.get('window').width;
+
+  // 호환성 레벨을 현재 언어에 맞게 변환하는 함수
+  const translateCompatibilityLevel = (level: string): string => {
+    // 저장된 레벨을 현재 언어의 키로 매핑
+    const levelMapping: { [key: string]: string } = {
+      // 한국어 -> 현재 언어
+      '완전 호환': t('test.compatibilityLevels.fullyCompatible'),
+      '부분 호환': t('test.compatibilityLevels.partiallyCompatible'),
+      '수정 필요': t('test.compatibilityLevels.needsModification'),
+      '불가능': t('test.compatibilityLevels.impossible'),
+      // 영어 -> 현재 언어
+      'Fully Compatible': t('test.compatibilityLevels.fullyCompatible'),
+      'Partially Compatible': t('test.compatibilityLevels.partiallyCompatible'),
+      'Needs Modification': t('test.compatibilityLevels.needsModification'),
+      'Impossible': t('test.compatibilityLevels.impossible'),
+      // 중국어 -> 현재 언어
+      '完全兼容': t('test.compatibilityLevels.fullyCompatible'),
+      '部分兼容': t('test.compatibilityLevels.partiallyCompatible'),
+      '需要修改': t('test.compatibilityLevels.needsModification'),
+      '不可能': t('test.compatibilityLevels.impossible'),
+    };
+    
+    return levelMapping[level] || level;
+  };
+
+  // 호환성 레벨이 특정 레벨인지 확인하는 헬퍼 함수
+  const isCompatibilityLevel = (level: string, targetLevel: 'fullyCompatible' | 'partiallyCompatible' | 'needsModification' | 'impossible'): boolean => {
+    const targetKey = t(`test.compatibilityLevels.${targetLevel}`);
+    const translatedLevel = translateCompatibilityLevel(level);
+    return translatedLevel === targetKey;
+  };
 
   useEffect(() => {
     // Initialize the FTMSTester
@@ -394,7 +448,7 @@ const TestScreen: React.FC<TestScreenProps> = ({ device, ftmsManager, onClose, i
       <View style={{ flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start' }}>
         <View style={[styles.compatibilityBadge, { backgroundColor: badgeColor }]}> 
           <Text style={[styles.compatibilityText, { color: '#FFFFFF' }]}> 
-            {testResults.compatibilityLevel}
+            {translateCompatibilityLevel(testResults.compatibilityLevel)}
           </Text>
         </View>
         <TouchableOpacity
@@ -569,11 +623,11 @@ const TestScreen: React.FC<TestScreenProps> = ({ device, ftmsManager, onClose, i
                     
                     {/* 제한사항 섹션 - 불가능한 경우 제외하고 표시 */}
                     {testResults.compatibilityLevel && 
-                     testResults.compatibilityLevel !== '완전 호환' && 
-                     testResults.compatibilityLevel !== '불가능' && (
+                     !isCompatibilityLevel(testResults.compatibilityLevel, 'fullyCompatible') && 
+                     !isCompatibilityLevel(testResults.compatibilityLevel, 'impossible') && (
                       <View style={styles.limitationSection}>
                         <Text style={styles.limitationTitle}>{t('test.limitationTitle')}</Text>
-                          {(testResults.compatibilityLevel === '부분 호환' || testResults.compatibilityLevel === '수정 필요') && (
+                          {(isCompatibilityLevel(testResults.compatibilityLevel, 'partiallyCompatible') || isCompatibilityLevel(testResults.compatibilityLevel, 'needsModification')) && (
                           <>
                             {/* Reborn 프로토콜 제한사항 */}
                             {testResults.supportedProtocols.includes('REBORN') && (
