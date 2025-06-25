@@ -28,6 +28,7 @@ import LogDisplay from '../LogDisplay'; // Import the Log Display component
 import { useSafeAreaStyles, Colors } from '../styles/commonStyles';
 import Toast from 'react-native-root-toast';
 import { ReportStorage } from '../utils/reportStorage';
+import { useTranslation } from 'react-i18next';
 
 // Helper function to get compatibility color based on level
 const getCompatibilityColor = (compatibilityLevel?: string): string => {
@@ -53,8 +54,9 @@ interface TestScreenProps {
 }
 
 const TestScreen: React.FC<TestScreenProps> = ({ device, ftmsManager, onClose, isDeviceConnected }) => {
+  const { t } = useTranslation();
   const [progress, setProgress] = useState(0);
-  const [message, setMessage] = useState('테스트 준비 완료');
+  const [message, setMessage] = useState(t('test.ready'));
   const [isRunning, setIsRunning] = useState(false);
   const [testCompleted, setTestCompleted] = useState(false);
   const [testResults, setTestResults] = useState<TestResults | null>(null);
@@ -210,7 +212,7 @@ const TestScreen: React.FC<TestScreenProps> = ({ device, ftmsManager, onClose, i
       setIsRunning(true);
       setTestCompleted(false);
       setProgress(0);
-      setMessage('테스트 시작 중...');
+      setMessage(t('test.starting'));
       
       // 애니메이션 컨테이너 확장 및 애니메이션 표시
       Animated.parallel([
@@ -308,7 +310,7 @@ const TestScreen: React.FC<TestScreenProps> = ({ device, ftmsManager, onClose, i
     if (testerRef.current) {
       testerRef.current.stopTest();
       setIsRunning(false);
-      setMessage('테스트가 중지되었습니다.');
+      setMessage(t('test.stoppedDisconnected'));
     }
     
     // 애니메이션 컨테이너 축소 및 애니메이션 숨기기
@@ -328,10 +330,10 @@ const TestScreen: React.FC<TestScreenProps> = ({ device, ftmsManager, onClose, i
     // 기기와 연결 해제
     try {
       await ftmsManager.disconnectDevice();
-      setMessage('테스트가 중지되고 기기와 연결이 해제되었습니다.');
+      setMessage(t('test.stoppedDisconnected'));
       
       // 토스트 메시지 표시
-      Toast.show('기기와의 연결이 해제되었습니다.', {
+      Toast.show(t('app.status.disconnected'), {
         duration: Toast.durations.SHORT,
         position: Toast.positions.BOTTOM,
         shadow: true,
@@ -343,7 +345,7 @@ const TestScreen: React.FC<TestScreenProps> = ({ device, ftmsManager, onClose, i
       });
     } catch (error) {
       console.error('Disconnect error during stop:', error);
-      setMessage('테스트가 중지되었습니다. (연결 해제 중 오류 발생)');
+      setMessage(t('test.stoppedError'));
     }
   };
   const handleBackPress = async () => {
@@ -358,7 +360,7 @@ const TestScreen: React.FC<TestScreenProps> = ({ device, ftmsManager, onClose, i
       await ftmsManager.disconnectDevice();
       
       // 토스트 메시지 표시
-      Toast.show('기기와의 연결이 해제되었습니다.', {
+      Toast.show(t('app.status.disconnected'), {
         duration: Toast.durations.SHORT,
         position: Toast.positions.BOTTOM,
         shadow: true,
@@ -459,7 +461,7 @@ const TestScreen: React.FC<TestScreenProps> = ({ device, ftmsManager, onClose, i
           <View style={styles.container}>
             <View style={styles.header}>
               <View style={styles.headerContent}>
-                <Text style={styles.title}>Yafit 호환성 테스트</Text>
+                <Text style={styles.title}>{t('test.title')}</Text>
                 <View style={styles.deviceInfo}>
                   <Text style={styles.deviceName}>
                     {device.name || 'Unknown Device'}
@@ -487,7 +489,7 @@ const TestScreen: React.FC<TestScreenProps> = ({ device, ftmsManager, onClose, i
                     color={showLogs ? "#ffffff" : "#00c663"} 
                   />
                   <Text style={[styles.toggleLogButtonText, showLogs && styles.toggleLogButtonTextActive]}>
-                    {showLogs ? '로그 숨기기' : '실시간 로그 보기'}
+                    {showLogs ? t('test.realtimeLog.hide') : t('test.realtimeLog.show')}
                   </Text>
                 </View>
               </TouchableOpacity>
@@ -545,7 +547,7 @@ const TestScreen: React.FC<TestScreenProps> = ({ device, ftmsManager, onClose, i
                 {testCompleted && (
                   <View style={styles.completionBadgeContainer}>
                     <Icon name="check-circle" size={20} color="#4CAF50" />
-                    <Text style={styles.completionBadge}>완료</Text>
+                    <Text style={styles.completionBadge}>{t('test.completion')}</Text>
                   </View>
                 )}
               </View>
@@ -556,7 +558,7 @@ const TestScreen: React.FC<TestScreenProps> = ({ device, ftmsManager, onClose, i
                 <View style={styles.resultMessageContainer}>
                   <View style={styles.resultMessageHeader}>
                     <MaterialCommunityIcons name="information" size={20} color="#00c663" />
-                    <Text style={styles.resultMessageTitle}>테스트 결과</Text>
+                    <Text style={styles.resultMessageTitle}>{t('test.resultTitle')}</Text>
                   </View>
                   <View style={styles.resultMessageContent}>                    {/* 판정 섹션 */}
                     <View style={styles.judgmentSection}>
@@ -570,32 +572,32 @@ const TestScreen: React.FC<TestScreenProps> = ({ device, ftmsManager, onClose, i
                      testResults.compatibilityLevel !== '완전 호환' && 
                      testResults.compatibilityLevel !== '불가능' && (
                       <View style={styles.limitationSection}>
-                        <Text style={styles.limitationTitle}>제한사항:</Text>
+                        <Text style={styles.limitationTitle}>{t('test.limitationTitle')}</Text>
                           {(testResults.compatibilityLevel === '부분 호환' || testResults.compatibilityLevel === '수정 필요') && (
                           <>
                             {/* Reborn 프로토콜 제한사항 */}
                             {testResults.supportedProtocols.includes('REBORN') && (
-                              <Text style={styles.limitationText}>• Reborn 프로토콜은 제어 명령이 불가능합니다. SIM,ERG,유저의 기어 변경이 불가능합니다.</Text>
+                              <Text style={styles.limitationText}>{t('test.limitations.reborn')}</Text>
                             )}
                             
                             {/* FitShow 프로토콜 제한사항 */}
                             {testResults.supportedProtocols.includes('FITSHOW') && (
-                              <Text style={styles.limitationText}>• FitShow 프로토콜은 Yafit에서 제어명령을 지원하지 않습니다. ERG, SIM, 유저의 기어 제어가 불가능합니다.</Text>
+                              <Text style={styles.limitationText}>{t('test.limitations.fitshow')}</Text>
                             )}
                             
                             {!testResults.dataFields?.resistance?.detected && (
-                              <Text style={styles.limitationText}>• Resistance가 검출되지 않아 기본 기어값으로 설정</Text>
+                              <Text style={styles.limitationText}>{t('test.limitations.resistance')}</Text>
                             )}
                             {testResults.controlTests?.SET_RESISTANCE_LEVEL?.status === 'Failed' && (
-                              <Text style={styles.limitationText}>• 기어 변경 불가능</Text>
+                              <Text style={styles.limitationText}>{t('test.limitations.gearChange')}</Text>
                             )}
                             {testResults.controlTests?.SET_TARGET_POWER?.status === 'Failed' && (
-                              <Text style={styles.limitationText}>• ERG 모드 사용 불가능</Text>
+                              <Text style={styles.limitationText}>{t('test.limitations.ergMode')}</Text>
                             )}
                             {testResults.controlTests?.SET_SIM_PARAMS?.status === 'Failed' && (
-                              <Text style={styles.limitationText}>• SIM 모드 사용 불가능</Text>
+                              <Text style={styles.limitationText}>{t('test.limitations.simMode')}</Text>
                             )}{testResults.resistanceChanges && testResults.resistanceChanges.filter(change => !change.command || change.command === '자동 변경').length >= 5 && (
-                              <Text style={styles.limitationText}>• 의도하지 않은 저항 변경이 발생했습니다. 기기 자체 모드가 설정되어있는지 확인해주세요</Text>
+                              <Text style={styles.limitationText}>{t('test.limitations.unexpectedResistance')}</Text>
                             )}
                           </>
                         )}
@@ -612,20 +614,20 @@ const TestScreen: React.FC<TestScreenProps> = ({ device, ftmsManager, onClose, i
                 </View>
               )}
 
-              <Text style={styles.sectionTitle}>테스트 상세 정보</Text>
+              <Text style={styles.sectionTitle}>{t('test.detailInfo')}</Text>
 
               <View style={styles.detailsContainer}>
                 <View style={styles.detailCard}>
                   <MaterialCommunityIcons name="connection" size={20} color="#00c663" />
                   <Text style={styles.detailLabel}>
-                    지원 프로토콜: {testResults.supportedProtocols.join(', ')}
+                    {t('testReport.supportedProtocols')}: {testResults.supportedProtocols.join(', ')}
                   </Text>
                 </View>
                 {false && testResults.supportRanges && (
                   <View style={styles.rangesCard}>
                     <View style={styles.cardHeader}>
                       <Ionicons name="analytics" size={18} color="#00c663" />
-                      <Text style={styles.detailSectionTitle}>지원 범위</Text>
+                      <Text style={styles.detailSectionTitle}>{t('test.supportRange')}</Text>
                     </View>
                     <View style={styles.rangesContainer}>
                       {testResults.supportRanges.speed && (
@@ -653,7 +655,7 @@ const TestScreen: React.FC<TestScreenProps> = ({ device, ftmsManager, onClose, i
                   <View style={styles.rangesCard}>
                     <View style={styles.cardHeader}>
                       <MaterialCommunityIcons name="test-tube" size={18} color="#00c663" />
-                      <Text style={styles.detailSectionTitle}>제어 테스트 결과</Text>
+                      <Text style={styles.detailSectionTitle}>{t('test.controlTestResult')}</Text>
                     </View>
                     <View style={styles.controlTestsContainer}>
                       {Object.entries(testResults.controlTests).map(([name, test]) => {
@@ -676,9 +678,9 @@ const TestScreen: React.FC<TestScreenProps> = ({ device, ftmsManager, onClose, i
                         
                         const getCommandLabel = (command: string) => {
                           switch (command) {
-                            case 'SET_RESISTANCE_LEVEL': return '저항 레벨';
-                            case 'SET_TARGET_POWER': return '목표 파워';
-                            case 'SET_SIM_PARAMS': return '경사도 시뮬레이션';
+                            case 'SET_RESISTANCE_LEVEL': return t('test.controlCommands.resistanceLevel');
+                            case 'SET_TARGET_POWER': return t('test.controlCommands.targetPower');
+                            case 'SET_SIM_PARAMS': return t('test.controlCommands.simParams');
                             default: return command;
                           }
                         };
@@ -693,7 +695,7 @@ const TestScreen: React.FC<TestScreenProps> = ({ device, ftmsManager, onClose, i
                               {getCommandLabel(name)}
                             </Text>
                             <Text style={[styles.controlTestStatus, { color: getStatusColor(test.status) }]}>
-                              {test.status === 'OK' ? '성공' : test.status === 'Failed' ? '실패' : '미지원'}
+                              {test.status === 'OK' ? t('test.status.success') : test.status === 'Failed' ? t('test.status.failed') : t('test.status.notSupported')}
                             </Text>
                           </View>
                         );
@@ -705,7 +707,7 @@ const TestScreen: React.FC<TestScreenProps> = ({ device, ftmsManager, onClose, i
                   <View style={styles.dataFieldsCard}>
                     <View style={styles.cardHeader}>
                       <MaterialCommunityIcons name="chart-line-variant" size={18} color="#00c663" />
-                      <Text style={styles.detailSectionTitle}>감지된 데이터 필드</Text>
+                      <Text style={styles.detailSectionTitle}>{t('test.detectedDataFields')}</Text>
                     </View>
                     <View style={styles.dataFieldsGrid}>
                       {Object.entries(testResults.dataFields)
@@ -730,7 +732,7 @@ const TestScreen: React.FC<TestScreenProps> = ({ device, ftmsManager, onClose, i
                 activeOpacity={0.8}
               >
                 <Icon name="description" size={18} color="#00c663" />
-                <Text style={styles.viewReportButtonText}>전체 보고서 보기</Text>
+                <Text style={styles.viewReportButtonText}>{t('test.viewFullReport')}</Text>
               </TouchableOpacity>
             </Animated.View>
           )}          <View style={styles.buttonContainer}>
@@ -739,16 +741,15 @@ const TestScreen: React.FC<TestScreenProps> = ({ device, ftmsManager, onClose, i
               <View style={styles.mobiInstructionCard}>
                 <View style={styles.mobiInstructionHeader}>
                   <MaterialCommunityIcons name="bike" size={24} color="#FF9800" />
-                  <Text style={styles.mobiInstructionTitle}>Mobi 프로토콜 안내</Text>
+                  <Text style={styles.mobiInstructionTitle}>{t('test.mobiInstruction.title')}</Text>
                 </View>
                 <Text style={styles.mobiInstructionText}>
-                  Mobi 기기는 페달을 돌려야 데이터가 전송됩니다.{'\n'}
-                  테스트 진행 중 지속적으로 페달을 돌려주세요.
+                  {t('test.mobiInstruction.description')}
                 </Text>
                 <View style={styles.mobiInstructionNote}>
                   <MaterialCommunityIcons name="information" size={16} color="#666" />
                   <Text style={styles.mobiInstructionNoteText}>
-                    이 프로토콜은 읽기 전용으로 케이던스 데이터만 확인됩니다.
+                    {t('test.mobiInstruction.note')}
                   </Text>
                 </View>
               </View>
@@ -761,7 +762,7 @@ const TestScreen: React.FC<TestScreenProps> = ({ device, ftmsManager, onClose, i
                   activeOpacity={0.8}
                 >
                   <Icon name="play-arrow" size={24} color="#ffffff" />
-                  <Text style={styles.startButtonText}>테스트 시작</Text>
+                  <Text style={styles.startButtonText}>{t('test.startTest')}</Text>
                 </TouchableOpacity>
               )}
 
@@ -771,7 +772,7 @@ const TestScreen: React.FC<TestScreenProps> = ({ device, ftmsManager, onClose, i
                   activeOpacity={0.8}
                 >
                   <Icon name="stop" size={24} color="#ffffff" />
-                  <Text style={styles.stopButtonText}>테스트 중단</Text>
+                  <Text style={styles.stopButtonText}>{t('test.stopTest')}</Text>
                 </TouchableOpacity>
               )}
             </View>              <TouchableOpacity
@@ -780,7 +781,7 @@ const TestScreen: React.FC<TestScreenProps> = ({ device, ftmsManager, onClose, i
               activeOpacity={0.8}
             >
               <Ionicons name="arrow-back" size={20} color="#ffffff" />
-              <Text style={styles.backButtonText}>돌아가기</Text>
+              <Text style={styles.backButtonText}>{t('test.back')}</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -822,7 +823,7 @@ const TestScreen: React.FC<TestScreenProps> = ({ device, ftmsManager, onClose, i
                 color="#00c663" 
               />
               <Text style={styles.modalTitle}>
-                {userInteractionRequest?.type === 'command_start' ? '제어 명령 실행' : '저항 변화 확인'}
+                {userInteractionRequest?.type === 'command_start' ? t('test.userInteraction.commandStart') : t('test.userInteraction.resistanceCheck')}
               </Text>
             </View>
             
@@ -840,7 +841,7 @@ const TestScreen: React.FC<TestScreenProps> = ({ device, ftmsManager, onClose, i
               {userInteractionRequest?.type === 'resistance_check' && (
                 <View style={styles.resistanceCheckInfo}>
                   <Text style={styles.resistanceCheckText}>
-                    명령 실행 후 실제로 저항이 변했는지 확인해주세요.
+                    {t('test.userInteraction.resistanceCheckText')}
                   </Text>
                 </View>
               )}
@@ -853,13 +854,13 @@ const TestScreen: React.FC<TestScreenProps> = ({ device, ftmsManager, onClose, i
                     style={[styles.modalButton, styles.modalButtonCancel]}
                     onPress={() => handleUserResponse(false)}
                   >
-                    <Text style={styles.modalButtonTextCancel}>취소</Text>
+                    <Text style={styles.modalButtonTextCancel}>{t('test.cancel')}</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
                     style={[styles.modalButton, styles.modalButtonConfirm]}
                     onPress={() => handleUserResponse(true)}
                   >
-                    <Text style={styles.modalButtonTextConfirm}>시작</Text>
+                    <Text style={styles.modalButtonTextConfirm}>{t('test.confirm')}</Text>
                   </TouchableOpacity>
                 </>
               ) : (
@@ -868,13 +869,13 @@ const TestScreen: React.FC<TestScreenProps> = ({ device, ftmsManager, onClose, i
                     style={[styles.modalButton, styles.modalButtonCancel]}
                     onPress={() => handleUserResponse(false)}
                   >
-                    <Text style={styles.modalButtonTextCancel}>아니요</Text>
+                    <Text style={styles.modalButtonTextCancel}>{t('test.no')}</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
                     style={[styles.modalButton, styles.modalButtonConfirm]}
                     onPress={() => handleUserResponse(true)}
                   >
-                    <Text style={styles.modalButtonTextConfirm}>예</Text>
+                    <Text style={styles.modalButtonTextConfirm}>{t('test.yes')}</Text>
                   </TouchableOpacity>
                 </>
               )}
@@ -895,7 +896,7 @@ const TestScreen: React.FC<TestScreenProps> = ({ device, ftmsManager, onClose, i
             >
               {countdownValue}
             </Animated.Text>
-            <Text style={styles.countdownLabel}>초 후 명령 실행</Text>
+            <Text style={styles.countdownLabel}>{t('test.countdown')}</Text>
           </View>
         </View>
       )}
@@ -925,13 +926,13 @@ const TestScreen: React.FC<TestScreenProps> = ({ device, ftmsManager, onClose, i
               <View style={styles.helpBubbleContent}>
                 <View style={styles.helpBubbleHeader}>
                   <MaterialCommunityIcons name="help-circle" size={20} color={getCompatibilityColor(testResults?.compatibilityLevel)} />
-                  <Text style={styles.helpBubbleTitle}>테스트 도움말</Text>
+                  <Text style={styles.helpBubbleTitle}>{t('test.helpTitle')}</Text>
                   <TouchableOpacity onPress={hideHelpPopup}>
                     <MaterialCommunityIcons name="close" size={16} color="#aaa" />
                   </TouchableOpacity>
                 </View>
                 <Text style={styles.helpBubbleText}>
-                  테스트 진행 중 수동으로 저항을 변경하면, 테스트 결과에 오류가 발생할 수 있습니다. {'\n'}테스트 결과가 예상과 다르다면, 페달을 돌리며 혹은 멈추고 다시 테스트를 진행해 보세요.
+                  {t('test.helpText')}
                 </Text>
               </View>
             </View>

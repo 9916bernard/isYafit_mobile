@@ -8,30 +8,33 @@ import {
   Alert,
   RefreshControl,
   ActivityIndicator,
+  Share,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { SavedReport, ReportStorage } from '../utils/reportStorage';
-import { Colors } from '../styles/commonStyles';
+import { Colors, useSafeAreaStyles } from '../styles/commonStyles';
 import TestReportScreen from './TestReportScreen';
+import { useTranslation } from 'react-i18next';
 
 interface PastReportsScreenProps {
   onBack: () => void;
 }
 
 const PastReportsScreen: React.FC<PastReportsScreenProps> = ({ onBack }) => {
+  const { t } = useTranslation();
   const [reports, setReports] = useState<SavedReport[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [selectedReport, setSelectedReport] = useState<SavedReport | null>(null);
+  const safeAreaStyles = useSafeAreaStyles();
 
   const loadReports = async () => {
     try {
       const savedReports = await ReportStorage.getReports();
       setReports(savedReports);
     } catch (error) {
-      console.error('Error loading reports:', error);
-      Alert.alert('오류', '보고서를 불러오는 중 오류가 발생했습니다.');
+      console.error('Failed to load reports:', error);
     } finally {
       setLoading(false);
     }
@@ -49,12 +52,12 @@ const PastReportsScreen: React.FC<PastReportsScreenProps> = ({ onBack }) => {
 
   const handleDeleteReport = async (reportId: string) => {
     Alert.alert(
-      '보고서 삭제',
-      '이 보고서를 삭제하시겠습니까?',
+      t('common.confirm'),
+      '정말로 이 보고서를 삭제하시겠습니까?',
       [
-        { text: '취소', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: '삭제',
+          text: t('common.confirm'),
           style: 'destructive',
           onPress: async () => {
             try {
@@ -66,13 +69,25 @@ const PastReportsScreen: React.FC<PastReportsScreenProps> = ({ onBack }) => {
                 Alert.alert('오류', '보고서 삭제에 실패했습니다.');
               }
             } catch (error) {
-              console.error('Error deleting report:', error);
-              Alert.alert('오류', '보고서 삭제 중 오류가 발생했습니다.');
+              console.error('Failed to delete report:', error);
             }
           },
         },
       ]
     );
+  };
+
+  const handleShareReport = async (report: SavedReport) => {
+    try {
+      const reportText = `테스트 보고서\n장치: ${report.deviceName}\n프로토콜: ${report.results.deviceInfo.protocol || 'Unknown'}\n완료 시간: ${new Date(report.timestamp).toLocaleString()}`;
+      
+      await Share.share({
+        message: reportText,
+        title: t('testReport.title'),
+      });
+    } catch (error) {
+      console.error('Failed to share report:', error);
+    }
   };
 
   const getCompatibilityColor = (level: string): string => {
@@ -155,7 +170,7 @@ const PastReportsScreen: React.FC<PastReportsScreenProps> = ({ onBack }) => {
   const renderEmptyState = () => (
     <View style={styles.emptyState}>
       <Icon name="file-document-outline" size={64} color={Colors.textSecondary} />
-      <Text style={styles.emptyStateTitle}>저장된 보고서가 없습니다</Text>
+      <Text style={styles.emptyStateTitle}>{t('pastReports.noSavedReports')}</Text>
       <Text style={styles.emptyStateSubtitle}>
         호환성 테스트를 완료하면 여기에 보고서가 저장됩니다
       </Text>
@@ -172,37 +187,40 @@ const PastReportsScreen: React.FC<PastReportsScreenProps> = ({ onBack }) => {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={onBack}>
-          <Icon name="arrow-left" size={24} color={Colors.text} />
-        </TouchableOpacity>
-        <Text style={styles.title}>과거 보고서</Text>
-      </View>
-
-      {loading ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={Colors.primary} />
-          <Text style={styles.loadingText}>보고서를 불러오는 중...</Text>
+    <SafeAreaView style={safeAreaStyles.safeContainerMinPadding}>
+      <View style={styles.container}>
+        <View style={styles.header}>
+          <TouchableOpacity style={styles.backButton} onPress={onBack}>
+            <Icon name="arrow-left" size={24} color={Colors.primary} />
+          </TouchableOpacity>
+          <Text style={styles.title}>{t('pastReports.title')}</Text>
+          <View style={{ width: 24 }} />
         </View>
-      ) : (
-        <FlatList
-          data={reports}
-          renderItem={renderReportItem}
-          keyExtractor={(item) => item.id}
-          contentContainerStyle={styles.listContainer}
-          showsVerticalScrollIndicator={false}
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={onRefresh}
-              colors={[Colors.primary]}
-              tintColor={Colors.primary}
-            />
-          }
-          ListEmptyComponent={renderEmptyState}
-        />
-      )}
+
+        {loading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color={Colors.primary} />
+            <Text style={styles.loadingText}>{t('pastReports.loadingReports')}</Text>
+          </View>
+        ) : (
+          <FlatList
+            data={reports}
+            renderItem={renderReportItem}
+            keyExtractor={(item) => item.id}
+            contentContainerStyle={styles.listContainer}
+            showsVerticalScrollIndicator={false}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={onRefresh}
+                colors={[Colors.primary]}
+                tintColor={Colors.primary}
+              />
+            }
+            ListEmptyComponent={renderEmptyState}
+          />
+        )}
+      </View>
     </SafeAreaView>
   );
 };

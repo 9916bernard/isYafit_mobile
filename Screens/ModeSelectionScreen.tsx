@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { Device } from 'react-native-ble-plx';
 import { useSafeAreaStyles, Colors } from '../styles/commonStyles';
+import { useTranslation } from 'react-i18next';
 
 interface ModeSelectionScreenProps {
   device: Device;
@@ -17,22 +18,23 @@ const ModeSelectionScreen: React.FC<ModeSelectionScreenProps> = ({
   onSelectCompatibilityTest, 
   onDisconnect 
 }) => {
+  const { t } = useTranslation();
   const safeAreaStyles = useSafeAreaStyles();
 
   return (
     <View style={safeAreaStyles.safeContainerMinPadding}>
       <View style={styles.container}>
         <View style={styles.header}>
-          <Text style={styles.title}>모드 선택</Text>
+          <Text style={styles.title}>{t('modeSelection.title')}</Text>
         </View>
 
         <View style={styles.deviceInfo}>
           <Icon name="bluetooth" size={28} color="#00c663" />
-          <Text style={styles.deviceName}>{device.name || 'Unknown Device'}</Text>
+          <Text style={styles.deviceName}>{device.name || t('common.unknown')}</Text>
           <Text style={styles.deviceId}>{device.id.substring(0, 8)}...</Text>
         </View>
 
-        <Text style={styles.subtitle}>원하시는 기능을 선택해주세요</Text>
+        <Text style={styles.subtitle}>{t('modeSelection.subtitle')}</Text>
         
         <View style={styles.buttonContainer}>
           <TouchableOpacity            style={styles.modeButton}
@@ -41,9 +43,9 @@ const ModeSelectionScreen: React.FC<ModeSelectionScreenProps> = ({
             <View style={styles.buttonIconContainer}>
               <Icon name="gauge" size={36} color="#00c663" />
             </View>
-            <Text style={styles.modeButtonTitle}>실시간 데이터 모니터링</Text>
+            <Text style={styles.modeButtonTitle}>{t('modeSelection.realtimeData.title')}</Text>
             <Text style={styles.modeButtonDescription}>
-              속도, 케이던스, 파워, 저항 등의{'\n'}실시간 데이터를 확인합니다
+              {t('modeSelection.realtimeData.description')}
             </Text>
           </TouchableOpacity>
 
@@ -53,14 +55,14 @@ const ModeSelectionScreen: React.FC<ModeSelectionScreenProps> = ({
             <View style={styles.buttonIconContainer}>
               <Icon name="test-tube" size={36} color="#00c663" />
             </View>
-            <Text style={styles.modeButtonTitle}>Yafit 호환성 테스트</Text>
+            <Text style={styles.modeButtonTitle}>{t('modeSelection.compatibilityTest.title')}</Text>
             <Text style={styles.modeButtonDescription}>
-              FTMS 프로토콜 지원 여부와{'\n'}Yafit 앱과의 호환성을 테스트합니다          
+              {t('modeSelection.compatibilityTest.description')}
             </Text>
           </TouchableOpacity>
         </View>        <TouchableOpacity style={styles.backButton} onPress={onDisconnect}>
           <Icon name="arrow-left" size={20} color="#fff" />
-          <Text style={styles.backButtonText}>돌아가기</Text>
+          <Text style={styles.backButtonText}>{t('common.back')}</Text>
         </TouchableOpacity>
       </View>
     </View>

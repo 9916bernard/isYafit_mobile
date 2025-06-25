@@ -15,19 +15,22 @@ import PastReportsScreen from './PastReportsScreen';
 import { Colors, ButtonStyles, CardStyles, TextStyles, Shadows } from '../styles/commonStyles';
 import Toast from 'react-native-root-toast';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
+import { setLanguage, initializeLanguage } from '../utils/i18n';
 
 
 // 0.8.0 FitShow 프로토콜 구현 개선 (FTMS indoor bike data 형식 사용)
 const APP_VERSION = 'v0.8.3';
 
 function App() {
+  const { t, i18n } = useTranslation();
   const insets = useSafeAreaInsets();
   const ftmsManagerRef = useRef<FTMSManager | null>(null);
   const [managerInitialized, setManagerInitialized] = useState<boolean>(false);
   const [scannedDevices, setScannedDevices] = useState<Device[]>([]);  const [selectedDevice, setSelectedDevice] = useState<Device | null>(null);
   const [connectedDevice, setConnectedDevice] = useState<Device | null>(null);
   const [isScanning, setIsScanning] = useState(false);
-  const [statusMessage, setStatusMessage] = useState('앱 테스트 중입니다.');
+  const [statusMessage, setStatusMessage] = useState(t('app.status.init'));
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [showLogs, setShowLogs] = useState(false);
   const [formattedLogs, setFormattedLogs] = useState<string[]>([]);
@@ -43,38 +46,33 @@ function App() {
   const helpPopupAnim = useRef(new Animated.Value(0)).current;
   const screenWidth = Dimensions.get('window').width;
   const screenHeight = Dimensions.get('window').height;
-  const [language, setLanguage] = useState<'ko' | 'en' | 'zh'>('ko');
   const [isMenuVisible, setIsMenuVisible] = useState(false);
   const [showTermsOfService, setShowTermsOfService] = useState(false);
 
   const languageOrder: ('ko' | 'en' | 'zh')[] = ['ko', 'en', 'zh'];
   const languageLabels = { ko: 'KO', en: 'EN', zh: '中' };
-  const translations = {
-    title: { ko: 'IsYafit', en: 'IsYafit', zh: 'IsYafit' },
-    scan: { ko: '주변 장치 스캔', en: 'Scan Devices', zh: '扫描设备' },
-    scanning: { ko: '스캔 중...', en: 'Scanning...', zh: '正在扫描...' },
-    statusInit: { ko: '앱 테스트 중입니다.', en: 'App is in test mode.', zh: '应用测试中。' },
-    statusScan: { ko: 'FTMS 장치를 스캔 중...', en: 'Scanning for FTMS devices...', zh: '正在扫描FTMS设备...' },
-    statusScanDone: { ko: '스캔 완료. 장치를 선택하세요.', en: 'Scan complete. Select a device.', zh: '扫描完成。请选择设备。' },
-    sectionDevices: { ko: '발견된 장치', en: 'Discovered Devices', zh: '发现的设备' },
-    statusReady: {
-      ko: 'BLE Manager 초기화 완료. 스캔을 시작할 수 있습니다.',
-      en: 'BLE Manager initialized. You can start scanning.',
-      zh: 'BLE管理器初始化完成。可以开始扫描。'
-    },
-    menu: { ko: '메뉴', en: 'Menu', zh: '菜单' },
-    pastReports: { ko: '과거 보고서', en: 'Past Reports', zh: '历史报告' },
-    languageSettings: { ko: '언어 설정', en: 'Language Settings', zh: '语言设置' },
-    patchNotes: { ko: '패치 내역', en: 'Patch Notes', zh: '更新日志' },
-    termsOfService: { ko: '이용 약관', en: 'Terms of Service', zh: '服务条款' },
-    close: { ko: '닫기', en: 'Close', zh: '关闭' },
-  };
 
-  const handleToggleLanguage = () => {
-    setLanguage(prev => {
-      const idx = languageOrder.indexOf(prev);
-      return languageOrder[(idx + 1) % languageOrder.length];
-    });
+  // 언어 초기화
+  useEffect(() => {
+    initializeLanguage();
+  }, []);
+
+  // 언어 변경 시 상태 메시지 업데이트
+  useEffect(() => {
+    const translatableKeys = ['init', 'ready', 'scanning', 'scanComplete'];
+    const currentKey = translatableKeys.find(key => 
+      t(`app.status.${key}`) === statusMessage
+    );
+    if (currentKey) {
+      setStatusMessage(t(`app.status.${currentKey}`));
+    }
+  }, [i18n.language, t]);
+
+  const handleToggleLanguage = async () => {
+    const currentLang = i18n.language as 'ko' | 'en' | 'zh';
+    const currentIndex = languageOrder.indexOf(currentLang);
+    const nextLang = languageOrder[(currentIndex + 1) % languageOrder.length];
+    await setLanguage(nextLang);
   };
 
   const handlePastReports = () => {
@@ -84,7 +82,7 @@ function App() {
 
   const handlePatchNotes = () => {
     // TODO: 패치 내역 기능 구현
-    setStatusMessage('패치 내역 기능은 준비 중입니다.');
+    setStatusMessage(t('app.status.patchNotesPreparing'));
   };
 
   const handleTermsOfService = () => {
@@ -153,14 +151,14 @@ function App() {
         // 블루투스 상태 확인
         const isBluetoothOn = await manager.checkBluetoothState();
         if (!isBluetoothOn) {
-          setStatusMessage('블루투스가 꺼져있습니다. 블루투스를 켜고 다시 시도하세요.');
+          setStatusMessage(t('app.status.bluetoothOff'));
         } else {
           setManagerInitialized(true);
-          setStatusMessage(translations.statusReady[language]);
+          setStatusMessage(t('app.status.ready'));
         }
       } catch (error) {
         console.error('BLEManager 초기화 오류:', error);
-        setStatusMessage('BLE Manager 초기화 실패. BLE가 지원되지 않을 수 있습니다.');
+        setStatusMessage(t('app.status.bleManagerInitFailed'));
       }
     };
 
@@ -177,13 +175,13 @@ function App() {
   }, [requestPermissions]);
     const handleScan = async () => {
     if (!ftmsManagerRef.current) {
-      setStatusMessage('BLE Manager가 아직 초기화되지 않았습니다.');
+      setStatusMessage(t('app.status.init'));
       return;
     }
 
     const hasPermissions = await requestPermissions();
     if (!hasPermissions) {
-      setStatusMessage('필수 권한이 거부되었습니다.');
+      setStatusMessage(t('app.status.permissionDenied'));
       return;
     }
 
@@ -191,12 +189,12 @@ function App() {
     try {
       const isBluetoothOn = await ftmsManagerRef.current.checkBluetoothState();
       if (!isBluetoothOn) {
-        setStatusMessage('블루투스가 꺼져있습니다. 블루투스를 켜고 다시 시도하세요.');
+        setStatusMessage(t('app.status.bluetoothOff'));
         return;
       }
     } catch (error) {
       console.error("Bluetooth state check error:", error);
-      setStatusMessage('블루투스 상태 확인 중 오류가 발생했습니다.');
+      setStatusMessage(t('app.status.bluetoothStateCheckError'));
       return;
     }
 
@@ -204,7 +202,7 @@ function App() {
     setScannedDevices([]);
     setSelectedDevice(null);
     setConnectedDevice(null);
-    setStatusMessage('주변 장치를 스캔 중...');
+    setStatusMessage(t('app.status.scanning'));
     try {
       await ftmsManagerRef.current.scanForFTMSDevices(10000, (device) => {
         setScannedDevices((prevDevices) => {
@@ -214,14 +212,14 @@ function App() {
           return prevDevices;
         });
       });
-      setStatusMessage('스캔 완료. 장치를 선택하세요.');
+      setStatusMessage(t('app.status.scanComplete'));
     } catch (error) {
       console.error("Scan error:", error);
       const bleError = error as BleError;
       if (bleError.errorCode === BleErrorCode.BluetoothPoweredOff) {
-        setStatusMessage('블루투스가 꺼져있습니다. 블루투스를 켜고 다시 시도하세요.');
+        setStatusMessage(t('app.status.bluetoothOff'));
       } else {
-        setStatusMessage(`스캔 중 오류 발생: ${bleError.message || '알 수 없는 오류'}`);
+        setStatusMessage(t('app.status.scanError', { error: bleError.message || t('app.status.unknownError') }));
       }
     } finally {
       setIsScanning(false);
@@ -234,13 +232,13 @@ function App() {
     }
     
     setSelectedDevice(device);
-    setStatusMessage(`${device.name || device.id} 선택됨. 모드를 선택하세요.`);
+    setStatusMessage(t('app.status.deviceSelected', { deviceName: device.name || device.id }));
   };
   
   // Show mode selection screen
   const handleShowModeSelection = () => {
     if (!selectedDevice) {
-      setStatusMessage('먼저 장치를 선택하세요.');
+      setStatusMessage(t('app.status.init'));
       return;
     }
     setShowModeSelection(true);
@@ -283,32 +281,33 @@ function App() {
     setIsLoadingCompatibilityTest(true); // 로딩 화면 표시 (이름은 호환성 테스트용이지만 재사용)
     
     if (!ftmsManagerRef.current || !selectedDevice) {
-      setStatusMessage('FTMS Manager 또는 선택된 장치가 없습니다.');
+      setStatusMessage(t('app.status.init'));
       setIsLoadingCompatibilityTest(false);
       setShowModeSelection(true);
       return;
     }
 
-    setStatusMessage(`'${selectedDevice.name || selectedDevice.id}'에 연결 중...`);
+    setStatusMessage(t('app.status.connectingToDevice', { deviceName: selectedDevice.name || selectedDevice.id }));
     try {
       await ftmsManagerRef.current.disconnectDevice(); // 이전 연결 해제
       const device = await ftmsManagerRef.current.connectToDevice(selectedDevice.id);
       setConnectedDevice(device);
-      setStatusMessage(`'${device.name}'에 연결됨. 실시간 데이터를 시작합니다.`);      setIsLoadingCompatibilityTest(false);
+      setStatusMessage(t('app.status.connectedRealtimeData', { deviceName: device.name }));
+      setIsLoadingCompatibilityTest(false);
       setShowRealtimeData(true);
     } catch (error) {
       console.error("Connection error:", error);
       const bleError = error as BleError;
-      setStatusMessage(`연결 오류: ${bleError.message}`);
+      setStatusMessage(t('app.status.connectionError', { error: bleError.message }));
       setConnectedDevice(null);
       setIsLoadingCompatibilityTest(false);
       setShowModeSelection(true);
       
       // 연결 실패 알림 표시
       Alert.alert(
-        '연결 실패',
-        '기기와 연결에 실패했습니다. 블루투스 상태를 확인해주세요.',
-        [{ text: '확인', style: 'default' }]
+        t('app.alerts.connectionFailed'),
+        t('app.alerts.connectionFailedMessage'),
+        [{ text: t('app.alerts.confirm'), style: 'default' }]
       );
     }
   };
@@ -317,50 +316,52 @@ function App() {
     setIsLoadingCompatibilityTest(true);
     
     if (!ftmsManagerRef.current || !selectedDevice) {
-      setStatusMessage('FTMS Manager 또는 선택된 장치가 없습니다.');
+      setStatusMessage(t('app.status.init'));
       setIsLoadingCompatibilityTest(false);
       setShowModeSelection(true);
       return;
     }
 
-    setStatusMessage(`'${selectedDevice.name || selectedDevice.id}'에 연결 중...`);
+    setStatusMessage(t('app.status.connectingToDevice', { deviceName: selectedDevice.name || selectedDevice.id }));
     try {
       await ftmsManagerRef.current.disconnectDevice(); // 이전 연결 해제
       const device = await ftmsManagerRef.current.connectToDevice(selectedDevice.id);
       setConnectedDevice(device);
-      setStatusMessage(`'${device.name}'에 연결됨. 호환성 테스트를 시작합니다.`);
-      setIsLoadingCompatibilityTest(false);      setShowTestScreen(true);    } catch (error) {
+      setStatusMessage(t('app.status.connectedCompatibilityTest', { deviceName: device.name }));
+      setIsLoadingCompatibilityTest(false);
+      setShowTestScreen(true);
+    } catch (error) {
       console.error("Connection error:", error);
       const bleError = error as BleError;
-      setStatusMessage(`연결 오류: ${bleError.message}`);
+      setStatusMessage(t('app.status.connectionError', { error: bleError.message }));
       setConnectedDevice(null);
       setIsLoadingCompatibilityTest(false);
       setShowModeSelection(true);
       
       // 연결 실패 알림 표시
       Alert.alert(
-        '연결 실패',
-        '기기와 연결에 실패했습니다. 블루투스 상태를 확인해주세요.',
-        [{ text: '확인', style: 'default' }]
+        t('app.alerts.connectionFailed'),
+        t('app.alerts.connectionFailedMessage'),
+        [{ text: t('app.alerts.confirm'), style: 'default' }]
       );
     }
   };  const handleBackFromModeSelection = async () => {
     // Disconnect the device when going back from mode selection
     if (!ftmsManagerRef.current) {
-      setStatusMessage('FTMS Manager가 초기화되지 않았습니다.');
+      setStatusMessage(t('app.status.init'));
       return;
     }
 
-    setStatusMessage('연결 해제 중...');
+    setStatusMessage(t('app.status.disconnecting'));
     try {
       await ftmsManagerRef.current.disconnectDevice();
       setConnectedDevice(null);
       setSelectedDevice(null);
       setShowModeSelection(false);
-      setStatusMessage('연결 해제됨.');
+      setStatusMessage(t('app.status.disconnectedSuccess'));
       
       // 토스트 메시지 표시
-      Toast.show('기기와의 연결이 해제되었습니다.', {
+      Toast.show(t('app.status.disconnected'), {
         duration: Toast.durations.SHORT,
         position: Toast.positions.BOTTOM,
         shadow: true,
@@ -372,9 +373,7 @@ function App() {
       });
     } catch (error) {
       console.error("Disconnect error:", error);
-      setStatusMessage('연결 해제 중 오류 발생.');
-      setShowModeSelection(false);
-      setSelectedDevice(null);
+      setStatusMessage(t('app.status.disconnectError'));
     }
   };
   const handleBackFromRealtimeData = () => {
@@ -387,14 +386,14 @@ function App() {
     
     // 연결 실패 알림 표시
     Alert.alert(
-      '연결 실패',
-      '기기와 연결에 실패했습니다. 블루투스 상태를 확인해주세요.',
-      [{ text: '확인', style: 'default' }]
+      t('app.alerts.connectionFailed'),
+      t('app.alerts.connectionFailedMessage'),
+      [{ text: t('app.alerts.confirm'), style: 'default' }]
     );
   };
     const handleDisconnect = async () => {
     if (!ftmsManagerRef.current) {
-      setStatusMessage('FTMS Manager가 초기화되지 않았습니다.');
+      setStatusMessage(t('app.status.init'));
       return;
     }
 
@@ -405,10 +404,10 @@ function App() {
       setSelectedDevice(null);
       setShowTestScreen(false);
       setShowRealtimeData(false);
-      setStatusMessage('연결 해제됨.');
+      setStatusMessage(t('app.status.disconnectedSuccess'));
       
       // 토스트 메시지 표시
-      Toast.show('기기와의 연결이 해제되었습니다.', {
+      Toast.show(t('app.status.disconnected'), {
         duration: Toast.durations.SHORT,
         position: Toast.positions.BOTTOM,
         shadow: true,
@@ -420,26 +419,26 @@ function App() {
       });
     } catch (error) {
       console.error("Disconnect error:", error);
-      setStatusMessage('연결 해제 중 오류 발생.');
+      setStatusMessage(t('app.status.disconnectError'));
     }
   };
 
   const checkAndEnableBluetooth = async () => {
     if (!ftmsManagerRef.current) {
-      setStatusMessage('FTMS Manager가 아직 초기화되지 않았습니다.');
+      setStatusMessage(t('app.status.init'));
       return;
     }
 
     try {
       const isBluetoothOn = await ftmsManagerRef.current.checkBluetoothState();
       if (isBluetoothOn) {
-        setStatusMessage('블루투스가 켜져 있습니다. 스캔을 시작할 수 있습니다.');
+        setStatusMessage(t('app.status.bluetoothOn'));
       } else {
-        setStatusMessage('블루투스가 꺼져 있습니다. 블루투스 설정으로 이동합니다.');
+        setStatusMessage(t('app.status.bluetoothOffSettings'));
       }
     } catch (error) {
       console.error("Bluetooth state check error:", error);
-      setStatusMessage('블루투스 상태 확인 중 오류가 발생했습니다.');
+      setStatusMessage(t('app.status.bluetoothStateCheckError'));
     }
   };  // FTMS 호환성 테스트 화면 닫기
   const handleCloseTestScreen = () => {
@@ -447,7 +446,7 @@ function App() {
     setConnectedDevice(null);
     setSelectedDevice(null);
     setIsLoadingCompatibilityTest(false);
-    setStatusMessage('테스트가 완료되었습니다.');
+    setStatusMessage(t('app.status.ready'));
   };
     // Close log screen
   const handleCloseLogScreen = async () => {
@@ -458,10 +457,10 @@ function App() {
         setConnectedDevice(null);
         setSelectedDevice(null);
         setShowRealtimeData(false);
-        setStatusMessage('연결 해제됨.');
+        setStatusMessage(t('app.status.disconnectedSuccess'));
       } catch (error) {
         console.error("Disconnect error:", error);
-        setStatusMessage('연결 해제 중 오류 발생.');
+        setStatusMessage(t('app.status.disconnectError'));
       }
     }
     setShowLogScreen(false);
@@ -473,7 +472,7 @@ function App() {
     >
       <View style={styles.headerContainer}>
         <View style={styles.titleVersionColumn}>
-          <Text style={styles.title}>{translations.title[language]}</Text>
+          <Text style={styles.title}>{t('app.title')}</Text>
           <Text style={styles.versionPlain}>{APP_VERSION}</Text>
         </View>
         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
@@ -501,14 +500,14 @@ function App() {
           <View style={styles.scanButtonContent}>
             {isScanning && <Icon name="radar" size={20} color={Colors.text} style={styles.scanIcon} />}
             <Text style={styles.scanButtonText}>
-              {isScanning ? translations.scanning[language] : translations.scan[language]}
+              {isScanning ? t('app.buttons.scanning') : t('app.buttons.scan')}
             </Text>
           </View>
         </LinearGradient>
       </TouchableOpacity>      <View style={styles.sectionHeader}>
         <View style={styles.sectionTitleContainer}>
           <Icon name="devices" size={20} color={Colors.primary} />
-          <Text style={styles.sectionTitle}>{translations.sectionDevices[language]}</Text>
+          <Text style={styles.sectionTitle}>{t('app.sections.devices')}</Text>
         </View>        <View style={styles.helpIconWrapper}>
           <TouchableOpacity 
             ref={helpIconRef}
@@ -535,7 +534,7 @@ function App() {
           >
             <Icon name="connection" size={20} color={Colors.text} style={{ marginRight: 8 }} />
             <Text style={styles.scanButtonText}>
-              {`'${selectedDevice.name || 'Unknown'}' 연결`}
+              {t('app.buttons.connectDevice', { deviceName: selectedDevice.name || t('common.unknown') })}
             </Text>
           </LinearGradient>
         </TouchableOpacity>
@@ -578,27 +577,6 @@ function App() {
       </View>
     </TouchableOpacity>
   );
-
-  // Update status message when language changes, if it's a translatable main message
-  useEffect(() => {
-    const translatableKeys = ['statusInit', 'statusReady', 'statusScan', 'statusScanDone'];
-    const currentMessages = translatableKeys.map(key => translations[key][language]);
-    // If the current statusMessage is one of the previous language's translatable messages, update it
-    const allLangs = ['ko', 'en', 'zh'];
-    let foundKey = null;
-    for (const key of translatableKeys) {
-      for (const lang of allLangs) {
-        if (statusMessage === translations[key][lang]) {
-          foundKey = key;
-          break;
-        }
-      }
-      if (foundKey) break;
-    }
-    if (foundKey) {
-      setStatusMessage(translations[foundKey][language]);
-    }
-  }, [language]);
 
   return (
     <TouchableWithoutFeedback onPress={() => isHelpPopupVisible && hideHelpPopup()}>
@@ -672,7 +650,7 @@ function App() {
               >
                 <View style={styles.headerContainer}>
                   <View style={styles.titleVersionColumn}>
-                    <Text style={styles.title}>{translations.title[language]}</Text>
+                    <Text style={styles.title}>{t('app.title')}</Text>
                     <Text style={styles.versionPlain}>{APP_VERSION}</Text>
                   </View>
                   <View style={{ flexDirection: 'row', alignItems: 'center' }}>
@@ -702,13 +680,13 @@ function App() {
                         <View style={styles.scanButtonContent}>
                           {isScanning && <Icon name="radar" size={20} color={Colors.text} style={styles.scanIcon} />}
                           <Text style={styles.scanButtonText}>
-                            {isScanning ? translations.scanning[language] : translations.scan[language]}
+                            {isScanning ? t('app.buttons.scanning') : t('app.buttons.scan')}
                           </Text>
                         </View>
                       </LinearGradient>
                     </TouchableOpacity>
                     
-                    {scannedDevices.length === 0 && !isScanning && statusMessage.includes("스캔 완료") && (
+                    {scannedDevices.length === 0 && !isScanning && statusMessage.includes(t('app.status.scanComplete')) && (
                       <View style={{
                         backgroundColor: Colors.secondary,
                         padding: 20,
@@ -723,7 +701,7 @@ function App() {
                           textAlign: 'center',
                           fontSize: 16,
                         }}>
-                          발견된 장치가 없습니다.
+                          {t('app.sections.noDevicesFound')}
                         </Text>
                         <Text style={{
                           color: Colors.textSecondary, 
@@ -731,7 +709,7 @@ function App() {
                           textAlign: 'center',
                           fontSize: 14,
                         }}>
-                          FTMS 장치가 켜져 있는지 확인해보세요.
+                          {t('app.sections.noDevicesHelp')}
                         </Text>
                       </View>
                     )}
@@ -748,7 +726,7 @@ function App() {
                           >
                             <Icon name="connection" size={20} color={Colors.text} style={{ marginRight: 8 }} />
                             <Text style={styles.scanButtonText}>
-                              {`'${selectedDevice.name || 'Unknown'}' 연결`}
+                              {t('app.buttons.connectDevice', { deviceName: selectedDevice.name || t('common.unknown') })}
                             </Text>
                           </LinearGradient>
                         </TouchableOpacity>
@@ -760,7 +738,7 @@ function App() {
                     <View style={[CardStyles.elevated, { alignItems: 'center' }]}>
                       <Icon name="check-circle" size={48} color={Colors.success} />
                       <Text style={[styles.connectedDeviceText, { marginTop: 12 }]}>
-                        연결된 장치: {connectedDevice.name || connectedDevice.id}
+                        {t('app.sections.connectedDevice')} {connectedDevice.name || connectedDevice.id}
                       </Text>
                     </View>
                     <View style={styles.buttonGroup}>
@@ -768,7 +746,7 @@ function App() {
                         style={[ButtonStyles.danger, { width: '48%' }]}
                         onPress={handleDisconnect}
                       >
-                        <Text style={styles.buttonDangerText}>연결 해제</Text>
+                        <Text style={styles.buttonDangerText}>{t('app.buttons.disconnect')}</Text>
                       </TouchableOpacity>
                     </View>
                   </>
@@ -801,22 +779,22 @@ function App() {
                 <View style={styles.helpBubbleContent}>
                   <View style={styles.helpBubbleHeader}>
                     <Icon name="help-circle" size={20} color={Colors.primary} />
-                    <Text style={styles.helpBubbleTitle}>기기 호환성 안내</Text>
+                    <Text style={styles.helpBubbleTitle}>{t('help.title')}</Text>
                     <TouchableOpacity onPress={hideHelpPopup}>
                       <Icon name="close" size={16} color={Colors.textSecondary} />
                     </TouchableOpacity>
                   </View>
                   <Text style={styles.helpBubbleText}>
-                    기기가 스캔되지 않는다면 기기의 UUID가 아래의 프로토콜 혹은 센서에 포함되는지 확인해주세요.
+                    {t('help.description')}
                   </Text>
                   <Text style={styles.helpBubbleText}>
-                    만약 포함되지 않는다면 이는 Yafit 에 호환되지 않는 기기입니다. 관계자에게 문의해주세요.
+                    {t('help.note')}
                   </Text>
                   <View style={styles.helpBubbleProtocols}>
-                    <Text style={styles.helpBubbleSubtitle}>프로토콜:</Text>
-                    <Text style={styles.helpBubbleProtocolText}>FTMS, CSC </Text>
-                    <Text style={styles.helpBubbleSubtitle}>브랜드 커스텀 프로토콜:</Text>
-                    <Text style={styles.helpBubbleProtocolText}>Mobi, Reborn, FitShow, Tacx, YAFIT</Text>
+                    <Text style={styles.helpBubbleSubtitle}>{t('help.protocols')}</Text>
+                    <Text style={styles.helpBubbleProtocolText}>{t('help.protocolsList')}</Text>
+                    <Text style={styles.helpBubbleSubtitle}>{t('help.customProtocols')}</Text>
+                    <Text style={styles.helpBubbleProtocolText}>{t('help.customProtocolsList')}</Text>
                   </View>
                 </View>
               </View>
@@ -836,7 +814,7 @@ function App() {
               <TouchableWithoutFeedback>
                 <View style={styles.menuModal}>
                   <View style={styles.menuHeader}>
-                    <Text style={styles.menuTitle}>{translations.menu[language]}</Text>
+                    <Text style={styles.menuTitle}>{t('app.menu')}</Text>
                     <TouchableOpacity onPress={() => setIsMenuVisible(false)}>
                       <Icon name="close" size={24} color={Colors.textSecondary} />
                     </TouchableOpacity>
@@ -844,24 +822,24 @@ function App() {
                   
                   <TouchableOpacity style={styles.menuItem} onPress={handleToggleLanguage}>
                     <Icon name="translate" size={20} color={Colors.primary} />
-                    <Text style={styles.menuItemText}>{translations.languageSettings[language]}</Text>
-                    <Text style={styles.menuItemSubtext}>{languageLabels[language]}</Text>
+                    <Text style={styles.menuItemText}>{t('app.languageSettings')}</Text>
+                    <Text style={styles.menuItemSubtext}>{languageLabels[i18n.language as 'ko' | 'en' | 'zh']}</Text>
                   </TouchableOpacity>
                   
                   <TouchableOpacity style={styles.menuItem} onPress={handlePastReports}>
                     <Icon name="file-document-outline" size={20} color={Colors.primary} />
-                    <Text style={styles.menuItemText}>{translations.pastReports[language]}</Text>
+                    <Text style={styles.menuItemText}>{t('app.pastReports')}</Text>
                   </TouchableOpacity>
                   
                   <TouchableOpacity style={styles.menuItem} onPress={handlePatchNotes}>
                     <Icon name="update" size={20} color={Colors.primary} />
-                    <Text style={styles.menuItemText}>{translations.patchNotes[language]}</Text>
-                    <Text style={styles.menuItemSubtext}>준비 중</Text>
+                    <Text style={styles.menuItemText}>{t('app.patchNotes')}</Text>
+                    <Text style={styles.menuItemSubtext}>{t('menu.preparing')}</Text>
                   </TouchableOpacity>
                   
                   <TouchableOpacity style={styles.menuItem} onPress={handleTermsOfService}>
                     <Icon name="file-document" size={20} color={Colors.primary} />
-                    <Text style={styles.menuItemText}>{translations.termsOfService[language]}</Text>
+                    <Text style={styles.menuItemText}>{t('app.termsOfService')}</Text>
                   </TouchableOpacity>
                 </View>
               </TouchableWithoutFeedback>
@@ -879,7 +857,7 @@ function App() {
           <View style={styles.modalOverlay}>
             <View style={styles.termsModal}>
               <View style={styles.termsHeader}>
-                <Text style={styles.termsTitle}>{translations.termsOfService[language]}</Text>
+                <Text style={styles.termsTitle}>{t('app.termsOfService')}</Text>
                 <TouchableOpacity onPress={() => setShowTermsOfService(false)}>
                   <Icon name="close" size={24} color={Colors.textSecondary} />
                 </TouchableOpacity>
@@ -908,7 +886,7 @@ function App() {
                 style={styles.termsCloseButton}
                 onPress={() => setShowTermsOfService(false)}
               >
-                <Text style={styles.termsCloseButtonText}>{translations.close[language]}</Text>
+                <Text style={styles.termsCloseButtonText}>{t('app.close')}</Text>
               </TouchableOpacity>
             </View>
           </View>

@@ -7,12 +7,14 @@ import {
   ScrollView,
   TouchableOpacity,
   Modal,
+  Alert,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { FTMSManager } from '../FtmsManager'; 
 import { Device } from 'react-native-ble-plx';
 import { useSafeAreaStyles, Colors } from '../styles/commonStyles';
 import Toast from 'react-native-root-toast';
+import { useTranslation } from 'react-i18next';
 
 interface EnhancedTestScreenProps {
   device: Device;
@@ -27,6 +29,7 @@ const EnhancedTestScreen: React.FC<EnhancedTestScreenProps> = ({
   onClose,
   isDeviceConnected = true
 }) => {
+  const { t } = useTranslation();
   const [logs, setLogs] = useState<string[]>([]);
   const [showLogs, setShowLogs] = useState(false);
   const [deviceConnected, setDeviceConnected] = useState(isDeviceConnected);
@@ -44,7 +47,7 @@ const EnhancedTestScreen: React.FC<EnhancedTestScreenProps> = ({
     }
     
     // Set up log callback to get real-time updates
-    ftmsManager.setLogCallback((newLogs) => {
+    const handleNewLogs = (newLogs: any[]) => {
       const formattedLogs = newLogs.map(log => 
         `${new Date(log.timestamp).toLocaleTimeString()} - ${log.message}`
       );
@@ -56,31 +59,28 @@ const EnhancedTestScreen: React.FC<EnhancedTestScreenProps> = ({
           scrollViewRef.current?.scrollToEnd({ animated: true });
         }, 100);
       }
-    });
-  }, [ftmsManager, showLogs]);  const handleClose = async () => {
-    // 기기와 연결 해제 (연결된 상태에서만)
-    if (deviceConnected) {
-      try {
-        await ftmsManager.disconnectDevice();
-        setDeviceConnected(false);
-        
-        // 토스트 메시지 표시
-        Toast.show('기기와의 연결이 해제되었습니다.', {
-          duration: Toast.durations.SHORT,
-          position: Toast.positions.BOTTOM,
-          shadow: true,
-          animation: true,
-          hideOnPress: true,
-          delay: 0,
-          backgroundColor: '#333',
-          textColor: '#fff',
-        });
-      } catch (error) {
-        console.error('Disconnect error during close:', error);
-      }
-    }
-    
-    onClose();
+    };
+
+    ftmsManager.setLogCallback(handleNewLogs);
+
+    return () => {
+      ftmsManager.setLogCallback(null);
+    };
+  }, [ftmsManager, showLogs]);
+
+  const handleDisconnect = async () => {
+    Alert.alert(
+      t('common.confirm'),
+      '연결을 해제하시겠습니까?',
+      [
+        { text: t('common.cancel'), style: 'cancel' },
+        {
+          text: t('common.confirm'),
+          style: 'destructive',
+          onPress: onClose,
+        },
+      ]
+    );
   };
 
   const toggleLogs = () => {
@@ -90,10 +90,13 @@ const EnhancedTestScreen: React.FC<EnhancedTestScreenProps> = ({
     <View style={safeAreaStyles.safeContainerMinPadding}>
       <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.title}>실시간 명령/데이터 로그</Text>
-        <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-          <Text style={styles.closeButtonText}>X</Text>
+        <TouchableOpacity onPress={handleDisconnect} style={styles.backButton}>
+          <Icon name="arrow-left" size={24} color={Colors.primary} />
         </TouchableOpacity>
+        <Text style={styles.title}>{t('logs.title')}</Text>
+        <View style={styles.connectionIndicator}>
+          <View style={[styles.connectionDot, { backgroundColor: deviceConnected ? '#00c663' : '#ef4444' }]} />
+        </View>
       </View>
 
       <TouchableOpacity 
@@ -107,17 +110,17 @@ const EnhancedTestScreen: React.FC<EnhancedTestScreenProps> = ({
 
       {showLogs && (
         <View style={styles.logsContainer}>
-          <Text style={styles.deviceInfo}>
-            장치: {device.name || 'Unknown'} ({device.id.substring(0, 8)}...)
+          <Text style={styles.deviceInfoText}>
+            {t('logs.deviceInfo')} {device.name || t('common.unknown')} ({device.id.substring(0, 8)}...)
           </Text>
 
-          <ScrollView
-            ref={scrollViewRef}
-            style={styles.scrollView}
-            contentContainerStyle={styles.scrollViewContent}
+          <ScrollView 
+            style={styles.logsScrollView} 
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={styles.logsContent}
           >
             {logs.length === 0 ? (
-              <Text style={styles.noLogs}>로그가 없습니다.</Text>
+              <Text style={styles.noLogs}>{t('logs.noLogs')}</Text>
             ) : (
               logs.map((log, index) => (
                 <Text key={index} style={styles.logEntry}>
@@ -150,12 +153,13 @@ const EnhancedTestScreen: React.FC<EnhancedTestScreenProps> = ({
                     return log;
                   })()}
                 </Text>
-              ))            )}
+              ))
+            )}
           </ScrollView>
         </View>
       )}      <TouchableOpacity
         style={deviceConnected ? styles.disconnectButton : styles.backButton}
-        onPress={handleClose}
+        onPress={handleDisconnect}
       >
         <Icon 
           name={deviceConnected ? "bluetooth-off" : "arrow-left"} 
@@ -188,23 +192,50 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#00c663',
   },
-  closeButton: {
-    backgroundColor: '#2d3748',
-    width: 30,
-    height: 30,
-    borderRadius: 15,
+  backButton: {
+    backgroundColor: '#00c663',
+    padding: 14,
+    borderRadius: 8,
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  backButtonText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 16,
+  },
+  disconnectButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 12, 
+    borderRadius: 12,
+    backgroundColor: 'rgba(239, 68, 68, 0.15)',
+    borderWidth: 1,
+    borderColor: '#ef4444',
+    marginTop: 8,
+  },
+  disconnectButtonText: {
+    color: '#ef4444',
+    fontSize: 14,
+    fontWeight: '600',
+    marginLeft: 8,
+  },
+  connectionIndicator: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: '#8b9cb2',
     justifyContent: 'center',
     alignItems: 'center',
   },
-  closeButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  deviceInfo: {
-    color: '#fff',
-    fontSize: 14,
-    marginBottom: 8,
+  connectionDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#00c663',
   },
   toggleButton: {
     backgroundColor: '#2d3748',
@@ -221,11 +252,11 @@ const styles = StyleSheet.create({
     flex: 1,
     marginBottom: 16,
   },
-  scrollView: {
+  logsScrollView: {
     backgroundColor: '#242c3b',
     borderRadius: 8,
   },
-  scrollViewContent: {
+  logsContent: {
     padding: 10,
   },
   noLogs: {
@@ -261,36 +292,12 @@ const styles = StyleSheet.create({
   rawDataLog: {
     color: '#9E9E9E',
     fontSize: 11,
-  },  backButton: {
-    backgroundColor: '#00c663',
-    padding: 14,
-    borderRadius: 8,
-    alignItems: 'center',
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: 8,
   },
-  backButtonText: {
+  deviceInfoText: {
     color: '#fff',
-    fontWeight: 'bold',
-    fontSize: 16,
-  },
-  disconnectButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 12, 
-    borderRadius: 12,
-    backgroundColor: 'rgba(239, 68, 68, 0.15)',
-    borderWidth: 1,
-    borderColor: '#ef4444',
-    marginTop: 8,
-  },
-  disconnectButtonText: {
-    color: '#ef4444',
     fontSize: 14,
-    fontWeight: '600',
-    marginLeft: 8,
+    fontWeight: 'bold',
+    marginBottom: 10,
   },
 });
 

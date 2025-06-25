@@ -1,5 +1,6 @@
 // FtmsTestReport.ts - FTMS Test Report utility for IsYafit app
 import { Buffer } from 'buffer';
+import { t } from './utils/i18n_result';
 
 // If ProtocolType or other types are used, import from './FtmsManager'.
 
@@ -65,7 +66,7 @@ export interface TestResults {
         }
     };
     resistanceChanges?: DataChangeEvent[];
-    compatibilityLevel?: "완전 호환" | "부분 호환" | "수정 필요" | "불가능";
+    compatibilityLevel?: string; // Will use translation keys
     reasons?: string[];
     issuesFound?: string[];
     testCompleted: boolean;
@@ -177,7 +178,7 @@ export function determineCompatibility(results: TestResults): TestResults {
     
     // 1. Check if test was interrupted (불가능(중지))
     if (results.issuesFound?.some(issue => issue.includes('연결이 끊어졌습니다') || issue.includes('테스트 중단'))) {
-        impossibleReasons.push('중지');
+        impossibleReasons.push(t('testResult.reasons.stopped'));
     }      // 2. Check cadence detection (불가능(RPM)) - REBORN은 cadence 검출 여부에 따라 판별
     const priorityProtocols = ["MOBI", "tacx", "YAFIT_S3", "YAFIT_S4"];
     const hasPriorityProtocol = results.supportedProtocols.some(protocol => priorityProtocols.includes(protocol));
@@ -186,37 +187,36 @@ export function determineCompatibility(results: TestResults): TestResults {
     
     // REBORN은 cadence 검출 여부에 따라 판별, 다른 우선순위 프로토콜은 예외 처리
     if (!results.dataFields?.cadence?.detected && !hasPriorityProtocol && !hasReborn && !hasFitShow) {
-        impossibleReasons.push('RPM');
+        impossibleReasons.push(t('testResult.reasons.rpm'));
     } else if (!results.dataFields?.cadence?.detected && hasReborn) {
-        impossibleReasons.push('RPM');
+        impossibleReasons.push(t('testResult.reasons.rpm'));
     } else if (!results.dataFields?.cadence?.detected && hasFitShow) {
-        impossibleReasons.push('RPM');
+        impossibleReasons.push(t('testResult.reasons.rpm'));
     }
     
     // REBORN 프로토콜의 경우 제어 명령이 불가능하므로 부분 호환으로 분류
     if (hasReborn) {
-        partialReasons.push('제어명령');
+        partialReasons.push(t('testResult.reasons.controlCommand'));
     }
     
     // FITSHOW 프로토콜의 경우 제어 명령이 불가능하므로 부분 호환으로 분류
     if (hasFitShow) {
-        partialReasons.push('제어명령');
-    }
-      // 3. Check protocol support (불가능(프로토콜)) - 우선순위 프로토콜도 지원 프로토콜로 인정
+        partialReasons.push(t('testResult.reasons.controlCommand'));
+    }      // 3. Check protocol support (불가능(프로토콜)) - 우선순위 프로토콜도 지원 프로토콜로 인정
     if (!hasFTMS && !hasCSC && !hasPriorityProtocol && !hasReborn) {
-        impossibleReasons.push('프로토콜');
+        impossibleReasons.push(t('testResult.reasons.protocol'));
     } else if ((!hasFTMS && hasCSC) || hasPriorityProtocol || hasReborn) {
         // CSC only case or priority protocol case - add specific reason
         if ((hasPriorityProtocol || hasReborn) && !hasFTMS) {
-            partialReasons.push('기본기능'); // 우선순위 프로토콜은 기본기능으로 분류
+            partialReasons.push(t('testResult.reasons.basicFunction')); // 우선순위 프로토콜은 기본기능으로 분류
         } else if (!hasFTMS && hasCSC) {
-            partialReasons.push('기본기능');
+            partialReasons.push(t('testResult.reasons.basicFunction'));
         }
     }
     
     // 4. Check resistance detection (부분 호환(기어))
     if (!results.dataFields?.resistance?.detected) {
-        partialReasons.push('기어');
+        partialReasons.push(t('testResult.reasons.gear'));
     }
     
     // Only check control tests if we have FTMS protocol
@@ -226,24 +226,24 @@ export function determineCompatibility(results: TestResults): TestResults {
         // 5. Check SET_RESISTANCE_LEVEL (부분 호환(기어))
         const resistanceTest = controlTests["SET_RESISTANCE_LEVEL"];
         if (resistanceTest && (resistanceTest.status === "Failed" || resistanceTest.status === "Pending")) {
-            partialReasons.push('기어');
+            partialReasons.push(t('testResult.reasons.gear'));
         }
         
         // 6. Check SET_TARGET_POWER (부분 호환(ERG))
         const powerTest = controlTests["SET_TARGET_POWER"];
         if (powerTest && (powerTest.status === "Failed" || powerTest.status === "Pending")) {
-            partialReasons.push('ERG');
+            partialReasons.push(t('testResult.reasons.erg'));
         }
         
         // 7. Check SET_SIM_PARAMS (부분 호환(SIM))
         const simTest = controlTests["SET_SIM_PARAMS"];
         if (simTest && (simTest.status === "Failed" || simTest.status === "Pending")) {
-            partialReasons.push('SIM');
+            partialReasons.push(t('testResult.reasons.sim'));
         }
     }    // 8. Check for automatic resistance changes (수정 필요)
     if (results.resistanceChanges) {
         const automaticChanges = results.resistanceChanges.filter(change => 
-            !change.command || change.command === '자동 변경'
+            !change.command || change.command === t('testResult.autoChange')
         );
         console.log('자동변화 디버깅:', {
             totalChanges: results.resistanceChanges.length,
@@ -251,16 +251,16 @@ export function determineCompatibility(results: TestResults): TestResults {
             allChanges: results.resistanceChanges.map(c => ({ 
                 paramType: c.paramType, 
                 command: c.command, 
-                isAutomatic: !c.command || c.command === '자동 변경'
+                isAutomatic: !c.command || c.command === t('testResult.autoChange')
             }))
         });
         if (automaticChanges.length >= 5) {
-            warningReasons.push('자동변화');
+            warningReasons.push(t('testResult.reasons.autoChange'));
             console.log('자동변화 5회 이상 감지됨 - 수정 필요로 분류');
         }
     }
       // Determine final compatibility level based on priority: 불가능 > 수정필요/부분호환 > 완전호환
-    let compatLevel: "완전 호환" | "부분 호환" | "수정 필요" | "불가능";
+    let compatLevel: string;
     let displayReasons: string[] = [];
     
     console.log('호환성 판정 디버깅:', {
@@ -271,22 +271,22 @@ export function determineCompatibility(results: TestResults): TestResults {
     });
 
     if (impossibleReasons.length > 0) {
-        compatLevel = "불가능";
+        compatLevel = t('testResult.compatibilityLevels.impossible');
         displayReasons = impossibleReasons;
     } else if (warningReasons.length > 0) {
         // 자동변화가 있으면 수정 필요 (부분 호환 이유와 함께 표시)
-        compatLevel = "수정 필요";
+        compatLevel = t('testResult.compatibilityLevels.needsModification');
         displayReasons = [...partialReasons, ...warningReasons];
         console.log('수정 필요로 분류됨:', displayReasons);    } else if (partialReasons.length > 0) {
-        compatLevel = "부분 호환";
+        compatLevel = t('testResult.compatibilityLevels.partiallyCompatible');
         displayReasons = partialReasons;
     } else if (hasFTMS || hasPriorityProtocol) {
         // FTMS 또는 우선순위 프로토콜이 있으면 완전 호환 가능
-        compatLevel = "완전 호환";
+        compatLevel = t('testResult.compatibilityLevels.fullyCompatible');
         displayReasons = [];
     } else {
-        compatLevel = "불가능";
-        displayReasons = ['프로토콜'];
+        compatLevel = t('testResult.compatibilityLevels.impossible');
+        displayReasons = [t('testResult.reasons.protocol')];
     }
     
     console.log('최종 호환성 레벨:', compatLevel, '이유:', displayReasons);
@@ -308,48 +308,48 @@ function generateDetailedReasons(reasonCodes: string[], compatLevel: string, res
     // Generate comprehensive result message based on compatibility level and reasons
     let resultMessage = "";
     
-    if (compatLevel === "불가능") {
-        if (uniqueCodes.includes('중지')) {
-            resultMessage = "테스트가 도중에 중단되었습니다. 다시 시도해주세요.";
-        } else if (uniqueCodes.includes('RPM')) {
-            resultMessage = "필수 요소인 cadence가 검출되지 않았습니다. Yafit과 호환되지 않습니다.";
-        } else if (uniqueCodes.includes('프로토콜')) {
-            resultMessage = "Yafit에서 지원하지 않는 프로토콜입니다. Yafit과 호환되지 않습니다.";
-        }    } else if (compatLevel === "부분 호환") {
-        resultMessage = "Yafit 연결과 플레이가 가능합니다.";
-    } else if (compatLevel === "수정 필요") {
-        let baseMessage = "Yafit에 연결과 플레이가 가능합니다.";
+    if (compatLevel === t('testResult.compatibilityLevels.impossible')) {
+        if (uniqueCodes.includes(t('testResult.reasons.stopped'))) {
+            resultMessage = t('testResult.messages.testStopped');
+        } else if (uniqueCodes.includes(t('testResult.reasons.rpm'))) {
+            resultMessage = t('testResult.messages.cadenceNotDetected');
+        } else if (uniqueCodes.includes(t('testResult.reasons.protocol'))) {
+            resultMessage = t('testResult.messages.unsupportedProtocol');
+        }    } else if (compatLevel === t('testResult.compatibilityLevels.partiallyCompatible')) {
+        resultMessage = t('testResult.messages.partialCompatible');
+    } else if (compatLevel === t('testResult.compatibilityLevels.needsModification')) {
+        let baseMessage = t('testResult.messages.modificationNeeded');
         let issues = [];
         
-        if (uniqueCodes.includes('자동변화')) {
-            issues.push("의도하지 않은 저항 변경이 발생했습니다. 기기 자체 모드가 설정되어있는지 확인해주세요");
+        if (uniqueCodes.includes(t('testResult.reasons.autoChange'))) {
+            issues.push(t('testResult.messages.unexpectedResistanceChange'));
         }
         
         // Add any partial compatibility issues
-        if (uniqueCodes.includes('기어')) {
+        if (uniqueCodes.includes(t('testResult.reasons.gear'))) {
             if (!results.dataFields?.resistance?.detected) {
-                issues.push("gear 값이 default로 계산됩니다");
+                issues.push(t('testResult.messages.gearDefault'));
             } else {
-                issues.push("유저가 기어 변경을 할 수 없습니다");
+                issues.push(t('testResult.messages.userGearChange'));
             }
         }
-        if (uniqueCodes.includes('ERG')) {
-            issues.push("ERG 모드는 플레이 하실 수 없습니다");
+        if (uniqueCodes.includes(t('testResult.reasons.erg'))) {
+            issues.push(t('testResult.messages.ergModeUnavailable'));
         }
-        if (uniqueCodes.includes('SIM')) {
-            issues.push("SIM 모드는 플레이 하실 수 없습니다");
+        if (uniqueCodes.includes(t('testResult.reasons.sim'))) {
+            issues.push(t('testResult.messages.simModeUnavailable'));
         }
-        if (uniqueCodes.includes('제어명령')) {
-            issues.push("제어 명령이 지원되지 않습니다");
+        if (uniqueCodes.includes(t('testResult.reasons.controlCommand'))) {
+            issues.push(t('testResult.messages.controlCommandUnsupported'));
         }
         
         if (issues.length > 0) {
-            resultMessage = baseMessage + " 하지만 " + issues.join(", ") + ".";
+            resultMessage = baseMessage + " " + t('testResult.messages.but') + " " + issues.join(", ") + ".";
         } else {
             resultMessage = baseMessage;
         }
-    } else if (compatLevel === "완전 호환") {
-        resultMessage = "Yafit에 연결과 모든 모드 플레이가 가능합니다.";
+    } else if (compatLevel === t('testResult.compatibilityLevels.fullyCompatible')) {
+        resultMessage = t('testResult.messages.fullyCompatible');
     }
       if (resultMessage) {
         detailedReasons.push(resultMessage);
@@ -357,12 +357,12 @@ function generateDetailedReasons(reasonCodes: string[], compatLevel: string, res
     
     // REBORN 프로토콜의 제한사항을 별도로 추가
     if (results.supportedProtocols.includes("REBORN")) {
-        detailedReasons.push("Reborn 프로토콜은 제어 명령이 불가능합니다. SIM, ERG, 유저의 기어 변경이 불가능합니다.");
+        detailedReasons.push(t('testResult.protocolLimitations.reborn'));
     }
     
     // FITSHOW 프로토콜의 제한사항을 별도로 추가
     if (results.supportedProtocols.includes("FITSHOW")) {
-        detailedReasons.push("FitShow 프로토콜은 Yafit에서 제어명령을 지원하지 않습니다. ERG, SIM, 유저의 기어 제어가 불가능합니다.");
+        detailedReasons.push(t('testResult.protocolLimitations.fitshow'));
     }
     
     return detailedReasons;
@@ -393,18 +393,18 @@ export function parseRangeCharacteristic(data: Buffer): RangeInfo {
 
 // Returns a formatted representation of resistance range info
 export function formatRangeInfo(info: RangeInfo | undefined, type: string): string {
-    if (!info) return `${type}: 정보 없음`;
+    if (!info) return `${t(`testResult.rangeInfo.${type}`)}: ${t('testResult.rangeInfo.noInfo')}`;
     
     switch(type) {
         case 'speed':
-            return `속도: ${(info.min / 100).toFixed(1)} - ${(info.max / 100).toFixed(1)} km/h (증분: ${(info.increment / 100).toFixed(2)})`;
+            return `${t('testResult.rangeInfo.speed')}: ${(info.min / 100).toFixed(1)} - ${(info.max / 100).toFixed(1)} km/h (${t('testResult.rangeInfo.increment')}: ${(info.increment / 100).toFixed(2)})`;
         case 'incline':
-            return `경사도: ${(info.min / 10).toFixed(1)} - ${(info.max / 10).toFixed(1)} % (증분: ${(info.increment / 10).toFixed(1)})`;
+            return `${t('testResult.rangeInfo.incline')}: ${(info.min / 10).toFixed(1)} - ${(info.max / 10).toFixed(1)} % (${t('testResult.rangeInfo.increment')}: ${(info.increment / 10).toFixed(1)})`;
         case 'resistance':
-            return `저항: ${info.min} - ${info.max} (증분: ${info.increment})`;
+            return `${t('testResult.rangeInfo.resistance')}: ${info.min} - ${info.max} (${t('testResult.rangeInfo.increment')}: ${info.increment})`;
         case 'power':
-            return `파워: ${info.min} - ${info.max} W (증분: ${info.increment})`;
+            return `${t('testResult.rangeInfo.power')}: ${info.min} - ${info.max} W (${t('testResult.rangeInfo.increment')}: ${info.increment})`;
         default:
-            return `${type}: ${info.min} - ${info.max} (증분: ${info.increment})`;
+            return `${t(`testResult.rangeInfo.${type}`)}: ${info.min} - ${info.max} (${t('testResult.rangeInfo.increment')}: ${info.increment})`;
     }
 }

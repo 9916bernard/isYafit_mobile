@@ -7,6 +7,7 @@ import {
 import LottieView from 'lottie-react-native';
 import { Device } from 'react-native-ble-plx';
 import { useSafeAreaStyles, Colors } from '../styles/commonStyles';
+import { useTranslation } from 'react-i18next';
 
 interface LoadingScreenProps {
   device: Device;
@@ -14,6 +15,7 @@ interface LoadingScreenProps {
 
 const LoadingScreen: React.FC<LoadingScreenProps> = ({ device }) => {
   const safeAreaStyles = useSafeAreaStyles();
+  const { t } = useTranslation();
 
   return (
     <View style={safeAreaStyles.safeContainerMinPadding}>      <View style={styles.container}>        <View style={styles.animationContainer}>
@@ -26,7 +28,7 @@ const LoadingScreen: React.FC<LoadingScreenProps> = ({ device }) => {
         </View>
         
         <Text style={styles.connectingText}>
-          {device.name || 'XQ~'}에 연결 중...
+          {device.name || t('common.unknown')} {t('loading.connecting')}
         </Text>
       </View>
     </View>

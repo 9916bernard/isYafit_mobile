@@ -5,6 +5,7 @@ import { Device } from 'react-native-ble-plx';
 import { FTMSManager } from '../FtmsManager';
 import { useSafeAreaStyles, Colors } from '../styles/commonStyles';
 import Toast from 'react-native-root-toast';
+import { useTranslation } from 'react-i18next';
 
 interface RealtimeDataScreenProps {
   device: Device;
@@ -19,9 +20,10 @@ const RealtimeDataScreen: React.FC<RealtimeDataScreenProps> = ({
   onBack,
   onConnectionError
 }) => {
+  const { t } = useTranslation();
   const [bikeData, setBikeData] = useState<any>(null);
   const [isConnected, setIsConnected] = useState(false);
-  const [statusMessage, setStatusMessage] = useState('연결 중...');
+  const [statusMessage, setStatusMessage] = useState(t('realtimeData.status.connecting'));
   const safeAreaStyles = useSafeAreaStyles();
   const spinValue = useRef(new Animated.Value(0)).current;
 
@@ -43,7 +45,7 @@ const RealtimeDataScreen: React.FC<RealtimeDataScreenProps> = ({
   useEffect(() => {
     const setupDeviceConnection = async () => {
       try {
-        setStatusMessage('알림 구독 중...');
+        setStatusMessage(t('realtimeData.status.subscribing'));
         await ftmsManager.subscribeToNotifications(
           (cpResponse) => {
             // Control point response handling
@@ -59,17 +61,17 @@ const RealtimeDataScreen: React.FC<RealtimeDataScreenProps> = ({
           }
         );
         
-        setStatusMessage('연결 시퀀스 실행 중...');
+        setStatusMessage(t('realtimeData.status.runningSequence'));
         const success = await ftmsManager.connectSequence();
         if (success) {
           setIsConnected(true);
-          setStatusMessage('데이터 수신 중...');
+          setStatusMessage(t('realtimeData.status.receiving'));
         } else {
-          setStatusMessage('연결 시퀀스 실패. 다시 시도해주세요.');
+          setStatusMessage(t('realtimeData.status.sequenceFailed'));
         }
       } catch (error) {
         console.error("Setup error:", error);
-        setStatusMessage(`설정 오류: ${error instanceof Error ? error.message : String(error)}`);
+        setStatusMessage(`${t('common.error')}: ${error instanceof Error ? error.message : String(error)}`);
         
         // 설정 오류 시 콜백 호출
         if (onConnectionError) {
@@ -82,7 +84,7 @@ const RealtimeDataScreen: React.FC<RealtimeDataScreenProps> = ({
       // Cleanup
       ftmsManager.disconnectDevice().then(() => {
         // 토스트 메시지 표시
-        Toast.show('기기와의 연결이 해제되었습니다.', {
+        Toast.show(t('app.status.disconnected'), {
           duration: Toast.durations.SHORT,
           position: Toast.positions.BOTTOM,
           shadow: true,
@@ -94,13 +96,13 @@ const RealtimeDataScreen: React.FC<RealtimeDataScreenProps> = ({
         });
       }).catch(console.error);
     };
-  }, [device, ftmsManager, onConnectionError]);
+  }, [device, ftmsManager, onConnectionError, t]);
     const handleBackPress = async () => {
     try {
       await ftmsManager.disconnectDevice();
       
       // 토스트 메시지 표시
-      Toast.show('기기와의 연결이 해제되었습니다.', {
+      Toast.show(t('app.status.disconnected'), {
         duration: Toast.durations.SHORT,
         position: Toast.positions.BOTTOM,
         shadow: true,
@@ -141,7 +143,7 @@ const RealtimeDataScreen: React.FC<RealtimeDataScreenProps> = ({
           <TouchableOpacity onPress={handleBackPress} style={styles.backButton}>
             <Icon name="arrow-left" size={24} color="#00c663" />
           </TouchableOpacity>
-          <Text style={styles.title}>실시간 데이터</Text>
+          <Text style={styles.title}>{t('realtimeData.title')}</Text>
           <View style={styles.connectionIndicator}>
             <View style={[styles.connectionDot, { backgroundColor: isConnected ? '#00c663' : '#ef4444' }]} />
           </View>
@@ -149,7 +151,7 @@ const RealtimeDataScreen: React.FC<RealtimeDataScreenProps> = ({
 
         <View style={styles.deviceInfo}>
           <Icon name="bluetooth" size={28} color="#00c663" />
-          <Text style={styles.deviceName}>{device.name || 'Unknown Device'}</Text>
+          <Text style={styles.deviceName}>{device.name || t('common.unknown')}</Text>
           <Text style={styles.deviceId}>{device.id.substring(0, 8)}...</Text>
         </View>
 
@@ -158,16 +160,16 @@ const RealtimeDataScreen: React.FC<RealtimeDataScreenProps> = ({
         {isConnected && bikeData ? (
           <View style={styles.dataDisplayArea}>
             <View style={styles.gridContainer}>
-              {renderDataItem("속도", bikeData.instantaneousSpeed, "km/h", "speedometer", true)}
-              {renderDataItem("케이던스", bikeData.instantaneousCadence, "rpm", "rotate-3d-variant", true)}
-              {renderDataItem("파워", bikeData.instantaneousPower, "W", "lightning-bolt", true)}
-              {renderDataItem("저항 레벨", bikeData.resistanceLevel, "", "weight-lifter", true)}
+              {renderDataItem(t('realtimeData.data.speed'), bikeData.instantaneousSpeed, t('realtimeData.units.kmh'), "speedometer", true)}
+              {renderDataItem(t('realtimeData.data.cadence'), bikeData.instantaneousCadence, t('realtimeData.units.rpm'), "rotate-3d-variant", true)}
+              {renderDataItem(t('realtimeData.data.power'), bikeData.instantaneousPower, t('realtimeData.units.watts'), "lightning-bolt", true)}
+              {renderDataItem(t('realtimeData.data.resistance'), bikeData.resistanceLevel, "", "weight-lifter", true)}
             </View>
             <ScrollView style={styles.listDataContainer} showsVerticalScrollIndicator={false}>
-              {renderDataItem("심박수", bikeData.heartRate, "bpm", "heart-pulse")}
-              {renderDataItem("총 거리", bikeData.totalDistance, "m", "map-marker-distance")}
-              {renderDataItem("경과 시간", bikeData.elapsedTime, "s", "timer")}
-              {renderDataItem("칼로리", bikeData.totalEnergy, "kcal", "fire")}
+              {renderDataItem(t('realtimeData.data.heartRate'), bikeData.heartRate, t('realtimeData.units.bpm'), "heart-pulse")}
+              {renderDataItem(t('realtimeData.data.totalDistance'), bikeData.totalDistance, t('realtimeData.units.meters'), "map-marker-distance")}
+              {renderDataItem(t('realtimeData.data.elapsedTime'), bikeData.elapsedTime, t('realtimeData.units.seconds'), "timer")}
+              {renderDataItem(t('realtimeData.data.calories'), bikeData.totalEnergy, t('realtimeData.units.kcal'), "fire")}
             </ScrollView>
           </View>        ) : (
           <View style={styles.loadingContainer}>
@@ -183,7 +185,7 @@ const RealtimeDataScreen: React.FC<RealtimeDataScreenProps> = ({
             >
               <Icon name="loading" size={48} color="#00c663" />
             </Animated.View>
-            <Text style={styles.loadingText}>데이터 수신 대기 중...</Text>
+            <Text style={styles.loadingText}>{t('realtimeData.status.waiting')}</Text>
           </View>
         )}
       </View>

@@ -17,6 +17,7 @@ import Ionicons from 'react-native-vector-icons/Ionicons';
 import Clipboard from '@react-native-clipboard/clipboard'; // Added for clipboard functionality
 import { TestResults, formatRangeInfo } from '../FtmsTestReport';
 import { useSafeAreaStyles, Colors } from '../styles/commonStyles';
+import { useTranslation } from 'react-i18next';
 
 interface TestReportScreenProps {
   results: TestResults;
@@ -25,6 +26,7 @@ interface TestReportScreenProps {
 
 const TestReportScreen: React.FC<TestReportScreenProps> = ({ results, onClose }) => {
   const safeAreaStyles = useSafeAreaStyles();
+  const { t } = useTranslation();
   const [showFullLog, setShowFullLog] = React.useState(false);
   const [showFullReasons, setShowFullReasons] = React.useState(true);
   
@@ -54,8 +56,8 @@ const TestReportScreen: React.FC<TestReportScreenProps> = ({ results, onClose })
       // Create a comprehensive human-readable report
       const deviceName = results.deviceInfo.name || 'Unknown Device';
       const deviceAddress = results.deviceInfo.address || 'Unknown Address';
-      const protocols = results.supportedProtocols.join(', ') || '없음';
-      const compatibility = results.compatibilityLevel || '판정되지 않음';
+      const protocols = results.supportedProtocols.join(', ') || 'Unavailable';
+      const compatibility = results.compatibilityLevel || 'Unavailable';
       const testDate = new Date(results.testCompletedTimestamp || Date.now()).toLocaleString('ko-KR');
       
       // --- Formal, detailed report construction ---
@@ -140,7 +142,7 @@ const TestReportScreen: React.FC<TestReportScreenProps> = ({ results, onClose })
         }
         if (results.supportRanges.resistance) {
           const r = results.supportRanges.resistance;
-          supportRangesSection += `\n- 저항: ${r.min} ~ ${r.max} 레벨 (증분: ${r.increment})`;
+          supportRangesSection += `\n- 저항: ${r.min} ~ ${r.max} LV (증분: ${r.increment})`;
         }
         if (results.supportRanges.power) {
           const r = results.supportRanges.power;
@@ -185,15 +187,15 @@ const TestReportScreen: React.FC<TestReportScreenProps> = ({ results, onClose })
   const renderControlTests = () => {
     if (!results.controlTests || Object.keys(results.controlTests).length === 0) {
       return (
-        <Text style={styles.noDataText}>제어 테스트 데이터 없음</Text>
+        <Text style={styles.noDataText}>{t('testReport.noControlTestData')}</Text>
       );
     }
 
     // 명령 타입별 한글 설명
     const commandTypeLabels: { [key: string]: string } = {
-      'SET_RESISTANCE_LEVEL': '저항 레벨 설정',
-      'SET_TARGET_POWER': '목표 파워 설정',
-      'SET_SIM_PARAMS': '경사도 시뮬레이션'
+      'SET_RESISTANCE_LEVEL': t('testReport.controlCommands.resistanceLevel'),
+      'SET_TARGET_POWER': t('testReport.controlCommands.targetPower'),
+      'SET_SIM_PARAMS': t('testReport.controlCommands.simParams')
     };
 
     return (
@@ -218,9 +220,9 @@ const TestReportScreen: React.FC<TestReportScreenProps> = ({ results, onClose })
                   }
                 ]}>
                   <Text style={styles.statusText}>
-                    {test.status === 'OK' ? '성공' :
-                     test.status === 'Failed' ? '실패' :
-                     test.status === 'Pending' ? '대기 중' : test.status}
+                    {test.status === 'OK' ? t('testReport.status.success') :
+                     test.status === 'Failed' ? t('testReport.status.failed') :
+                     test.status === 'Pending' ? t('testReport.status.pending') : test.status}
                   </Text>
                 </View>
               </View>
@@ -231,7 +233,7 @@ const TestReportScreen: React.FC<TestReportScreenProps> = ({ results, onClose })
               
               <View style={styles.testInfoRow}>
                 <Text style={styles.controlTestTimestamp}>
-                  테스트 시간: {new Date(test.timestamp).toLocaleTimeString()}
+                  {t('testReport.testTime')} {new Date(test.timestamp).toLocaleTimeString()}
                 </Text>
                 
                 {/* 상태에 따른 아이콘 표시 */}
@@ -252,18 +254,18 @@ const TestReportScreen: React.FC<TestReportScreenProps> = ({ results, onClose })
   const renderDataFields = () => {
     if (!results.dataFields || Object.values(results.dataFields).filter(f => f.detected).length === 0) {
       return (
-        <Text style={styles.noDataText}>데이터 필드가 감지되지 않음</Text>
+        <Text style={styles.noDataText}>{t('testReport.noDataFieldsDetected')}</Text>
       );
     }
 
     return (
       <View style={styles.dataFieldsTable}>
         <View style={styles.tableHeader}>
-          <Text style={[styles.tableHeaderCell, { flex: 1.5 }]}>이름</Text>
-          <Text style={[styles.tableHeaderCell, { flex: 1 }]}>감지</Text>
-          <Text style={[styles.tableHeaderCell, { flex: 1 }]}>최소값</Text>
-          <Text style={[styles.tableHeaderCell, { flex: 1 }]}>최대값</Text>
-          <Text style={[styles.tableHeaderCell, { flex: 1 }]}>현재값</Text>
+          <Text style={[styles.tableHeaderCell, { flex: 1.5 }]}>{t('testReport.tableHeaders.name')}</Text>
+          <Text style={[styles.tableHeaderCell, { flex: 1 }]}>{t('testReport.tableHeaders.detected')}</Text>
+          <Text style={[styles.tableHeaderCell, { flex: 1 }]}>{t('testReport.tableHeaders.minValue')}</Text>
+          <Text style={[styles.tableHeaderCell, { flex: 1 }]}>{t('testReport.tableHeaders.maxValue')}</Text>
+          <Text style={[styles.tableHeaderCell, { flex: 1 }]}>{t('testReport.tableHeaders.currentValue')}</Text>
         </View>
 
         {Object.entries(results.dataFields).map(([name, field]) => (
@@ -303,19 +305,19 @@ const TestReportScreen: React.FC<TestReportScreenProps> = ({ results, onClose })
         </View>
         <View style={styles.rangeValues}>
           <View style={styles.rangeValueItem}>
-            <Text style={styles.rangeValueLabel}>최소</Text>
+            <Text style={styles.rangeValueLabel}>{t('testReport.tableHeaders.min')}</Text>
             <Text style={styles.rangeValueText}>{min}{unit}</Text>
           </View>
           <Text style={styles.rangeSeparator}>~</Text>
           <View style={styles.rangeValueItem}>
-            <Text style={styles.rangeValueLabel}>최대</Text>
+            <Text style={styles.rangeValueLabel}>{t('testReport.tableHeaders.max')}</Text>
             <Text style={styles.rangeValueText}>{max}{unit}</Text>
           </View>
           {current !== undefined && (
             <>
               <Text style={styles.rangeSeparator}>|</Text>
               <View style={styles.rangeValueItem}>
-                <Text style={styles.rangeValueLabel}>현재</Text>
+                <Text style={styles.rangeValueLabel}>{t('testReport.tableHeaders.current')}</Text>
                 <Text style={[styles.rangeValueText, styles.currentValue]}>{current}{unit}</Text>
               </View>
             </>
@@ -328,16 +330,16 @@ const TestReportScreen: React.FC<TestReportScreenProps> = ({ results, onClose })
   const renderResistanceChanges = () => {
     if (!results.resistanceChanges || results.resistanceChanges.length === 0) {
       return (
-        <Text style={styles.noDataText}>저항 변화 데이터 없음</Text>
+        <Text style={styles.noDataText}>{t('testReport.noResistanceChangeData')}</Text>
       );
     }
 
     return (      <View style={styles.resistanceChangesTable}>
         <View style={styles.tableHeader}>
-          <Text style={[styles.tableHeaderCell, { flex: 1.2 }]}>시간</Text>
-          <Text style={[styles.tableHeaderCell, { flex: 0.8 }]}>이전값</Text>
-          <Text style={[styles.tableHeaderCell, { flex: 0.8 }]}>현재값</Text>
-          <Text style={[styles.tableHeaderCell, { flex: 2 }]}>변경 원인</Text>
+          <Text style={[styles.tableHeaderCell, { flex: 1.2 }]}>{t('testReport.tableHeaders.time')}</Text>
+          <Text style={[styles.tableHeaderCell, { flex: 0.8 }]}>{t('testReport.tableHeaders.previousValue')}</Text>
+          <Text style={[styles.tableHeaderCell, { flex: 0.8 }]}>{t('testReport.tableHeaders.currentValue')}</Text>
+          <Text style={[styles.tableHeaderCell, { flex: 2 }]}>{t('testReport.tableHeaders.changeReason')}</Text>
         </View>
 
         {results.resistanceChanges.map((change, index) => {
@@ -361,7 +363,7 @@ const TestReportScreen: React.FC<TestReportScreenProps> = ({ results, onClose })
               </Text>
               <Text style={[styles.tableCell, { flex: 0.8, color: textColor }]}>{change.newValue}</Text>
               <Text style={[styles.tableCell, { flex: 2, color: textColor, fontWeight: isCommandChange ? 'bold' : 'normal' }]}>
-                {change.command || '자동 변경'}
+                {change.command || t('testReport.share.autoChange')}
               </Text>
             </View>
           );
@@ -375,13 +377,13 @@ const TestReportScreen: React.FC<TestReportScreenProps> = ({ results, onClose })
       try {
         const logString = results.interactionLogs.join('\n');
         Clipboard.setString(logString);
-        Alert.alert("성공", "상호작용 로그가 클립보드에 복사되었습니다.");
+        Alert.alert(t('testReport.clipboard.success'), t('testReport.clipboard.copySuccess'));
       } catch (error) {
         console.error('Failed to copy logs:', error);
-        Alert.alert("오류", "로그 복사에 실패했습니다.");
+        Alert.alert(t('testReport.clipboard.error'), t('testReport.clipboard.copyError'));
       }
     } else {
-      Alert.alert("정보", "복사할 로그가 없습니다.");
+      Alert.alert(t('testReport.clipboard.info'), t('testReport.clipboard.noLogs'));
     }
   };  // Helper function to get compatibility color based on level
 const getCompatibilityColor = (compatibilityLevel?: string): string => {
@@ -418,7 +420,7 @@ const getCompatibilityColor = (compatibilityLevel?: string): string => {
             <View style={styles.header}>
               <View style={styles.titleContainer}>
                 <MaterialCommunityIcons name="file-chart" size={28} color="#00c663" />
-                <Text style={styles.title}>테스트 보고서</Text>
+                <Text style={styles.title}>{t('testReport.title')}</Text>
               </View>
               <TouchableOpacity onPress={onClose} style={styles.closeButton} activeOpacity={0.8}>
                 <Icon name="close" size={20} color="#ffffff" />
@@ -427,13 +429,13 @@ const getCompatibilityColor = (compatibilityLevel?: string): string => {
             <View style={styles.actionButtonsContainer}>
               <TouchableOpacity onPress={handleShare} style={styles.shareButton} activeOpacity={0.8}>
                 <Ionicons name="share-outline" size={20} color="#ffffff" />
-                <Text style={styles.shareButtonText}>보고서 공유</Text>
+                <Text style={styles.shareButtonText}>{t('testReport.shareReport')}</Text>
               </TouchableOpacity>
             </View>            {/* Device Info Section */}
             <View style={styles.section}>
               <View style={styles.sectionHeader}>
                 <MaterialCommunityIcons name="devices" size={24} color="#00c663" />
-                <Text style={styles.sectionTitle}>장치 정보</Text>
+                <Text style={styles.sectionTitle}>{t('testReport.deviceInfo')}</Text>
               </View>
               <View style={styles.deviceInfoContainer}>
                 <View style={styles.deviceNameRow}>
@@ -457,12 +459,12 @@ const getCompatibilityColor = (compatibilityLevel?: string): string => {
                 
                 <View style={styles.infoGrid}>
                   <View style={styles.infoCard}>
-                    <Text style={styles.infoCardLabel}>프로토콜</Text>
+                    <Text style={styles.infoCardLabel}>{t('testReport.protocol')}</Text>
                     <Text style={styles.infoCardValue}>
                       {results.deviceInfo.protocol || '알 수 없음'}
                     </Text>
                   </View>                  <View style={styles.infoCard}>
-                    <Text style={styles.infoCardLabel}>지원 프로토콜</Text>
+                    <Text style={styles.infoCardLabel}>{t('testReport.supportedProtocols')}</Text>
                     <Text style={styles.infoCardValue}>
                       {results.supportedProtocols.join(', ') || '없음'}
                     </Text>
@@ -476,7 +478,7 @@ const getCompatibilityColor = (compatibilityLevel?: string): string => {
               <View style={styles.resultMessageSection}>
                 <View style={styles.resultMessageHeader}>
                   <MaterialCommunityIcons name="information" size={24} color="#00c663" />
-                  <Text style={styles.resultMessageTitle}>테스트 결과</Text>
+                  <Text style={styles.resultMessageTitle}>{t('testReport.resultTitle')}</Text>
                 </View>
                 <View style={styles.resultMessageContent}>                  {/* 판정 섹션 */}
                   <View style={styles.judgmentSection}>
@@ -489,32 +491,32 @@ const getCompatibilityColor = (compatibilityLevel?: string): string => {
                    results.compatibilityLevel !== '완전 호환' && 
                    results.compatibilityLevel !== '불가능' && (
                     <View style={styles.limitationSection}>
-                      <Text style={styles.limitationTitle}>제한사항:</Text>
+                      <Text style={styles.limitationTitle}>{t('testReport.limitationTitle')}</Text>
                         {(results.compatibilityLevel === '부분 호환' || results.compatibilityLevel === '수정 필요') && (
                         <>
                           {/* Reborn 프로토콜 제한사항 */}
                           {results.supportedProtocols.includes('REBORN') && (
-                            <Text style={styles.limitationText}>• Reborn 프로토콜은 제어 명령이 불가능합니다. SIM,ERG,유저의 기어 변경이 불가능합니다.</Text>
+                            <Text style={styles.limitationText}>{t('testReport.limitations.reborn')}</Text>
                           )}
                           
                           {/* FitShow 프로토콜 제한사항 */}
                           {results.supportedProtocols.includes('FITSHOW') && (
-                            <Text style={styles.limitationText}>• FitShow 프로토콜은 Yafit에서 제어명령을 지원하지 않습니다. ERG, SIM, 유저의 기어 제어가 불가능합니다.</Text>
+                            <Text style={styles.limitationText}>{t('testReport.limitations.fitshow')}</Text>
                           )}
                           
                           {!results.dataFields?.resistance?.detected && (
-                            <Text style={styles.limitationText}>• Resistance가 검출되지 않아 기본 기어값으로 설정</Text>
+                            <Text style={styles.limitationText}>{t('testReport.limitations.resistance')}</Text>
                           )}
                           {results.controlTests?.SET_RESISTANCE_LEVEL?.status === 'Failed' && (
-                            <Text style={styles.limitationText}>• 기어 변경 불가능</Text>
+                            <Text style={styles.limitationText}>{t('testReport.limitations.gearChange')}</Text>
                           )}
                           {results.controlTests?.SET_TARGET_POWER?.status === 'Failed' && (
-                            <Text style={styles.limitationText}>• ERG 모드 사용 불가능</Text>
+                            <Text style={styles.limitationText}>{t('testReport.limitations.ergMode')}</Text>
                           )}
                           {results.controlTests?.SET_SIM_PARAMS?.status === 'Failed' && (
-                            <Text style={styles.limitationText}>• SIM 모드 사용 불가능</Text>
+                            <Text style={styles.limitationText}>{t('testReport.limitations.simMode')}</Text>
                           )}{results.resistanceChanges && results.resistanceChanges.filter(change => !change.command || change.command === '자동 변경').length >= 5 && (
-                            <Text style={styles.limitationText}>• 의도하지 않은 저항 변경이 발생했습니다. 기기 자체 모드가 설정되어있는지 확인해주세요</Text>
+                            <Text style={styles.limitationText}>{t('testReport.limitations.unexpectedResistance')}</Text>
                           )}
                         </>
                       )}
@@ -563,7 +565,7 @@ const getCompatibilityColor = (compatibilityLevel?: string): string => {
             <View style={styles.section}>
               <View style={styles.sectionHeader}>
                 <Icon name="error-outline" size={24} color="#ef4444" />
-                <Text style={styles.sectionTitle}>문제점</Text>
+                <Text style={styles.sectionTitle}>{t('testReport.problems')}</Text>
               </View>
               <View style={styles.issuesContainer}>
                 {results.issuesFound.map((issue, index) => (
@@ -581,20 +583,20 @@ const getCompatibilityColor = (compatibilityLevel?: string): string => {
             <View style={styles.section}>
               <View style={styles.sectionHeader}>
                 <Icon name="block" size={24} color="#FF9800" />
-                <Text style={styles.sectionTitle}>제한 사유</Text>
+                <Text style={styles.sectionTitle}>{t('testReport.limitationReasons')}</Text>
               </View>
               <View style={styles.limitationReasonsContainer}>
                 {Object.entries(results.controlTests)
                   .filter(([_, test]) => test.status !== 'OK')
                   .map(([name, test], index) => {                    const getReasonText = (commandName: string, status: string) => {
                       const commandLabels = {
-                        'SET_RESISTANCE_LEVEL': '유저가 기어 조절 불가',
-                        'SET_TARGET_POWER': 'ERG 모드 사용 불가', 
-                        'SET_SIM_PARAMS': 'SIM 모드 사용 불가'
+                        'SET_RESISTANCE_LEVEL': t('testReport.limitationReasons.userGearControl'),
+                        'SET_TARGET_POWER': t('testReport.limitationReasons.ergModeUnavailable'), 
+                        'SET_SIM_PARAMS': t('testReport.limitationReasons.simModeUnavailable')
                       };
                       
                       const commandLabel = commandLabels[commandName as keyof typeof commandLabels] || commandName;
-                      const statusReason = status === 'Failed' ? '미작동' : '미지원';
+                      const statusReason = status === 'Failed' ? t('testReport.limitationReasons.notWorking') : t('testReport.limitationReasons.notSupported');
                       
                       return `${commandLabel} ⇒ ${commandName.toLowerCase()} ${statusReason}`;
                     };
@@ -616,24 +618,24 @@ const getCompatibilityColor = (compatibilityLevel?: string): string => {
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <Ionicons name="speedometer-outline" size={24} color="#00c663" />
-              <Text style={styles.sectionTitle}>지원 범위</Text>
+              <Text style={styles.sectionTitle}>{t('testReport.supportRange')}</Text>
             </View>
             {results.supportRanges && Object.keys(results.supportRanges).length > 0 ? (
               <View style={styles.rangesGrid}>
                 {results.supportRanges.speed && 
-                  renderRangeCard(results.supportRanges.speed, 'speed', '속도', ' km/h', 'speedometer')
+                  renderRangeCard(results.supportRanges.speed, 'speed', t('testReport.share.speed'), ' km/h', 'speedometer')
                 }
                 {results.supportRanges.incline && 
-                  renderRangeCard(results.supportRanges.incline, 'incline', '경사도', '%', 'slope-uphill')
+                  renderRangeCard(results.supportRanges.incline, 'incline', t('testReport.share.incline'), '%', 'slope-uphill')
                 }
                 {results.supportRanges.resistance && 
-                  renderRangeCard(results.supportRanges.resistance, 'resistance', '저항', ' 레벨', 'dumbbell')
+                  renderRangeCard(results.supportRanges.resistance, 'resistance', t('testReport.share.resistance'), ' Lv', 'dumbbell')
                 }
                 {results.supportRanges.power && 
-                  renderRangeCard(results.supportRanges.power, 'power', '파워', 'W', 'flash')
+                  renderRangeCard(results.supportRanges.power, 'power', t('testReport.share.power'), 'W', 'flash')
                 }
               </View>
-            ) : (              <Text style={styles.noDataText}>지원 범위 데이터 없음</Text>
+            ) : (              <Text style={styles.noDataText}>{t('testReport.noSupportRangeData')}</Text>
             )}
           </View>
 
@@ -641,7 +643,7 @@ const getCompatibilityColor = (compatibilityLevel?: string): string => {
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <MaterialCommunityIcons name="feature-search-outline" size={24} color="#00c663" />
-              <Text style={styles.sectionTitle}>지원 기능</Text>
+              <Text style={styles.sectionTitle}>{t('testReport.supportFeatures')}</Text>
             </View>
             {results.features && Object.keys(results.features).length > 0 ? (
               <View style={styles.featuresContainer}>
@@ -656,7 +658,7 @@ const getCompatibilityColor = (compatibilityLevel?: string): string => {
                   </View>
                 ))}
               </View>
-            ) : (              <Text style={styles.noDataText}>지원 기능 데이터 없음</Text>
+            ) : (              <Text style={styles.noDataText}>{t('testReport.noSupportFeaturesData')}</Text>
             )}
           </View>
 
@@ -664,7 +666,7 @@ const getCompatibilityColor = (compatibilityLevel?: string): string => {
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <MaterialCommunityIcons name="database-outline" size={24} color="#00c663" />
-              <Text style={styles.sectionTitle}>감지된 데이터 필드</Text>
+              <Text style={styles.sectionTitle}>{t('testReport.detectedDataFields')}</Text>
             </View>
             {renderDataFields()}
           </View>
@@ -673,7 +675,7 @@ const getCompatibilityColor = (compatibilityLevel?: string): string => {
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <MaterialCommunityIcons name="test-tube" size={24} color="#00c663" />
-              <Text style={styles.sectionTitle}>제어 테스트 결과</Text>
+              <Text style={styles.sectionTitle}>{t('testReport.controlTestResult')}</Text>
             </View>            <View style={styles.controlTestsContainer}>
               {renderControlTests()}
             </View>
@@ -682,14 +684,14 @@ const getCompatibilityColor = (compatibilityLevel?: string): string => {
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <MaterialCommunityIcons name="chart-timeline-variant" size={24} color="#00c663" />
-              <Text style={styles.sectionTitle}>저항 변화 로그</Text>
+              <Text style={styles.sectionTitle}>{t('testReport.resistanceChangeLog')}</Text>
             </View>
             {renderResistanceChanges()}
           </View>          {/* Interaction Logs Section */}
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <MaterialCommunityIcons name="console" size={24} color="#00c663" />
-              <Text style={styles.sectionTitle}>상호작용 로그</Text>
+              <Text style={styles.sectionTitle}>{t('testReport.interactionLog')}</Text>
               {results.interactionLogs && results.interactionLogs.length > 0 && (
                 <View style={styles.logCountBadge}>
                   <Text style={styles.logCountText}>{results.interactionLogs.length}</Text>
@@ -704,14 +706,14 @@ const getCompatibilityColor = (compatibilityLevel?: string): string => {
                     onPress={() => setShowFullLog(!showFullLog)}
                   >
                     <Text style={styles.toggleLogButtonText}>
-                      {showFullLog ? '로그 숨기기' : '전체 로그 보기'}
+                      {showFullLog ? t('testReport.logActions.hideLog') : t('testReport.logActions.showFullLog')}
                     </Text>
                   </TouchableOpacity>
                   <TouchableOpacity
                     style={styles.copyLogButton}
                     onPress={handleCopyLogs}
                   >
-                    <Text style={styles.copyLogButtonText}>로그 복사</Text>
+                    <Text style={styles.copyLogButtonText}>{t('testReport.copyLog')}</Text>
                   </TouchableOpacity>
                 </View>                {showFullLog && (
                   <ScrollView style={styles.logScrollContainer} nestedScrollEnabled={true}>
@@ -742,7 +744,7 @@ const getCompatibilityColor = (compatibilityLevel?: string): string => {
                   </ScrollView>
                 )}
               </>
-            ) : (              <Text style={styles.noDataText}>상호작용 로그 없음</Text>
+            ) : (              <Text style={styles.noDataText}>{t('testReport.noInteractionLog')}</Text>
             )}
           </View>
 
@@ -750,21 +752,21 @@ const getCompatibilityColor = (compatibilityLevel?: string): string => {
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <Icon name="info-outline" size={24} color="#00c663" />
-              <Text style={styles.sectionTitle}>테스트 정보</Text>
+              <Text style={styles.sectionTitle}>{t('testReport.testInfo')}</Text>
             </View>
             <View style={styles.metadataContainer}>
               <View style={styles.infoRow}>
-                <Text style={styles.infoLabel}>테스트 완료 여부:</Text>
+                <Text style={styles.infoLabel}>{t('testReport.testCompletion')}</Text>
                 <Text style={[
                   styles.infoValue, 
                   { color: results.testCompleted ? '#4CAF50' : '#F44336' }
                 ]}>
-                  {results.testCompleted ? '완료' : '미완료'}
+                  {results.testCompleted ? t('test.completion') : '미완료'}
                 </Text>
               </View>
               {results.testCompletedTimestamp && (
                 <View style={styles.infoRow}>
-                  <Text style={styles.infoLabel}>완료 시간:</Text>
+                  <Text style={styles.infoLabel}>{t('testReport.completionTime')}</Text>
                   <Text style={styles.infoValue}>
                     {new Date(results.testCompletedTimestamp).toLocaleString()}
                   </Text>
@@ -772,7 +774,7 @@ const getCompatibilityColor = (compatibilityLevel?: string): string => {
               )}
               {results.reportId && (
                 <View style={styles.infoRow}>
-                  <Text style={styles.infoLabel}>보고서 ID:</Text>
+                  <Text style={styles.infoLabel}>{t('testReport.reportId')}</Text>
                   <Text style={styles.infoValue}>{results.reportId}</Text>
                 </View>
               )}

@@ -12,6 +12,7 @@ import {
     parseRangeCharacteristic,
     finalizeTestReport
 } from './FtmsTestReport';
+import { t } from './utils/i18n_test';
 
 // 사용자 상호작용 요청을 위한 타입 정의
 export interface UserInteractionRequest {
@@ -70,7 +71,7 @@ export class FTMSTester {
     private checkConnectionAndStopIfNeeded(): boolean {
         if (!this.isDeviceConnected()) {
             this.logInteraction('ERROR - Test: Device connection lost, stopping test.');
-            this.testResults.issuesFound.push('테스트 중 기기 연결이 끊어졌습니다.');
+            this.testResults.issuesFound.push(t('test.status.connectionLost'));
             this.stopTest();
             return false;
         }
@@ -115,7 +116,7 @@ export class FTMSTester {
         onTestComplete?: (results: TestResults) => void
     ): Promise<TestResults> {
         if (this.isTestRunning) {
-            throw new Error("테스트가 이미 실행 중입니다.");
+            throw new Error(t('test.status.testRunning'));
         }
 
         this.testResults = initTestResults();
@@ -135,21 +136,21 @@ export class FTMSTester {
         
         try {
             // Step 1: Connect to device and discover services
-            this.updateProgress(5, "기기에 연결 중...");
+            this.updateProgress(5, t('test.status.deviceConnected'));
             this.logInteraction('INFO - Test: Attempting to connect to device.');
             await this.connectToDevice(device);
-            if (!this.isTestRunning) throw new Error("테스트가 중지되었습니다.");
+            if (!this.isTestRunning) throw new Error(t('test.status.testStopped'));
 
             this.testResults.connection.status = true;
             this.logInteraction('INFO - Test: Device connected successfully.');
-            this.updateProgress(10, "서비스 확인 중...");
+            this.updateProgress(10, t('test.status.serviceDiscovery'));
             this.logInteraction('INFO - Test: Discovering services and characteristics.');
             await this.identifyProtocols();
               this.logInteraction(`INFO - Test: Identified protocols: ${this.testResults.supportedProtocols.join(', ') || 'None'}.`);
               // 프로토콜별 테스트 처리 (우선순위 순서: MOBI > REBORN > TACX > FITSHOW > YAFIT_S3 > YAFIT_S4 > FTMS > CSC)
             if (this.testResults.supportedProtocols.includes("MOBI")) {
                 // Mobi 프로토콜 테스트 (우선순위 1)
-                this.updateProgress(30, "Mobi 데이터 모니터링 중...");
+                this.updateProgress(30, t('test.protocols.mobi.monitoring'));
                 this.logInteraction('INFO - Test: Starting Mobi protocol testing (read-only).');
                 await this.monitorMobiData();
                 
@@ -157,19 +158,19 @@ export class FTMSTester {
                 const remainingTime = Math.max(0, this.testDuration - elapsed);
                 
                 if (remainingTime > 0) {
-                    this.updateProgress(50, "Mobi 데이터 수집 중... (페달을 계속 돌려주세요)");
+                    this.updateProgress(50, t('test.protocols.mobi.dataCollection'));
                     await this.waitWithEarlyExit(remainingTime);
                 }
                 
                 this.mergeFtmsManagerLogs();
                 this.testResults = finalizeTestReport(this.testResults);
-                this.updateProgress(100, "Mobi 테스트 완료 (읽기 전용)");
+                this.updateProgress(100, t('test.protocols.mobi.complete'));
                 if (this.onTestComplete) {
                     this.onTestComplete(this.testResults);
                 }
             } else if (this.testResults.supportedProtocols.includes("REBORN")) {
                 // Reborn 프로토콜 테스트 (우선순위 2) - 인증 외 제어 불가능
-                this.updateProgress(30, "Reborn 인증 및 데이터 모니터링 중...");
+                this.updateProgress(30, t('test.protocols.reborn.monitoring'));
                 this.logInteraction('INFO - Test: Starting Reborn protocol testing (authentication + data only).');
                 await this.monitorRebornData();
                 
@@ -180,24 +181,24 @@ export class FTMSTester {
                 const remainingTime = Math.max(0, this.testDuration - elapsed);
                 
                 if (remainingTime > 0) {
-                    this.updateProgress(50, "Reborn 데이터 수집 중... 페달을 돌려주세요!");
+                    this.updateProgress(50, t('test.protocols.reborn.dataCollection'));
                     this.logInteraction('INFO - Test: Please pedal to generate data for Reborn protocol testing.');
                     await this.runDataCollection(remainingTime);
                 }
                 
                 this.mergeFtmsManagerLogs();
                 this.testResults = finalizeTestReport(this.testResults);
-                this.updateProgress(100, "Reborn 테스트 완료");
+                this.updateProgress(100, t('test.protocols.reborn.complete'));
                 if (this.onTestComplete) {
                     this.onTestComplete(this.testResults);
                 }
             } else if (this.testResults.supportedProtocols.includes("TACX")) {
                 // Tacx Neo 프로토콜 테스트 (우선순위 3)
-                this.updateProgress(30, "Tacx Neo 데이터 모니터링 중...");
+                this.updateProgress(30, t('test.protocols.tacx.monitoring'));
                 this.logInteraction('INFO - Test: Starting Tacx Neo protocol testing (with user interaction control commands).');
                 await this.monitorBikeData();
                 
-                this.updateProgress(40, "Tacx Neo 사용자 상호작용 제어 기능 테스트 중...");
+                this.updateProgress(40, t('test.protocols.tacx.controlTest'));
                 this.logInteraction('INFO - Test: Starting Tacx Neo user interaction control point tests.');
                 await this.testTacxControlPointsWithUserInteraction();
                 
@@ -205,19 +206,19 @@ export class FTMSTester {
                 const remainingTime = Math.max(0, this.testDuration - elapsed);
                 
                 if (remainingTime > 0) {
-                    this.updateProgress(50, "Tacx Neo 데이터 수집 중...");
+                    this.updateProgress(50, t('test.protocols.tacx.dataCollection'));
                     await this.waitWithEarlyExit(remainingTime);
                 }
                 
                 this.mergeFtmsManagerLogs();
                 this.testResults = finalizeTestReport(this.testResults);
-                this.updateProgress(100, "Tacx Neo 테스트 완료 (사용자 상호작용 제어 기능 포함)");
+                this.updateProgress(100, t('test.protocols.tacx.complete'));
                 if (this.onTestComplete) {
                     this.onTestComplete(this.testResults);
                 }
             } else if (this.testResults.supportedProtocols.includes("FITSHOW")) {
                 // FitShow 프로토콜 테스트 (우선순위 4)
-                this.updateProgress(30, "FitShow 데이터 모니터링 중...");
+                this.updateProgress(30, t('test.protocols.fitshow.monitoring'));
                 this.logInteraction('INFO - Test: Starting FitShow protocol testing (with control commands).');
                 await this.monitorBikeData();
                 
@@ -229,13 +230,13 @@ export class FTMSTester {
                 const remainingTime = Math.max(0, this.testDuration - elapsed);
                 
                 if (remainingTime > 0) {
-                    this.updateProgress(50, "FitShow 데이터 수집 중...");
+                    this.updateProgress(50, t('test.protocols.fitshow.dataCollection'));
                     await this.waitWithEarlyExit(remainingTime);
                 }
                 
                 this.mergeFtmsManagerLogs();
                 this.testResults = finalizeTestReport(this.testResults);
-                this.updateProgress(100, "FitShow 테스트 완료 (제어 기능 미포함)");
+                this.updateProgress(100, t('test.protocols.fitshow.complete'));
                 if (this.onTestComplete) {
                     this.onTestComplete(this.testResults);
                 }
@@ -248,17 +249,17 @@ export class FTMSTester {
                     protocolName = "YAFIT_S4";
                 }
                 
-                this.updateProgress(20, `${protocolName} 지원 범위 확인 중...`);
+                this.updateProgress(20, `${protocolName} ${t('test.protocols.ftms.supportRange')}`);
                 this.logInteraction(`INFO - Test: Reading supported ${protocolName} ranges (using FTMS protocol).`);
                 await this.readSupportRanges();
                 this.logInteraction(`INFO - Test: Finished reading supported ranges for ${protocolName}.`);
                 
-                this.updateProgress(30, `${protocolName} 데이터 필드 모니터링 설정 중...`);
+                this.updateProgress(30, `${protocolName} ${t('test.protocols.ftms.dataFieldSetup')}`);
                 this.logInteraction(`INFO - Test: Subscribing to ${protocolName} notifications (using FTMS protocol).`);
                 await this.monitorBikeData();
                 this.logInteraction(`INFO - Test: Subscribed to notifications and initial commands sent for ${protocolName}.`);
                 
-                this.updateProgress(40, `${protocolName} 제어 기능 테스트 중...`);
+                this.updateProgress(40, `${protocolName} ${t('test.protocols.ftms.controlTest')}`);
                 this.logInteraction(`INFO - Test: Starting ${protocolName} control point tests (using FTMS protocol).`);
                 await this.testControlPoints();
                 this.logInteraction(`INFO - Test: Control point tests completed for ${protocolName}.`);
@@ -267,22 +268,22 @@ export class FTMSTester {
                 const remainingTime = Math.max(0, this.testDuration - elapsed);
                 
                 if (remainingTime > 0) {
-                    this.updateProgress(50, `${protocolName} 데이터 수집 중...`);
+                    this.updateProgress(50, `${protocolName} ${t('test.protocols.ftms.dataCollection')}`);
                     this.logInteraction(`INFO - Test: Starting data collection phase for ${protocolName} for ${remainingTime / 1000} seconds.`);
                     await this.runDataCollection(remainingTime);
                     this.logInteraction(`INFO - Test: Data collection phase ended for ${protocolName}.`);
                 }
                 
-                this.updateProgress(90, `${protocolName} 호환성 분석 중...`);
+                this.updateProgress(90, `${protocolName} ${t('test.protocols.ftms.compatibilityAnalysis')}`);
                 this.mergeFtmsManagerLogs();
                 this.testResults = finalizeTestReport(this.testResults);
-                this.updateProgress(100, `${protocolName} 테스트 완료`);
+                this.updateProgress(100, `${protocolName} ${t('test.protocols.ftms.complete')}`);
                 if (this.onTestComplete) {
                     this.onTestComplete(this.testResults);
                 }
             } else if (this.testResults.supportedProtocols.includes("CSC")) {
                 // CSC 프로토콜 테스트 (우선순위 8)
-                this.updateProgress(30, "CSC 데이터 모니터링 중...");
+                this.updateProgress(30, t('test.protocols.csc.monitoring'));
                 this.logInteraction('INFO - Test: Starting CSC protocol testing.');
                 await this.monitorCscData();
                 
@@ -290,21 +291,22 @@ export class FTMSTester {
                 const remainingTime = Math.max(0, this.testDuration - elapsed);
                 
                 if (remainingTime > 0) {
-                    this.updateProgress(50, "CSC 데이터 수집 중...");
+                    this.updateProgress(50, t('test.protocols.csc.dataCollection'));
                     await this.waitWithEarlyExit(remainingTime);
                 }
                 
                 this.mergeFtmsManagerLogs();
                 this.testResults = finalizeTestReport(this.testResults);
-                this.updateProgress(100, "CSC 테스트 완료 (제한된 기능)");                if (this.onTestComplete) {
+                this.updateProgress(100, t('test.protocols.csc.complete'));
+                if (this.onTestComplete) {
                     this.onTestComplete(this.testResults);
                 }
             } else {
                 // No supported protocols
-                this.testResults.reasons.push("지원되는 프로토콜을 찾을 수 없습니다. 우선순위: MOBI > REBORN > TACX > FITSHOW > YAFIT_S3 > YAFIT_S4 > FTMS > CSC");
+                this.testResults.reasons.push(t('test.protocols.noSupportedProtocols'));
                 this.mergeFtmsManagerLogs();
                 this.testResults = finalizeTestReport(this.testResults);
-                this.updateProgress(100, "호환 불가능한 프로토콜");
+                this.updateProgress(100, t('test.protocols.incompatibleProtocol'));
                 if (this.onTestComplete) {
                     this.onTestComplete(this.testResults);
                 }
@@ -312,7 +314,7 @@ export class FTMSTester {
             
         } catch (error) {
             console.error("Device test error:", error);
-            this.testResults.issuesFound.push(`테스트 오류: ${error instanceof Error ? error.message : String(error)}`);
+            this.testResults.issuesFound.push(`${t('test.status.testError')}: ${error instanceof Error ? error.message : String(error)}`);
             this.logInteraction(`ERROR - Test: Critical error during test: ${error instanceof Error ? error.message : String(error)}`);
             this.mergeFtmsManagerLogs(); // Merge logs even in case of error
             this.testResults = finalizeTestReport(this.testResults);
@@ -378,13 +380,13 @@ export class FTMSTester {
     private async connectToDevice(device: Device): Promise<void> {
         try {
             await this.ftmsManager.connectToDevice(device.id);
-            if (!this.isTestRunning) throw new Error("테스트가 중지되었습니다.");
+            if (!this.isTestRunning) throw new Error(t('test.status.testStopped'));
             this.logInteraction(`INFO - FTMSTester: Successfully connected to device ${device.id}`);
             
             // Get the list of services
             const connectedDevice = this.ftmsManager.getConnectedDevice();
             if (!connectedDevice) {
-                throw new Error("기기 연결 실패");
+                throw new Error(t('test.status.deviceConnectionFailed'));
             }
             
             // Update test results
@@ -393,7 +395,7 @@ export class FTMSTester {
             
         } catch (error) {
             this.testResults.connection.status = false;
-            this.testResults.issuesFound.push(`연결 오류: ${error instanceof Error ? error.message : String(error)}`);
+            this.testResults.issuesFound.push(`${t('test.errors.connectionError')}: ${error instanceof Error ? error.message : String(error)}`);
             throw error;
         }
     }    private async identifyProtocols(): Promise<void> {
@@ -402,7 +404,7 @@ export class FTMSTester {
             this.logInteraction('INFO - FTMSTester: Identifying protocols.');
             const device = this.ftmsManager.getConnectedDevice();
             if (!device) {
-                throw new Error("기기가 연결되지 않았습니다.");
+                throw new Error(t('test.status.deviceNotConnected'));
             }
             
             // Get all services
@@ -432,15 +434,15 @@ export class FTMSTester {
                     await this.readFtmsFeatures();
                 }
             } else {
-                this.testResults.deviceInfo.protocol = "알 수 없음";
+                this.testResults.deviceInfo.protocol = "Unavailable";
                 this.testResults.supportedProtocols = [];
-                this.testResults.issuesFound.push("지원되는 프로토콜을 식별할 수 없습니다.");
+                this.testResults.issuesFound.push(t('test.status.noProtocolDetected'));
                 this.logInteraction('ERROR - FTMSTester: No protocol detected');
             }
             
         } catch (error) {
             this.logInteraction(`ERROR - FTMSTester: Error identifying protocols: ${error instanceof Error ? error.message : String(error)}`);
-            this.testResults.issuesFound.push(`프로토콜 식별 오류: ${error instanceof Error ? error.message : String(error)}`);
+            this.testResults.issuesFound.push(`${t('test.errors.protocolIdentificationError')}: ${error instanceof Error ? error.message : String(error)}`);
             throw error;
         }
     }
@@ -486,7 +488,7 @@ export class FTMSTester {
             
         } catch (error) {
             this.logInteraction(`ERROR - FTMSTester: Error reading FTMS features: ${error instanceof Error ? error.message : String(error)}`);
-            this.testResults.issuesFound.push(`FTMS 기능 읽기 오류: ${error instanceof Error ? error.message : String(error)}`);
+            this.testResults.issuesFound.push(`${t('test.errors.ftmsFeaturesReadError')}: ${error instanceof Error ? error.message : String(error)}`);
             // Don't throw here to allow the test to continue
         }
     }
@@ -500,7 +502,7 @@ export class FTMSTester {
             
             const device = this.ftmsManager.getConnectedDevice();
             if (!device) {
-                throw new Error("기기가 연결되지 않았습니다.");
+                throw new Error(t('test.status.deviceNotConnected'));
             }
             
             // Read Speed Range
@@ -600,7 +602,7 @@ export class FTMSTester {
             
         } catch (error) {
             this.logInteraction(`ERROR - FTMSTester: Error reading support ranges: ${error instanceof Error ? error.message : String(error)}`);
-            this.testResults.issuesFound.push(`범위 특성 읽기 오류: ${error instanceof Error ? error.message : String(error)}`);
+            this.testResults.issuesFound.push(`${t('test.errors.rangeReadError')}: ${error instanceof Error ? error.message : String(error)}`);
             // Don't throw here to allow the test to continue
         }
     }    private async monitorBikeData(): Promise<void> {
@@ -640,7 +642,7 @@ export class FTMSTester {
             
         } catch (error) {
             this.logInteraction(`ERROR - [monitorBikeData] Error subscribing to notifications: ${error instanceof Error ? error.message : String(error)}`);
-            this.testResults.issuesFound.push(`알림 구독 오류: ${error instanceof Error ? error.message : String(error)}`);
+            this.testResults.issuesFound.push(`${t('test.errors.notificationSubscriptionError')}: ${error instanceof Error ? error.message : String(error)}`);
             throw error;
         }
     }
@@ -660,7 +662,7 @@ export class FTMSTester {
             
         } catch (error) {
             this.logInteraction(`ERROR - [monitorCscData] Error subscribing to CSC notifications: ${error instanceof Error ? error.message : String(error)}`);
-            this.testResults.issuesFound.push(`CSC 알림 구독 오류: ${error instanceof Error ? error.message : String(error)}`);
+            this.testResults.issuesFound.push(`${t('test.errors.notificationSubscriptionError')}: ${error instanceof Error ? error.message : String(error)}`);
             throw error;
         }
     }
@@ -681,7 +683,7 @@ export class FTMSTester {
             
         } catch (error) {
             this.logInteraction(`ERROR - [monitorMobiData] Error subscribing to Mobi notifications: ${error instanceof Error ? error.message : String(error)}`);
-            this.testResults.issuesFound.push(`Mobi 알림 구독 오류: ${error instanceof Error ? error.message : String(error)}`);
+            this.testResults.issuesFound.push(`${t('test.errors.notificationSubscriptionError')}: ${error instanceof Error ? error.message : String(error)}`);
             throw error;
         }
     }private async monitorRebornData(): Promise<void> {
@@ -700,7 +702,7 @@ export class FTMSTester {
             
         } catch (error) {
             this.logInteraction(`ERROR - [monitorRebornData] Error subscribing to Reborn notifications: ${error instanceof Error ? error.message : String(error)}`);
-            this.testResults.issuesFound.push(`Reborn 알림 구독 오류: ${error instanceof Error ? error.message : String(error)}`);
+            this.testResults.issuesFound.push(`${t('test.errors.notificationSubscriptionError')}: ${error instanceof Error ? error.message : String(error)}`);
             throw error;
         }
     }
@@ -712,8 +714,6 @@ export class FTMSTester {
             if (!this.testResults.controlTests) {
                 this.testResults.controlTests = {};
             }
-            
-            const detectedProtocol = this.ftmsManager.getDetectedProtocol();
             
             this.logInteraction('INFO - [testControlPoints] Control point testing started. Testing order: SET_SIM_PARAMS -> SET_TARGET_POWER -> SET_RESISTANCE_LEVEL (to return to normal mode)');
 
@@ -768,7 +768,7 @@ export class FTMSTester {
             
         } catch (error) {
             this.logInteraction(`ERROR - [testControlPoints] Control point testing failed: ${error instanceof Error ? error.message : String(error)}`);
-            this.testResults.issuesFound.push(`제어 포인트 테스트 오류: ${error instanceof Error ? error.message : String(error)}`);
+            this.testResults.issuesFound.push(`${t('test.errors.controlPointTestError')}: ${error instanceof Error ? error.message : String(error)}`);
             // Don't throw here to allow the test to continue
         }
     }
@@ -783,7 +783,7 @@ export class FTMSTester {
             // Add visually distinctive log for control command execution
             // Mint color: #3EB489 (or use a special tag for the app to color it)
             // Emoji for control: 🟢
-            this.logInteraction(`[CONTROL_COMMAND] 🟢 제어 명령 실행: ${commandName}`);
+            this.logInteraction(`[CONTROL_COMMAND] 🟢 ${t('test.controlCommands.executeCommand')}: ${commandName}`);
 
             this.resistanceTracking = {
                 commandPending: true,
@@ -947,11 +947,11 @@ export class FTMSTester {
           // Handle Mobi-specific data
         if (data.gearLevel !== undefined) {
             this.testResults = updateDataField(this.testResults, 'gear', data.gearLevel);
-            this.logInteraction(`INFO - [handleBikeData] Mobi 기어 레벨: ${data.gearLevel}`);
+            this.logInteraction(`INFO - [handleBikeData] Mobi ${t('test.data.gearLevel')}: ${data.gearLevel}`);
         }
         if (data.batteryLevel !== undefined) {
             this.testResults = updateDataField(this.testResults, 'battery', data.batteryLevel);
-            this.logInteraction(`INFO - [handleBikeData] Mobi 배터리 레벨: ${data.batteryLevel}%`);
+            this.logInteraction(`INFO - [handleBikeData] Mobi ${t('test.data.batteryLevel')}: ${data.batteryLevel}%`);
         }
         
         // Handle Reborn-specific data (similar to Mobi but with authentication)
@@ -959,11 +959,11 @@ export class FTMSTester {
         if (detectedProtocol === 'REBORN') {
             if (data.gearLevel !== undefined) {
                 this.testResults = updateDataField(this.testResults, 'gear', data.gearLevel);
-                this.logInteraction(`INFO - [handleBikeData] Reborn 기어 레벨: ${data.gearLevel}`);
+                this.logInteraction(`INFO - [handleBikeData] Reborn ${t('test.data.gearLevel')}: ${data.gearLevel}`);
             }
             if (data.batteryLevel !== undefined) {
                 this.testResults = updateDataField(this.testResults, 'battery', data.batteryLevel);
-                this.logInteraction(`INFO - [handleBikeData] Reborn 배터리 레벨: ${data.batteryLevel}% (고정값)`);
+                this.logInteraction(`INFO - [handleBikeData] Reborn ${t('test.data.batteryLevel')}: ${data.batteryLevel}% (고정값)`);
             }
         }
         
@@ -979,7 +979,7 @@ export class FTMSTester {
                     currentTime - this.resistanceTracking.commandSentTime : 0;
                 
                 // Determine the cause of resistance change
-                let changeCause = '자동 변경';
+                let changeCause = t('test.data.automaticChange');
                 let isCommandRelated = false;
                 
                 if (this.resistanceTracking.commandPending && 
@@ -992,7 +992,7 @@ export class FTMSTester {
                            this.resistanceTracking.allowResistanceAttributionWindow > currentTime &&
                            this.resistanceTracking.lastCommandType) {
                     // Command is completed but still within attribution window
-                    changeCause = `${this.resistanceTracking.lastCommandType} (지연됨)`;
+                    changeCause = `${this.resistanceTracking.lastCommandType} (${t('test.data.delayed')})`;
                     isCommandRelated = true;
                     const windowRemaining = this.resistanceTracking.allowResistanceAttributionWindow - currentTime;
                     this.logInteraction(`DEBUG - [handleBikeData] Resistance change attributed to COMPLETED command within window: ${this.resistanceTracking.lastCommandType}, window remaining: ${windowRemaining}ms`);
@@ -1172,7 +1172,7 @@ export class FTMSTester {
                 this.logInteraction(`INFO - [testTacxControlPointsWithUserInteraction] Executing SET_SIM_PARAMS with Grade: ${grade}%, Wind: ${windSpeed} km/h, CRR: ${crr}, CW: ${cw}`);
                 await this.ftmsManager.setSimulationParameters(windSpeed, grade, crr, cw);
                 return `Grade: ${grade}%, Wind: ${windSpeed} km/h, CRR: ${crr}, CW: ${cw}`;
-            }, '시뮬레이션 파라미터 설정', '경사 10%, 바람 0km/h로 설정합니다');
+            }, t('test.controlCommands.setSimParams'), t('test.controlCommands.simParamsDescription'));
               
             // Test SET_TARGET_POWER with user interaction
             if (!this.checkConnectionAndStopIfNeeded()) return;
@@ -1181,7 +1181,7 @@ export class FTMSTester {
                 this.logInteraction(`INFO - [testTacxControlPointsWithUserInteraction] Executing SET_TARGET_POWER with value: ${targetPower}W`);
                 await this.ftmsManager.setTargetPower(targetPower);
                 return `Target power: ${targetPower}W`;
-            }, '목표 파워 설정', '목표 파워를 50W로 설정합니다');
+            }, t('test.controlCommands.setTargetPower'), t('test.controlCommands.targetPowerDescription'));
             
             // Test SET_RESISTANCE_LEVEL with user interaction
             if (!this.checkConnectionAndStopIfNeeded()) return;
@@ -1190,13 +1190,13 @@ export class FTMSTester {
                 this.logInteraction(`INFO - [testTacxControlPointsWithUserInteraction] Executing SET_RESISTANCE_LEVEL with value: ${testResistance}`);
                 await this.ftmsManager.setResistance(testResistance);
                 return `Resistance level: ${testResistance}`;
-            }, '저항 레벨 설정', '저항 레벨을 40으로 설정합니다');
+            }, t('test.controlCommands.setResistanceLevel'), t('test.controlCommands.resistanceDescription'));
             
             this.logInteraction('INFO - [testTacxControlPointsWithUserInteraction] Tacx 사용자 상호작용 제어 테스트 완료');
             
         } catch (error) {
             this.logInteraction(`ERROR - [testTacxControlPointsWithUserInteraction] Tacx 제어 테스트 실패: ${error instanceof Error ? error.message : String(error)}`);
-            this.testResults.issuesFound.push(`Tacx 제어 테스트 오류: ${error instanceof Error ? error.message : String(error)}`);
+            this.testResults.issuesFound.push(`${t('test.errors.tacxControlTestError')}: ${error instanceof Error ? error.message : String(error)}`);
         }
     }
 
@@ -1232,7 +1232,7 @@ export class FTMSTester {
                     this.testResults.controlTests[commandName] = {
                         status: "Skipped",
                         timestamp: Date.now(),
-                        details: "사용자가 명령 실행을 취소했습니다"
+                        details: t('test.controlCommands.userCancelled')
                     };
                     return;
                 }
@@ -1279,18 +1279,18 @@ export class FTMSTester {
                     status: resistanceChanged ? "OK" : "Failed",
                     timestamp: Date.now(),
                     details: resistanceChanged 
-                        ? `${details} - 사용자 확인: 저항 변화 감지됨`
-                        : `${details} - 사용자 확인: 저항 변화 감지되지 않음`
+                        ? `${details} - ${t('test.controlCommands.resistanceChangeDetected')}`
+                        : `${details} - ${t('test.controlCommands.resistanceChangeNotDetected')}`
                 };
 
-                this.logInteraction(`INFO - [testTacxControlCommandWithUserInteraction] ${commandName} 테스트 완료 - 사용자 확인 결과: ${resistanceChanged ? '성공' : '실패'}`);
+                this.logInteraction(`INFO - [testTacxControlCommandWithUserInteraction] ${commandName} 테스트 완료 - 사용자 확인 결과: ${resistanceChanged ? t('test.controlCommands.success') : t('test.controlCommands.failure')}`);
                 console.log(`[DEBUG] 테스트 완료: ${commandName} - ${resistanceChanged ? '성공' : '실패'}`);
             } else {
                 // 콜백이 없는 경우 기본 처리
                 this.testResults.controlTests[commandName] = {
                     status: "Pending",
                     timestamp: Date.now(),
-                    details: `${details} - 사용자 상호작용 콜백 없음`
+                    details: `${details} - ${t('test.controlCommands.userInteractionNotSet')}`
                 };
                 this.logInteraction(`WARN - [testTacxControlCommandWithUserInteraction] ${commandName} 사용자 상호작용 콜백이 설정되지 않음`);
                 console.log(`[DEBUG] 사용자 상호작용 콜백 없음 - Pending 상태로 설정`);

@@ -1,6 +1,10 @@
 import { registerRootComponent } from 'expo';
 import { Buffer } from 'buffer';
 global.Buffer = Buffer;
+
+// i18n 초기화
+import './utils/i18n';
+
 import App from './Screens/App';
 
 // registerRootComponent calls AppRegistry.registerComponent('main', () => App);
