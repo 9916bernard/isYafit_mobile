@@ -11,13 +11,14 @@ import EnhancedTestScreen from './EnhancedTestScreen';
 import ModeSelectionScreen from './ModeSelectionScreen';
 import RealtimeDataScreen from './RealtimeDataScreen';
 import LoadingScreen from './LoadingScreen';
+import PastReportsScreen from './PastReportsScreen';
 import { Colors, ButtonStyles, CardStyles, TextStyles, Shadows } from '../styles/commonStyles';
 import Toast from 'react-native-root-toast';
 import { Ionicons } from '@expo/vector-icons';
 
 
 // 0.8.0 FitShow 프로토콜 구현 개선 (FTMS indoor bike data 형식 사용)
-const APP_VERSION = 'v0.8.0';
+const APP_VERSION = 'v0.8.3';
 
 function App() {
   const insets = useSafeAreaInsets();
@@ -34,7 +35,8 @@ function App() {
   const [showLogScreen, setShowLogScreen] = useState(false); // For showing the enhanced log screen
   const [showModeSelection, setShowModeSelection] = useState(false); // For showing mode selection
   const [showRealtimeData, setShowRealtimeData] = useState(false); // For showing realtime data screen
-  const [isLoadingCompatibilityTest, setIsLoadingCompatibilityTest] = useState(false); // For showing loading screen    // Help popup states
+  const [isLoadingCompatibilityTest, setIsLoadingCompatibilityTest] = useState(false); // For showing loading screen
+  const [showPastReports, setShowPastReports] = useState(false); // For showing past reports screen
   const [isHelpPopupVisible, setIsHelpPopupVisible] = useState(false);
   const [helpPopupPos, setHelpPopupPos] = useState<{x: number, y: number}>({x: 0, y: 0});
   const helpIconRef = useRef(null);
@@ -42,6 +44,8 @@ function App() {
   const screenWidth = Dimensions.get('window').width;
   const screenHeight = Dimensions.get('window').height;
   const [language, setLanguage] = useState<'ko' | 'en' | 'zh'>('ko');
+  const [isMenuVisible, setIsMenuVisible] = useState(false);
+  const [showTermsOfService, setShowTermsOfService] = useState(false);
 
   const languageOrder: ('ko' | 'en' | 'zh')[] = ['ko', 'en', 'zh'];
   const languageLabels = { ko: 'KO', en: 'EN', zh: '中' };
@@ -54,10 +58,16 @@ function App() {
     statusScanDone: { ko: '스캔 완료. 장치를 선택하세요.', en: 'Scan complete. Select a device.', zh: '扫描完成。请选择设备。' },
     sectionDevices: { ko: '발견된 장치', en: 'Discovered Devices', zh: '发现的设备' },
     statusReady: {
-      ko: 'FTMS Manager 초기화 완료. 스캔을 시작할 수 있습니다.',
-      en: 'FTMS Manager initialized. You can start scanning.',
-      zh: 'FTMS管理器初始化完成。可以开始扫描。'
+      ko: 'BLE Manager 초기화 완료. 스캔을 시작할 수 있습니다.',
+      en: 'BLE Manager initialized. You can start scanning.',
+      zh: 'BLE管理器初始化完成。可以开始扫描。'
     },
+    menu: { ko: '메뉴', en: 'Menu', zh: '菜单' },
+    pastReports: { ko: '과거 보고서', en: 'Past Reports', zh: '历史报告' },
+    languageSettings: { ko: '언어 설정', en: 'Language Settings', zh: '语言设置' },
+    patchNotes: { ko: '패치 내역', en: 'Patch Notes', zh: '更新日志' },
+    termsOfService: { ko: '이용 약관', en: 'Terms of Service', zh: '服务条款' },
+    close: { ko: '닫기', en: 'Close', zh: '关闭' },
   };
 
   const handleToggleLanguage = () => {
@@ -65,6 +75,21 @@ function App() {
       const idx = languageOrder.indexOf(prev);
       return languageOrder[(idx + 1) % languageOrder.length];
     });
+  };
+
+  const handlePastReports = () => {
+    setShowPastReports(true);
+    setIsMenuVisible(false);
+  };
+
+  const handlePatchNotes = () => {
+    // TODO: 패치 내역 기능 구현
+    setStatusMessage('패치 내역 기능은 준비 중입니다.');
+  };
+
+  const handleTermsOfService = () => {
+    setShowTermsOfService(true);
+    setIsMenuVisible(false);
   };
 
   const requestPermissions = useCallback(async () => {
@@ -134,8 +159,8 @@ function App() {
           setStatusMessage(translations.statusReady[language]);
         }
       } catch (error) {
-        console.error('FTMSManager 초기화 오류:', error);
-        setStatusMessage('FTMS Manager 초기화 실패. BLE가 지원되지 않을 수 있습니다.');
+        console.error('BLEManager 초기화 오류:', error);
+        setStatusMessage('BLE Manager 초기화 실패. BLE가 지원되지 않을 수 있습니다.');
       }
     };
 
@@ -152,7 +177,7 @@ function App() {
   }, [requestPermissions]);
     const handleScan = async () => {
     if (!ftmsManagerRef.current) {
-      setStatusMessage('FTMS Manager가 아직 초기화되지 않았습니다.');
+      setStatusMessage('BLE Manager가 아직 초기화되지 않았습니다.');
       return;
     }
 
@@ -179,7 +204,7 @@ function App() {
     setScannedDevices([]);
     setSelectedDevice(null);
     setConnectedDevice(null);
-    setStatusMessage('FTMS 장치를 스캔 중...');
+    setStatusMessage('주변 장치를 스캔 중...');
     try {
       await ftmsManagerRef.current.scanForFTMSDevices(10000, (device) => {
         setScannedDevices((prevDevices) => {
@@ -452,12 +477,8 @@ function App() {
           <Text style={styles.versionPlain}>{APP_VERSION}</Text>
         </View>
         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-          <TouchableOpacity style={styles.languageButton} onPress={handleToggleLanguage}>
-            <Ionicons name="globe-outline" size={22} color={Colors.primary} />
-            <Text style={styles.languageLabel}>{languageLabels[language]}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.bluetoothIconContainer} onPress={checkAndEnableBluetooth}>
-            <Icon name="bluetooth" size={24} color={Colors.primary} />
+          <TouchableOpacity style={styles.menuIconContainer} onPress={() => setIsMenuVisible(true)}>
+            <Icon name="menu" size={24} color={Colors.primary} />
           </TouchableOpacity>
         </View>
       </View>
@@ -500,7 +521,8 @@ function App() {
         </View>
       </View>
     </LinearGradient>
-  );  const renderListFooter = () => (
+  );
+  const renderListFooter = () => (
     selectedDevice && (
       <View style={styles.connectButtonContainer}>
         <TouchableOpacity
@@ -618,6 +640,11 @@ function App() {
           onClose={handleCloseLogScreen}
           isDeviceConnected={!!connectedDevice}
         />
+      ) :/* Show past reports screen */
+      showPastReports ? (
+        <PastReportsScreen
+          onBack={() => setShowPastReports(false)}
+        />
       ) : (
         <>          {!connectedDevice && scannedDevices.length > 0 ? (
             <FlatList
@@ -649,12 +676,8 @@ function App() {
                     <Text style={styles.versionPlain}>{APP_VERSION}</Text>
                   </View>
                   <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                    <TouchableOpacity style={styles.languageButton} onPress={handleToggleLanguage}>
-                      <Ionicons name="globe-outline" size={22} color={Colors.primary} />
-                      <Text style={styles.languageLabel}>{languageLabels[language]}</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity style={styles.bluetoothIconContainer} onPress={checkAndEnableBluetooth}>
-                      <Icon name="bluetooth" size={24} color={Colors.primary} />
+                    <TouchableOpacity style={styles.menuIconContainer} onPress={() => setIsMenuVisible(true)}>
+                      <Icon name="menu" size={24} color={Colors.primary} />
                     </TouchableOpacity>
                   </View>
                 </View>
@@ -800,6 +823,96 @@ function App() {
             </Animated.View>
           </TouchableWithoutFeedback>
         )}
+
+        {/* Menu Modal */}
+        <Modal
+          visible={isMenuVisible}
+          transparent={true}
+          animationType="fade"
+          onRequestClose={() => setIsMenuVisible(false)}
+        >
+          <TouchableWithoutFeedback onPress={() => setIsMenuVisible(false)}>
+            <View style={styles.modalOverlay}>
+              <TouchableWithoutFeedback>
+                <View style={styles.menuModal}>
+                  <View style={styles.menuHeader}>
+                    <Text style={styles.menuTitle}>{translations.menu[language]}</Text>
+                    <TouchableOpacity onPress={() => setIsMenuVisible(false)}>
+                      <Icon name="close" size={24} color={Colors.textSecondary} />
+                    </TouchableOpacity>
+                  </View>
+                  
+                  <TouchableOpacity style={styles.menuItem} onPress={handleToggleLanguage}>
+                    <Icon name="translate" size={20} color={Colors.primary} />
+                    <Text style={styles.menuItemText}>{translations.languageSettings[language]}</Text>
+                    <Text style={styles.menuItemSubtext}>{languageLabels[language]}</Text>
+                  </TouchableOpacity>
+                  
+                  <TouchableOpacity style={styles.menuItem} onPress={handlePastReports}>
+                    <Icon name="file-document-outline" size={20} color={Colors.primary} />
+                    <Text style={styles.menuItemText}>{translations.pastReports[language]}</Text>
+                  </TouchableOpacity>
+                  
+                  <TouchableOpacity style={styles.menuItem} onPress={handlePatchNotes}>
+                    <Icon name="update" size={20} color={Colors.primary} />
+                    <Text style={styles.menuItemText}>{translations.patchNotes[language]}</Text>
+                    <Text style={styles.menuItemSubtext}>준비 중</Text>
+                  </TouchableOpacity>
+                  
+                  <TouchableOpacity style={styles.menuItem} onPress={handleTermsOfService}>
+                    <Icon name="file-document" size={20} color={Colors.primary} />
+                    <Text style={styles.menuItemText}>{translations.termsOfService[language]}</Text>
+                  </TouchableOpacity>
+                </View>
+              </TouchableWithoutFeedback>
+            </View>
+          </TouchableWithoutFeedback>
+        </Modal>
+
+        {/* Terms of Service Modal */}
+        <Modal
+          visible={showTermsOfService}
+          transparent={true}
+          animationType="slide"
+          onRequestClose={() => setShowTermsOfService(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.termsModal}>
+              <View style={styles.termsHeader}>
+                <Text style={styles.termsTitle}>{translations.termsOfService[language]}</Text>
+                <TouchableOpacity onPress={() => setShowTermsOfService(false)}>
+                  <Icon name="close" size={24} color={Colors.textSecondary} />
+                </TouchableOpacity>
+              </View>
+              
+              <ScrollView style={styles.termsContent}>
+                <Text style={styles.termsText}>
+                  IsYafit 앱 이용약관{'\n\n'}
+                  
+                  1. 서비스 개요{'\n'}
+                  IsYafit은 피트니스 장치와의 연결을 제공하는 모바일 애플리케이션입니다.{'\n\n'}
+                  
+                  2. 서비스 이용{'\n'}
+                  - 본 앱은 블루투스 연결을 통해 피트니스 장치와 통신합니다.{'\n'}
+                  - 위치 권한이 블루투스 스캔을 위해 필요합니다.{'\n'}
+                  - 연결된 장치로부터 실시간 운동 데이터를 수집할 수 있습니다.{'\n\n'}
+                  
+                  3. 개인정보 보호{'\n'}
+                  - 수집된 데이터는 앱 내에서만 사용되며 외부로 전송되지 않습니다.{'\n'}
+                  - 장치 정보 및 운동 데이터는 사용자의 기기에만 저장됩니다.{'\n\n'}
+                  
+                </Text>
+              </ScrollView>
+              
+              <TouchableOpacity 
+                style={styles.termsCloseButton}
+                onPress={() => setShowTermsOfService(false)}
+              >
+                <Text style={styles.termsCloseButtonText}>{translations.close[language]}</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
     </SafeAreaView>
     </TouchableWithoutFeedback>
   );
@@ -854,7 +967,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
     fontWeight: '400',
   },
-  bluetoothIconContainer: {
+  menuIconContainer: {
     padding: 10,
     borderRadius: 20, // Make it circular
     backgroundColor: '#242c3b', // Same as other buttons for consistency
@@ -1249,6 +1362,99 @@ const styles = StyleSheet.create({
     width: 260,
     // left, top 동적으로 지정
     // 그림자 등은 helpBubble에서 처리
+  },
+  // Menu Modal Styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  menuModal: {
+    backgroundColor: Colors.cardBackground,
+    borderRadius: 16,
+    padding: 20,
+    width: '85%',
+    maxWidth: 350,
+    ...Shadows.large,
+  },
+  menuHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+    paddingBottom: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+  },
+  menuTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: Colors.text,
+  },
+  menuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 15,
+    paddingHorizontal: 10,
+    borderRadius: 8,
+    marginBottom: 8,
+    backgroundColor: Colors.secondary,
+  },
+  menuItemText: {
+    fontSize: 16,
+    color: Colors.text,
+    fontWeight: '500',
+    marginLeft: 12,
+    flex: 1,
+  },
+  menuItemSubtext: {
+    fontSize: 12,
+    color: Colors.textSecondary,
+    marginLeft: 8,
+  },
+  // Terms of Service Modal Styles
+  termsModal: {
+    backgroundColor: Colors.cardBackground,
+    borderRadius: 16,
+    margin: 20,
+    flex: 1,
+    maxHeight: '90%',
+    ...Shadows.large,
+  },
+  termsHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+  },
+  termsTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: Colors.text,
+  },
+  termsContent: {
+    flex: 1,
+    padding: 20,
+  },
+  termsText: {
+    fontSize: 14,
+    color: Colors.textSecondary,
+    lineHeight: 20,
+  },
+  termsCloseButton: {
+    backgroundColor: Colors.primary,
+    paddingVertical: 15,
+    margin: 20,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  termsCloseButtonText: {
+    color: Colors.text,
+    fontSize: 16,
+    fontWeight: 'bold',
   },
 });
 
