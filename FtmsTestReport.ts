@@ -197,6 +197,11 @@ export function determineCompatibility(results: TestResults): TestResults {
     if (hasReborn) {
         partialReasons.push('제어명령');
     }
+    
+    // FITSHOW 프로토콜의 경우 제어 명령이 불가능하므로 부분 호환으로 분류
+    if (hasFitShow) {
+        partialReasons.push('제어명령');
+    }
       // 3. Check protocol support (불가능(프로토콜)) - 우선순위 프로토콜도 지원 프로토콜로 인정
     if (!hasFTMS && !hasCSC && !hasPriorityProtocol && !hasReborn) {
         impossibleReasons.push('프로토콜');
@@ -353,6 +358,11 @@ function generateDetailedReasons(reasonCodes: string[], compatLevel: string, res
     // REBORN 프로토콜의 제한사항을 별도로 추가
     if (results.supportedProtocols.includes("REBORN")) {
         detailedReasons.push("Reborn 프로토콜은 제어 명령이 불가능합니다. SIM, ERG, 유저의 기어 변경이 불가능합니다.");
+    }
+    
+    // FITSHOW 프로토콜의 제한사항을 별도로 추가
+    if (results.supportedProtocols.includes("FITSHOW")) {
+        detailedReasons.push("FitShow 프로토콜은 Yafit에서 제어명령을 지원하지 않습니다. ERG, SIM, 유저의 기어 제어가 불가능합니다.");
     }
     
     return detailedReasons;

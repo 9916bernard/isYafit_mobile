@@ -566,6 +566,11 @@ const TestScreen: React.FC<TestScreenProps> = ({ device, ftmsManager, onClose, i
                               <Text style={styles.limitationText}>• Reborn 프로토콜은 제어 명령이 불가능합니다. SIM,ERG,유저의 기어 변경이 불가능합니다.</Text>
                             )}
                             
+                            {/* FitShow 프로토콜 제한사항 */}
+                            {testResults.supportedProtocols.includes('FITSHOW') && (
+                              <Text style={styles.limitationText}>• FitShow 프로토콜은 Yafit에서 제어명령을 지원하지 않습니다. ERG, SIM, 유저의 기어 제어가 불가능합니다.</Text>
+                            )}
+                            
                             {!testResults.dataFields?.resistance?.detected && (
                               <Text style={styles.limitationText}>• Resistance가 검출되지 않아 기본 기어값으로 설정</Text>
                             )}

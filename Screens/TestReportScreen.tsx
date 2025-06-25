@@ -95,6 +95,9 @@ const TestReportScreen: React.FC<TestReportScreenProps> = ({ results, onClose })
       if (results.supportedProtocols.includes('REBORN')) {
         limitations.push('Reborn 프로토콜은 제어 명령이 불가능합니다. SIM, ERG, 유저의 기어 변경이 불가능합니다.');
       }
+      if (results.supportedProtocols.includes('FITSHOW')) {
+        limitations.push('FitShow 프로토콜은 Yafit에서 제어명령을 지원하지 않습니다. ERG, SIM, 유저의 기어 제어가 불가능합니다.');
+      }
       if (results.compatibilityLevel === '불가능') {
         if (!results.dataFields?.cadence?.detected) limitations.push('Cadence가 검출되지 않음 (RPM)');
         if (!results.supportedProtocols.includes('FTMS') && !results.supportedProtocols.includes('CSC')) limitations.push('지원하지 않는 프로토콜');
@@ -490,6 +493,11 @@ const getCompatibilityColor = (compatibilityLevel?: string): string => {
                           {/* Reborn 프로토콜 제한사항 */}
                           {results.supportedProtocols.includes('REBORN') && (
                             <Text style={styles.limitationText}>• Reborn 프로토콜은 제어 명령이 불가능합니다. SIM,ERG,유저의 기어 변경이 불가능합니다.</Text>
+                          )}
+                          
+                          {/* FitShow 프로토콜 제한사항 */}
+                          {results.supportedProtocols.includes('FITSHOW') && (
+                            <Text style={styles.limitationText}>• FitShow 프로토콜은 Yafit에서 제어명령을 지원하지 않습니다. ERG, SIM, 유저의 기어 제어가 불가능합니다.</Text>
                           )}
                           
                           {!results.dataFields?.resistance?.detected && (
