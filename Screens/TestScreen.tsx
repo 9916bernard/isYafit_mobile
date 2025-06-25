@@ -27,6 +27,7 @@ import TestReportScreen from './TestReportScreen';
 import LogDisplay from '../LogDisplay'; // Import the Log Display component
 import { useSafeAreaStyles, Colors } from '../styles/commonStyles';
 import Toast from 'react-native-root-toast';
+import { ReportStorage } from '../utils/reportStorage';
 
 // Helper function to get compatibility color based on level
 const getCompatibilityColor = (compatibilityLevel?: string): string => {
@@ -245,6 +246,17 @@ const TestScreen: React.FC<TestScreenProps> = ({ device, ftmsManager, onClose, i
           setTestResults(results);
           setTestCompleted(true);
           setIsRunning(false);
+          
+          // 자동으로 보고서 저장
+          const saveReport = async () => {
+            try {
+              await ReportStorage.saveReport(results);
+              console.log('Report saved successfully from TestScreen');
+            } catch (error) {
+              console.error('Error saving report from TestScreen:', error);
+            }
+          };
+          saveReport();
           
           // 애니메이션 컨테이너 축소 및 애니메이션 숨기기
           Animated.parallel([

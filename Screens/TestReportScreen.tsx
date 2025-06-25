@@ -17,17 +17,16 @@ import Ionicons from 'react-native-vector-icons/Ionicons';
 import Clipboard from '@react-native-clipboard/clipboard'; // Added for clipboard functionality
 import { TestResults, formatRangeInfo } from '../FtmsTestReport';
 import { useSafeAreaStyles, Colors } from '../styles/commonStyles';
-import { ReportStorage } from '../utils/reportStorage';
 
 interface TestReportScreenProps {
   results: TestResults;
   onClose: () => void;
 }
 
-const TestReportScreen: React.FC<TestReportScreenProps> = ({ results, onClose }) => {  const safeAreaStyles = useSafeAreaStyles();
+const TestReportScreen: React.FC<TestReportScreenProps> = ({ results, onClose }) => {
+  const safeAreaStyles = useSafeAreaStyles();
   const [showFullLog, setShowFullLog] = React.useState(false);
   const [showFullReasons, setShowFullReasons] = React.useState(true);
-  const [reportSaved, setReportSaved] = React.useState(false);
   
   // Animation values
   const fadeAnim = React.useRef(new Animated.Value(0)).current;
@@ -47,21 +46,9 @@ const TestReportScreen: React.FC<TestReportScreenProps> = ({ results, onClose })
         useNativeDriver: true,
       }),
     ]).start();
+  }, [fadeAnim, slideAnim]);
 
-    // 자동으로 보고서 저장
-    const saveReport = async () => {
-      try {
-        await ReportStorage.saveReport(results);
-        setReportSaved(true);
-        console.log('Report saved successfully');
-      } catch (error) {
-        console.error('Error saving report:', error);
-      }
-    };
-
-    saveReport();
-  }, [fadeAnim, slideAnim, results]);
-    // Function to share the test report
+  // Function to share the test report
   const handleShare = async () => {
     try {
       // Create a comprehensive human-readable report
