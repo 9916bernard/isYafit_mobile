@@ -11,6 +11,7 @@ alwaysApply: true
 - If you must modify a method that affects multiple protocols, make sure to **handle exceptions or side effects carefully** to avoid unintended impact on other protocols.
 - If you create, modify, or delete any UI element that contains text, make sure to **also update the corresponding multilingual (i18n) configuration** accordingly.
 - Ask user before deleting/creating a file or folder. 
+- don't allow whitespace or newlines between JSX elements, fragments (<> </>), and expressions ({}), to prevent react-native/no-raw-text errors.
 
 ### IF UNSURE
 Ask the user for clarification **instead of making assumptions**.

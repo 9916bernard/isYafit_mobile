@@ -2,6 +2,22 @@ import i18n from 'i18next';
 import { initReactI18next } from 'react-i18next';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
+// Intl.PluralRules 폴리필 추가 (React Native 환경 대응)
+if (typeof global.Intl === 'undefined') {
+  (global as any).Intl = {};
+}
+
+if (typeof (global as any).Intl.PluralRules === 'undefined') {
+  (global as any).Intl.PluralRules = class PluralRules {
+    constructor(locale?: string, options?: any) {}
+    select(value: number): string {
+      // 기본적인 복수형 규칙 (한국어, 영어, 중국어 대응)
+      if (value === 1) return 'one';
+      return 'other';
+    }
+  };
+}
+
 // 언어 리소스 정의
 const resources = {
   ko: {
@@ -252,6 +268,7 @@ const resources = {
         },
         compatibilityDetails: '호환성 평가 상세',
         problems: '문제점',
+        limitationReasonsTitle: '제한 사유',
         limitationReasons: {
           userGearControl: '유저가 기어 조절 불가',
           ergModeUnavailable: 'ERG 모드 사용 불가',
@@ -620,6 +637,7 @@ IsYafit은 피트니스 장치와의 연결을 제공하는 모바일 애플리�
         },
         compatibilityDetails: 'Compatibility Assessment Details',
         problems: 'Problems',
+        limitationReasonsTitle: 'Restriction Reasons',
         limitationReasons: {
           userGearControl: 'User gear control not available',
           ergModeUnavailable: 'ERG mode not available',
@@ -988,6 +1006,7 @@ IsYafit is a mobile application that provides connectivity with fitness devices.
         },
         compatibilityDetails: '兼容性评估详情',
         problems: '问题',
+        limitationReasonsTitle: '限制原因',
         limitationReasons: {
           userGearControl: '用户齿轮控制不可用',
           ergModeUnavailable: 'ERG模式不可用',
@@ -1144,11 +1163,10 @@ i18n
     resources,
     fallbackLng: 'ko',
     debug: __DEV__,
-    
+    pluralSeparator: '_',
     interpolation: {
       escapeValue: false,
     },
-    
     react: {
       useSuspense: false,
     },

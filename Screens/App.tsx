@@ -57,16 +57,96 @@ function App() {
     initializeLanguage();
   }, []);
 
+  // FTMSManager 초기화를 한 번만 수행
+  useEffect(() => {
+    const initializeFtmsManager = async () => {
+      // 이미 초기화되었으면 건너뛰기
+      if (ftmsManagerRef.current) {
+        return;
+      }
+      
+      try {
+        const manager = new FTMSManager();
+        ftmsManagerRef.current = manager;
+        
+        // Set up log callback to capture logs
+        manager.setLogCallback((newLogs) => {
+          setLogs(newLogs);
+          // Format logs for display
+          const formatted = newLogs.map(log => 
+            `${new Date(log.timestamp).toLocaleTimeString()} - ${log.message}`
+          );
+          setFormattedLogs(formatted);
+        });
+        
+        // 블루투스 상태 확인
+        const isBluetoothOn = await manager.checkBluetoothState();
+        if (!isBluetoothOn) {
+          setStatusMessage(t('app.status.bluetoothOff'));
+        } else {
+          setManagerInitialized(true);
+          setStatusMessage(t('app.status.ready'));
+        }
+      } catch (error) {
+        console.error('BLEManager 초기화 오류:', error);
+        setStatusMessage(t('app.status.bleManagerInitFailed'));
+      }
+    };
+
+    initializeFtmsManager();
+    requestPermissions();
+
+    // 컴포넌트 언마운트 시 정리
+    return () => {
+      if (ftmsManagerRef.current) {
+        ftmsManagerRef.current.destroy();
+        ftmsManagerRef.current = null;
+      }
+    };
+  }, []); // 의존성 배열을 빈 배열로 변경하여 한 번만 실행
+
   // 언어 변경 시 상태 메시지 업데이트
   useEffect(() => {
-    const translatableKeys = ['init', 'ready', 'scanning', 'scanComplete'];
-    const currentKey = translatableKeys.find(key => 
-      t(`app.status.${key}`) === statusMessage
-    );
-    if (currentKey) {
-      setStatusMessage(t(`app.status.${currentKey}`));
+    if (managerInitialized) {
+      // FTMSManager가 이미 초기화된 경우에만 상태 메시지 업데이트
+      if (ftmsManagerRef.current) {
+        // 현재 상태에 맞는 메시지로 업데이트
+        ftmsManagerRef.current.checkBluetoothState().then(isBluetoothOn => {
+          if (!isBluetoothOn) {
+            setStatusMessage(t('app.status.bluetoothOff'));
+          } else {
+            setStatusMessage(t('app.status.ready'));
+          }
+        }).catch(() => {
+          setStatusMessage(t('app.status.bleManagerInitFailed'));
+        });
+      }
     }
-  }, [i18n.language, t]);
+  }, [t, managerInitialized]); // 언어 변경 시에만 실행
+
+  // 언어 변경 시 현재 상태 메시지 업데이트 (스캔 중, 완료 등)
+  useEffect(() => {
+    const translatableKeys = ['init', 'ready', 'scanning', 'scanComplete', 'bluetoothOff', 'bleManagerInitFailed'];
+    const currentKey = translatableKeys.find(key => 
+      statusMessage === t(`app.status.${key}`) || 
+      statusMessage.includes(t(`app.status.${key}`))
+    );
+    
+    if (currentKey && managerInitialized) {
+      // 현재 상태에 맞는 번역된 메시지로 업데이트
+      if (currentKey === 'scanning') {
+        setStatusMessage(t('app.status.scanning'));
+      } else if (currentKey === 'scanComplete') {
+        setStatusMessage(t('app.status.scanComplete'));
+      } else if (currentKey === 'ready') {
+        setStatusMessage(t('app.status.ready'));
+      } else if (currentKey === 'bluetoothOff') {
+        setStatusMessage(t('app.status.bluetoothOff'));
+      } else if (currentKey === 'bleManagerInitFailed') {
+        setStatusMessage(t('app.status.bleManagerInitFailed'));
+      }
+    }
+  }, [t, statusMessage, managerInitialized]);
 
   const handleToggleLanguage = async () => {
     const currentLang = i18n.language as 'ko' | 'en' | 'zh';
@@ -128,54 +208,6 @@ function App() {
     }
     return true;
   }, []);
-
-  // FTMSManager 초기화를 한 번만 수행
-  useEffect(() => {
-    const initializeFtmsManager = async () => {
-      // 이미 초기화되었으면 건너뛰기
-      if (ftmsManagerRef.current) {
-        return;
-      }
-      
-      try {
-        const manager = new FTMSManager();
-        ftmsManagerRef.current = manager;
-        
-        // Set up log callback to capture logs
-        manager.setLogCallback((newLogs) => {
-          setLogs(newLogs);
-          // Format logs for display
-          const formatted = newLogs.map(log => 
-            `${new Date(log.timestamp).toLocaleTimeString()} - ${log.message}`
-          );
-          setFormattedLogs(formatted);
-        });
-        
-        // 블루투스 상태 확인
-        const isBluetoothOn = await manager.checkBluetoothState();
-        if (!isBluetoothOn) {
-          setStatusMessage(t('app.status.bluetoothOff'));
-        } else {
-          setManagerInitialized(true);
-          setStatusMessage(t('app.status.ready'));
-        }
-      } catch (error) {
-        console.error('BLEManager 초기화 오류:', error);
-        setStatusMessage(t('app.status.bleManagerInitFailed'));
-      }
-    };
-
-    initializeFtmsManager();
-    requestPermissions();
-
-    // 컴포넌트 언마운트 시 정리
-    return () => {
-      if (ftmsManagerRef.current) {
-        ftmsManagerRef.current.destroy();
-        ftmsManagerRef.current = null;
-      }
-    };
-  }, [t]); // t 함수를 의존성으로 추가하여 언어 변경 시 재실행
 
   const handleScan = async () => {
     if (!ftmsManagerRef.current) {

@@ -117,6 +117,7 @@ export const additionalTranslations = {
         impossible: '불가능',
         evaluationImpossible: '평가 불가',
       },
+      limitationReasonsTitle: '제한 사유',
       limitationReasons: {
         userGearControl: '유저가 기어 조절 불가',
         ergModeUnavailable: 'ERG 모드 사용 불가',
@@ -246,6 +247,7 @@ export const additionalTranslations = {
         impossible: 'Impossible',
         evaluationImpossible: 'Evaluation Impossible',
       },
+      limitationReasonsTitle: 'Limitations',
       limitationReasons: {
         userGearControl: 'User gear control unavailable',
         ergModeUnavailable: 'ERG mode unavailable',
@@ -375,6 +377,7 @@ export const additionalTranslations = {
         impossible: '不可能',
         evaluationImpossible: '无法评估',
       },
+      limitationReasonsTitle: '限制原因',
       limitationReasons: {
         userGearControl: '用户齿轮控制不可用',
         ergModeUnavailable: 'ERG模式不可用',

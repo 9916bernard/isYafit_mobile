@@ -617,7 +617,7 @@ const getCompatibilityColor = (compatibilityLevel?: string): string => {
               <View style={styles.section}>
                 <View style={styles.sectionHeader}>
                   <Icon name="block" size={24} color="#FF9800" />
-                  <Text style={styles.sectionTitle}>{t('testReport.limitationReasons')}</Text>
+                  <Text style={styles.sectionTitle}>{t('testReport.limitationReasonsTitle')}</Text>
                 </View>
                 <View style={styles.limitationReasonsContainer}>
                   {Object.entries(results.controlTests)
