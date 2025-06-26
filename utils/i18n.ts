@@ -147,8 +147,8 @@ const resources = {
       
       // 도움말
       help: {
-        title: '기기 호환성 안내',
-        description: '기기가 스캔되지 않는다면 기기의 UUID가 아래의 프로토콜 혹은 센서에 포함되는지 확인해주세요.',
+        title: '기기가 검색되지 않습니까?',
+        description: '기기가 스캔되지 않는다면 기기의 UUID가 아래의 프로토콜 혹은 센서에 포함되는지 확인해주세요. 일부 기기는 페달을 돌려야 검색되는 경우가 있습니다.',
         note: '만약 포함되지 않는다면 이는 Yafit 에 호환되지 않는 기기입니다. 관계자에게 문의해주세요.',
         protocols: '프로토콜:',
         protocolsList: 'FTMS, CSC',
@@ -234,10 +234,19 @@ const resources = {
         noSavedReports: '저장된 보고서가 없습니다',
         loadingReports: '보고서를 불러오는 중...',
         confirmDelete: '정말로 이 보고서를 삭제하시겠습니까?',
+        confirmDeleteMultiple: '선택된 {{count}}개의 보고서를 삭제하시겠습니까?',
         deleteSuccess: '보고서가 삭제되었습니다.',
+        deleteMultipleSuccess: '{{count}}개의 보고서가 삭제되었습니다.',
         deleteError: '보고서 삭제에 실패했습니다.',
         emptyStateDescription: '호환성 테스트를 완료하면 여기에 보고서가 저장됩니다',
         languageNote: '*호환성 판정 결과는 당시 설정 언어로 표시될 수 있습니다',
+        selectMode: '선택 모드',
+        cancelSelection: '선택 취소',
+        selectAll: '전체 선택',
+        deselectAll: '전체 해제',
+        selectedCount: '{{count}}개 선택됨',
+        deleteSelected: '선택된 항목 삭제',
+        noItemsSelected: '선택된 항목이 없습니다',
       },
       
       // 로그 화면
@@ -516,8 +525,8 @@ IsYafit은 피트니스 장치와의 연결을 제공하는 모바일 애플리�
       
       // Help
       help: {
-        title: 'Device Compatibility Guide',
-        description: 'If devices are not being scanned, please check if the device UUID is included in the protocols or sensors below.',
+        title: 'Device not being found?',
+        description: 'If devices are not being scanned, please check if the device UUID is included in the protocols or sensors below. Some devices require pedaling to be detected.',
         note: 'If not included, this device is not compatible with Yafit. Please contact the administrator.',
         protocols: 'Protocols:',
         protocolsList: 'FTMS, CSC',
@@ -603,10 +612,19 @@ IsYafit은 피트니스 장치와의 연결을 제공하는 모바일 애플리�
         noSavedReports: 'No saved reports',
         loadingReports: 'Loading reports...',
         confirmDelete: 'Are you sure you want to delete this report?',
+        confirmDeleteMultiple: 'Are you sure you want to delete these {{count}} reports?',
         deleteSuccess: 'Report has been deleted.',
+        deleteMultipleSuccess: '{{count}} reports have been deleted.',
         deleteError: 'Failed to delete report.',
         emptyStateDescription: 'Reports will be saved here when you complete compatibility tests',
         languageNote: '*Compatibility judgment results may be displayed in the language set at the time.',
+        selectMode: 'Select Mode',
+        cancelSelection: 'Cancel Selection',
+        selectAll: 'Select All',
+        deselectAll: 'Deselect All',
+        selectedCount: '{{count}} selected',
+        deleteSelected: 'Delete Selected Item',
+        noItemsSelected: 'No items selected',
       },
       
       // Logs Screen
@@ -885,8 +903,8 @@ IsYafit is a mobile application that provides connectivity with fitness devices.
       
       // 帮助
       help: {
-        title: '设备兼容性指南',
-        description: '如果设备未被扫描到，请检查设备UUID是否包含在以下协议或传感器中。',
+        title: '设备未被找到？',
+        description: '如果设备未被扫描到，请检查设备UUID是否包含在以下协议或传感器中。某些设备需要踩踏才能被检测到。',
         note: '如果不包含，则该设备与Yafit不兼容。请联系管理员。',
         protocols: '协议：',
         protocolsList: 'FTMS, CSC',
@@ -972,10 +990,19 @@ IsYafit is a mobile application that provides connectivity with fitness devices.
         noSavedReports: '无保存的报告',
         loadingReports: '加载报告中...',
         confirmDelete: '确定要删除此报告吗？',
+        confirmDeleteMultiple: '确定要删除这些{{count}}报告吗？',
         deleteSuccess: '报告已删除。',
+        deleteMultipleSuccess: '{{count}}个报告已删除。',
         deleteError: '删除报告失败。',
         emptyStateDescription: '完成兼容性测试后，报告将保存在这里',
         languageNote: '*兼容性判定结果可能会以当时的语言显示。',
+        selectMode: '选择模式',
+        cancelSelection: '取消选择',
+        selectAll: '全部选择',
+        deselectAll: '全部取消选择',
+        selectedCount: '{{count}}已选择',
+        deleteSelected: '删除选定项目',
+        noItemsSelected: '没有选择项目',
       },
       
       // 日志屏幕
@@ -1156,7 +1183,7 @@ const languageDetector = {
   },
 };
 
-// i18n 초기화 - 더 간단한 방식으로 변경
+// i18n 초기화 - languageDetector 사용하여 저장된 언어 설정 로드
 i18n
   .use(initReactI18next)
   .init({
@@ -1170,6 +1197,10 @@ i18n
     react: {
       useSuspense: false,
     },
+    detection: {
+      order: ['asyncLocalStorage', 'navigator'],
+      caches: ['localStorage'],
+    },
   });
 
 // 언어 설정 함수 추가
@@ -1178,15 +1209,20 @@ export const setLanguage = async (lng: string) => {
   await AsyncStorage.setItem('user-language', lng);
 };
 
-// 초기 언어 로드
+// 초기 언어 로드 - 앱 시작 시 호출
 export const initializeLanguage = async () => {
   try {
     const savedLanguage = await AsyncStorage.getItem('user-language');
     if (savedLanguage && i18n.languages.includes(savedLanguage)) {
       await i18n.changeLanguage(savedLanguage);
+    } else {
+      // 저장된 언어가 없으면 기본 언어(한국어)로 설정
+      await i18n.changeLanguage('ko');
     }
   } catch (error) {
     console.error('Failed to initialize language:', error);
+    // 오류 발생 시 기본 언어로 설정
+    await i18n.changeLanguage('ko');
   }
 };
 

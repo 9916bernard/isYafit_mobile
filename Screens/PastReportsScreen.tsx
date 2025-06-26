@@ -29,6 +29,8 @@ const PastReportsScreen: React.FC<PastReportsScreenProps> = ({ onBack }) => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [selectedReport, setSelectedReport] = useState<SavedReport | null>(null);
+  const [isSelectionMode, setIsSelectionMode] = useState(false);
+  const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
   const safeAreaStyles = useSafeAreaStyles();
 
   const loadReports = async () => {
@@ -79,6 +81,83 @@ const PastReportsScreen: React.FC<PastReportsScreenProps> = ({ onBack }) => {
     );
   };
 
+  const handleDeleteMultipleReports = async () => {
+    if (selectedItems.size === 0) {
+      Alert.alert(t('common.error'), t('pastReports.noItemsSelected'));
+      return;
+    }
+
+    Alert.alert(
+      t('common.confirm'),
+      t('pastReports.confirmDeleteMultiple', { count: selectedItems.size }),
+      [
+        { text: t('common.cancel'), style: 'cancel' },
+        {
+          text: t('common.confirm'),
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const selectedIds = Array.from(selectedItems);
+              let successCount = 0;
+              
+              for (const reportId of selectedIds) {
+                const success = await ReportStorage.deleteReport(reportId);
+                if (success) {
+                  successCount++;
+                }
+              }
+
+              if (successCount > 0) {
+                setReports(prev => prev.filter(report => !selectedItems.has(report.id)));
+                Alert.alert(
+                  t('common.success'), 
+                  t('pastReports.deleteMultipleSuccess', { count: successCount })
+                );
+              } else {
+                Alert.alert(t('common.error'), t('pastReports.deleteError'));
+              }
+              
+              // 선택 모드 종료
+              exitSelectionMode();
+            } catch (error) {
+              console.error('Failed to delete reports:', error);
+              Alert.alert(t('common.error'), t('pastReports.deleteError'));
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const enterSelectionMode = () => {
+    setIsSelectionMode(true);
+    setSelectedItems(new Set());
+  };
+
+  const exitSelectionMode = () => {
+    setIsSelectionMode(false);
+    setSelectedItems(new Set());
+  };
+
+  const toggleItemSelection = (reportId: string) => {
+    const newSelectedItems = new Set(selectedItems);
+    if (newSelectedItems.has(reportId)) {
+      newSelectedItems.delete(reportId);
+    } else {
+      newSelectedItems.add(reportId);
+    }
+    setSelectedItems(newSelectedItems);
+  };
+
+  const selectAll = () => {
+    const allIds = reports.map(report => report.id);
+    setSelectedItems(new Set(allIds));
+  };
+
+  const deselectAll = () => {
+    setSelectedItems(new Set());
+  };
+
   const handleShareReport = async (report: SavedReport) => {
     try {
       const reportText = `${t('testReport.share.title')}\n${t('testReport.share.deviceName')} ${report.deviceName}\n${t('testReport.share.mainProtocol')} ${report.results.deviceInfo.protocol || t('common.unknown')}\n${t('testReport.share.testDateTime')} ${new Date(report.timestamp).toLocaleString()}`;
@@ -105,10 +184,35 @@ const PastReportsScreen: React.FC<PastReportsScreenProps> = ({ onBack }) => {
 
   const renderReportItem = ({ item }: { item: SavedReport }) => (
     <TouchableOpacity
-      style={styles.reportCard}
-      onPress={() => setSelectedReport(item)}
+      style={[
+        styles.reportCard,
+        isSelectionMode && selectedItems.has(item.id) && styles.selectedCard
+      ]}
+      onPress={() => {
+        if (isSelectionMode) {
+          toggleItemSelection(item.id);
+        } else {
+          setSelectedReport(item);
+        }
+      }}
+      onLongPress={() => {
+        if (!isSelectionMode) {
+          enterSelectionMode();
+          toggleItemSelection(item.id);
+        }
+      }}
       activeOpacity={0.7}
     >
+      {isSelectionMode && (
+        <View style={styles.selectionIndicator}>
+          <Icon 
+            name={selectedItems.has(item.id) ? "checkbox-marked-circle" : "checkbox-blank-circle-outline"} 
+            size={24} 
+            color={selectedItems.has(item.id) ? Colors.primary : Colors.textSecondary} 
+          />
+        </View>
+      )}
+      
       <View style={styles.reportHeader}>
         <View style={styles.deviceInfo}>
           <Icon name="bluetooth" size={20} color={Colors.primary} />
@@ -116,12 +220,14 @@ const PastReportsScreen: React.FC<PastReportsScreenProps> = ({ onBack }) => {
             {item.deviceName}
           </Text>
         </View>
-        <TouchableOpacity
-          style={styles.deleteButton}
-          onPress={() => handleDeleteReport(item.id)}
-        >
-          <Icon name="delete-outline" size={20} color={Colors.error} />
-        </TouchableOpacity>
+        {!isSelectionMode && (
+          <TouchableOpacity
+            style={styles.deleteButton}
+            onPress={() => handleDeleteReport(item.id)}
+          >
+            <Icon name="delete-outline" size={20} color={Colors.error} />
+          </TouchableOpacity>
+        )}
       </View>
 
       <View style={styles.reportDetails}>
@@ -181,11 +287,57 @@ const PastReportsScreen: React.FC<PastReportsScreenProps> = ({ onBack }) => {
             <Icon name="arrow-left" size={24} color={Colors.primary} />
           </TouchableOpacity>
           <View style={{ flex: 1, alignItems: 'center' }}>
-            <Text style={styles.title}>{t('pastReports.title')}</Text>
-            <Text style={styles.languageNote}>{t('pastReports.languageNote')}</Text>
+            <Text style={styles.title}>
+              {isSelectionMode ? t('pastReports.selectMode') : t('pastReports.title')}
+            </Text>
+            {isSelectionMode ? (
+              <Text style={styles.selectedCount}>
+                {t('pastReports.selectedCount', { count: selectedItems.size })}
+              </Text>
+            ) : (
+              <Text style={styles.languageNote}>{t('pastReports.languageNote')}</Text>
+            )}
           </View>
-          <View style={{ width: 24 }} />
+          <View style={styles.headerRight}>
+            {!isSelectionMode && reports.length > 0 && (
+              <TouchableOpacity style={styles.selectButton} onPress={enterSelectionMode}>
+                <Icon name="checkbox-multiple-blank-outline" size={24} color={Colors.primary} />
+              </TouchableOpacity>
+            )}
+            {isSelectionMode && (
+              <TouchableOpacity style={styles.selectButton} onPress={exitSelectionMode}>
+                <Icon name="close" size={24} color={Colors.primary} />
+              </TouchableOpacity>
+            )}
+          </View>
         </View>
+
+        {isSelectionMode && (
+          <View style={styles.selectionToolbar}>
+            <View style={styles.selectionRow}>
+              <TouchableOpacity style={styles.toolbarButton} onPress={selectAll}>
+                <Icon name="select-all" size={18} color={Colors.primary} />
+                <Text style={styles.toolbarButtonText}>{t('pastReports.selectAll')}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.toolbarButton} onPress={deselectAll}>
+                <Icon name="select-off" size={18} color={Colors.primary} />
+                <Text style={styles.toolbarButtonText}>{t('pastReports.deselectAll')}</Text>
+              </TouchableOpacity>
+            </View>
+            <View style={styles.selectionRow}>
+              <TouchableOpacity 
+                style={[styles.toolbarButton, selectedItems.size === 0 && styles.disabledButton]} 
+                onPress={handleDeleteMultipleReports}
+                disabled={selectedItems.size === 0}
+              >
+                <Icon name="delete" size={18} color={selectedItems.size === 0 ? Colors.textSecondary : Colors.error} />
+                <Text style={[styles.toolbarButtonText, selectedItems.size === 0 && styles.disabledText]}>
+                  {t('pastReports.deleteSelected')}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
 
         {loading ? (
           <View style={styles.loadingContainer}>
@@ -267,6 +419,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.border,
   },
+  selectedCard: {
+    borderColor: Colors.primary,
+    borderWidth: 2,
+    backgroundColor: Colors.primary + '10',
+  },
   reportHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -334,6 +491,62 @@ const styles = StyleSheet.create({
     marginTop: 8,
     textAlign: 'center',
     lineHeight: 20,
+  },
+  selectionIndicator: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    zIndex: 1,
+  },
+  selectionToolbar: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: Colors.cardBackground,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+    gap: 8,
+  },
+  selectionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-around',
+  },
+  toolbarButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    backgroundColor: Colors.secondary,
+    minWidth: 80,
+    justifyContent: 'center',
+  },
+  toolbarButtonText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: Colors.primary,
+    marginLeft: 4,
+  },
+  disabledButton: {
+    opacity: 0.5,
+  },
+  disabledText: {
+    color: Colors.textSecondary,
+  },
+  selectedCount: {
+    fontSize: 14,
+    color: Colors.textSecondary,
+    marginTop: 2,
+    textAlign: 'center',
+  },
+  selectButton: {
+    padding: 8,
+    borderRadius: 16,
+    backgroundColor: Colors.secondary,
+  },
+  headerRight: {
+    width: 48,
+    alignItems: 'flex-end',
   },
 });
 
