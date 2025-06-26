@@ -7,14 +7,12 @@ import { FTMSManager } from '../FtmsManager';
 import { LogEntry } from '../FtmsManager/LogManager';
 import { BleError, Device, BleErrorCode, State } from 'react-native-ble-plx';
 import TestScreen from './TestScreen';
-import EnhancedTestScreen from './EnhancedTestScreen';
 import ModeSelectionScreen from './ModeSelectionScreen';
 import RealtimeDataScreen from './RealtimeDataScreen';
 import LoadingScreen from './LoadingScreen';
 import PastReportsScreen from './PastReportsScreen';
 import { Colors, ButtonStyles, CardStyles, TextStyles, Shadows } from '../styles/commonStyles';
 import Toast from 'react-native-root-toast';
-import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { setLanguage, initializeLanguage } from '../utils/i18n';
 
@@ -35,7 +33,6 @@ function App() {
   const [showLogs, setShowLogs] = useState(false);
   const [formattedLogs, setFormattedLogs] = useState<string[]>([]);
   const [showTestScreen, setShowTestScreen] = useState(false); // For showing the test screen
-  const [showLogScreen, setShowLogScreen] = useState(false); // For showing the enhanced log screen
   const [showModeSelection, setShowModeSelection] = useState(false); // For showing mode selection
   const [showRealtimeData, setShowRealtimeData] = useState(false); // For showing realtime data screen
   const [isLoadingCompatibilityTest, setIsLoadingCompatibilityTest] = useState(false); // For showing loading screen
@@ -45,7 +42,6 @@ function App() {
   const helpIconRef = useRef(null);
   const helpPopupAnim = useRef(new Animated.Value(0)).current;
   const screenWidth = Dimensions.get('window').width;
-  const screenHeight = Dimensions.get('window').height;
   const [isMenuVisible, setIsMenuVisible] = useState(false);
   const [showTermsOfService, setShowTermsOfService] = useState(false);
 
@@ -239,6 +235,7 @@ function App() {
     setSelectedDevice(null);
     setConnectedDevice(null);
     setStatusMessage(t('app.status.scanning'));
+    //#region Scan Device
     try {
       await ftmsManagerRef.current.scanForFTMSDevices(10000, (device) => {
         setScannedDevices((prevDevices) => {
@@ -311,6 +308,7 @@ function App() {
       setIsHelpPopupVisible(false);
     });
   };
+  //#region mode slection connection
   // Handle mode selection
   const handleSelectRealtimeData = async () => {
     setShowModeSelection(false);
@@ -324,6 +322,7 @@ function App() {
     }
 
     setStatusMessage(t('app.status.connectingToDevice', { deviceName: selectedDevice.name || selectedDevice.id }));
+    //실시간 데이터 연결 로직
     try {
       await ftmsManagerRef.current.disconnectDevice(); // 이전 연결 해제
       const device = await ftmsManagerRef.current.connectToDevice(selectedDevice.id);
@@ -359,6 +358,7 @@ function App() {
     }
 
     setStatusMessage(t('app.status.connectingToDevice', { deviceName: selectedDevice.name || selectedDevice.id }));
+    // 호환성 테스트 연결 로직
     try {
       await ftmsManagerRef.current.disconnectDevice(); // 이전 연결 해제
       const device = await ftmsManagerRef.current.connectToDevice(selectedDevice.id);
@@ -396,7 +396,7 @@ function App() {
       setShowModeSelection(false);
       setStatusMessage(t('app.status.disconnectedSuccess'));
       
-      // 토스트 메시지 표시
+      // 토스트 메시지 표시 (안나옴)
       Toast.show(t('app.status.disconnected'), {
         duration: Toast.durations.SHORT,
         position: Toast.positions.BOTTOM,
@@ -416,17 +416,7 @@ function App() {
     setShowRealtimeData(false);
     setShowModeSelection(true); // 모드 선택 화면으로 돌아가기
   };
-    const handleRealtimeDataConnectionError = () => {
-    setShowRealtimeData(false);
-    setShowModeSelection(true);
-    
-    // 연결 실패 알림 표시
-    Alert.alert(
-      t('app.alerts.connectionFailed'),
-      t('app.alerts.connectionFailedMessage'),
-      [{ text: t('app.alerts.confirm'), style: 'default' }]
-    );
-  };
+
     const handleDisconnect = async () => {
     if (!ftmsManagerRef.current) {
       setStatusMessage(t('app.status.init'));
@@ -442,7 +432,7 @@ function App() {
       setShowRealtimeData(false);
       setStatusMessage(t('app.status.disconnectedSuccess'));
       
-      // 토스트 메시지 표시
+      // 토스트 메시지 표시 (안나옴)
       Toast.show(t('app.status.disconnected'), {
         duration: Toast.durations.SHORT,
         position: Toast.positions.BOTTOM,
@@ -459,24 +449,6 @@ function App() {
     }
   };
 
-  const checkAndEnableBluetooth = async () => {
-    if (!ftmsManagerRef.current) {
-      setStatusMessage(t('app.status.init'));
-      return;
-    }
-
-    try {
-      const isBluetoothOn = await ftmsManagerRef.current.checkBluetoothState();
-      if (isBluetoothOn) {
-        setStatusMessage(t('app.status.bluetoothOn'));
-      } else {
-        setStatusMessage(t('app.status.bluetoothOffSettings'));
-      }
-    } catch (error) {
-      console.error("Bluetooth state check error:", error);
-      setStatusMessage(t('app.status.bluetoothStateCheckError'));
-    }
-  };  // FTMS 호환성 테스트 화면 닫기
   const handleCloseTestScreen = () => {
     setShowTestScreen(false);
     setConnectedDevice(null);
@@ -484,23 +456,7 @@ function App() {
     setIsLoadingCompatibilityTest(false);
     setStatusMessage(t('app.status.ready'));
   };
-    // Close log screen
-  const handleCloseLogScreen = async () => {
-    // EnhancedTestScreen에서 연결 해제 버튼을 눌렀을 때의 처리
-    if (connectedDevice && ftmsManagerRef.current) {
-      try {
-        await ftmsManagerRef.current.disconnectDevice();
-        setConnectedDevice(null);
-        setSelectedDevice(null);
-        setShowRealtimeData(false);
-        setStatusMessage(t('app.status.disconnectedSuccess'));
-      } catch (error) {
-        console.error("Disconnect error:", error);
-        setStatusMessage(t('app.status.disconnectError'));
-      }
-    }
-    setShowLogScreen(false);
-  };
+
   const renderListHeader = () => (
     <LinearGradient 
       colors={[Colors.background, Colors.cardBackground]} 
@@ -648,15 +604,6 @@ function App() {
           device={connectedDevice}
           ftmsManager={ftmsManagerRef.current}
           onClose={handleCloseTestScreen}
-          isDeviceConnected={!!connectedDevice}
-        />
-      ) :
-      /* Show the enhanced log screen */
-      showLogScreen && connectedDevice && ftmsManagerRef.current ? (
-        <EnhancedTestScreen
-          device={connectedDevice}
-          ftmsManager={ftmsManagerRef.current}
-          onClose={handleCloseLogScreen}
           isDeviceConnected={!!connectedDevice}
         />
       ) :
