@@ -941,7 +941,7 @@ const styles = StyleSheet.create({
   infoRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     marginBottom: 6,
     paddingVertical: 4,
     borderBottomWidth: 1,
@@ -951,11 +951,15 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: '#9ca3af',
     fontWeight: '500',
+    flex: 1,
+    marginRight: 8,
   },
   infoValue: {
     fontSize: 15,
     color: '#ffffff',
     textAlign: 'right',
+    flex: 1,
+    flexWrap: 'wrap',
   },
   compatibilityRow: {
     marginTop: 8,
