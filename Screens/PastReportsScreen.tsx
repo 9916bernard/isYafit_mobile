@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -9,6 +9,7 @@ import {
   RefreshControl,
   ActivityIndicator,
   Share,
+  Animated,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -32,6 +33,41 @@ const PastReportsScreen: React.FC<PastReportsScreenProps> = ({ onBack }) => {
   const [isSelectionMode, setIsSelectionMode] = useState(false);
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
   const safeAreaStyles = useSafeAreaStyles();
+  const toolbarAnim = useRef(new Animated.Value(0)).current;
+  const checkboxAnimMap = useRef<{ [id: string]: Animated.Value }>({}).current;
+
+  useEffect(() => {
+    Animated.timing(toolbarAnim, {
+      toValue: isSelectionMode ? 1 : 0,
+      duration: 300,
+      useNativeDriver: true,
+    }).start();
+  }, [isSelectionMode]);
+
+  useEffect(() => {
+    if (isSelectionMode) {
+      reports.forEach((report) => {
+        if (!checkboxAnimMap[report.id]) {
+          checkboxAnimMap[report.id] = new Animated.Value(0);
+        }
+        Animated.timing(checkboxAnimMap[report.id], {
+          toValue: 1,
+          duration: 250,
+          useNativeDriver: true,
+        }).start();
+      });
+    } else {
+      reports.forEach((report) => {
+        if (checkboxAnimMap[report.id]) {
+          Animated.timing(checkboxAnimMap[report.id], {
+            toValue: 0,
+            duration: 200,
+            useNativeDriver: true,
+          }).start();
+        }
+      });
+    }
+  }, [isSelectionMode, reports]);
 
   const loadReports = async () => {
     try {
@@ -204,13 +240,26 @@ const PastReportsScreen: React.FC<PastReportsScreenProps> = ({ onBack }) => {
       activeOpacity={0.7}
     >
       {isSelectionMode && (
-        <View style={styles.selectionIndicator}>
-          <Icon 
-            name={selectedItems.has(item.id) ? "checkbox-marked-circle" : "checkbox-blank-circle-outline"} 
-            size={24} 
-            color={selectedItems.has(item.id) ? Colors.primary : Colors.textSecondary} 
+        <Animated.View
+          style={{
+            ...styles.selectionIndicator,
+            opacity: checkboxAnimMap[item.id] || 0,
+            transform: [
+              {
+                scale: (checkboxAnimMap[item.id] || new Animated.Value(0)).interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [0.7, 1],
+                }),
+              },
+            ],
+          }}
+        >
+          <Icon
+            name={selectedItems.has(item.id) ? "checkbox-marked-circle" : "checkbox-blank-circle-outline"}
+            size={24}
+            color={selectedItems.has(item.id) ? Colors.primary : Colors.textSecondary}
           />
-        </View>
+        </Animated.View>
       )}
       
       <View style={styles.reportHeader}>
@@ -312,32 +361,50 @@ const PastReportsScreen: React.FC<PastReportsScreenProps> = ({ onBack }) => {
           </View>
         </View>
 
-        {isSelectionMode && (
-          <View style={styles.selectionToolbar}>
-            <View style={styles.selectionRow}>
-              <TouchableOpacity style={styles.toolbarButton} onPress={selectAll}>
-                <Icon name="select-all" size={18} color={Colors.primary} />
-                <Text style={styles.toolbarButtonText}>{t('pastReports.selectAll')}</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.toolbarButton} onPress={deselectAll}>
-                <Icon name="select-off" size={18} color={Colors.primary} />
-                <Text style={styles.toolbarButtonText}>{t('pastReports.deselectAll')}</Text>
-              </TouchableOpacity>
-            </View>
-            <View style={styles.selectionRow}>
-              <TouchableOpacity 
-                style={[styles.toolbarButton, selectedItems.size === 0 && styles.disabledButton]} 
-                onPress={handleDeleteMultipleReports}
-                disabled={selectedItems.size === 0}
-              >
-                <Icon name="delete" size={18} color={selectedItems.size === 0 ? Colors.textSecondary : Colors.error} />
-                <Text style={[styles.toolbarButtonText, selectedItems.size === 0 && styles.disabledText]}>
-                  {t('pastReports.deleteSelected')}
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        )}
+        <Animated.View
+          style={[
+            styles.selectionToolbar,
+            {
+              transform: [
+                {
+                  translateY: toolbarAnim.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [40, 0],
+                  }),
+                },
+              ],
+              opacity: toolbarAnim,
+            },
+          ]}
+          pointerEvents={isSelectionMode ? 'auto' : 'none'}
+        >
+          {isSelectionMode ? (
+            <>
+              <View style={styles.selectionRow}>
+                <TouchableOpacity style={styles.toolbarButton} onPress={selectAll}>
+                  <Icon name="select-all" size={18} color={Colors.primary} />
+                  <Text style={styles.toolbarButtonText}>{t('pastReports.selectAll')}</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.toolbarButton} onPress={deselectAll}>
+                  <Icon name="select-off" size={18} color={Colors.primary} />
+                  <Text style={styles.toolbarButtonText}>{t('pastReports.deselectAll')}</Text>
+                </TouchableOpacity>
+              </View>
+              <View style={styles.selectionRow}>
+                <TouchableOpacity
+                  style={[styles.toolbarButton, selectedItems.size === 0 && styles.disabledButton]}
+                  onPress={handleDeleteMultipleReports}
+                  disabled={selectedItems.size === 0}
+                >
+                  <Icon name="delete" size={18} color={selectedItems.size === 0 ? Colors.textSecondary : Colors.error} />
+                  <Text style={[styles.toolbarButtonText, selectedItems.size === 0 && styles.disabledText]}>
+                    {t('pastReports.deleteSelected')}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </>
+          ) : null}
+        </Animated.View>
 
         {loading ? (
           <View style={styles.loadingContainer}>
