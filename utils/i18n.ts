@@ -25,7 +25,7 @@ const resources = {
         status: {
           init: '앱 테스트 중입니다.',
           ready: 'BLE Manager 초기화 완료. 스캔을 시작할 수 있습니다.',
-          scanning: 'FTMS 장치를 스캔 중...',
+          scanning: '주변 장치 검색 중...',
           scanComplete: '스캔 완료. 장치를 선택하세요.',
           bluetoothOff: '블루투스가 꺼져있습니다. 블루투스를 켜고 다시 시도하세요.',
           permissionDenied: '필수 권한이 거부되었습니다.',
@@ -221,6 +221,7 @@ const resources = {
         deleteSuccess: '보고서가 삭제되었습니다.',
         deleteError: '보고서 삭제에 실패했습니다.',
         emptyStateDescription: '호환성 테스트를 완료하면 여기에 보고서가 저장됩니다',
+        languageNote: '*호환성 판정 결과는 당시 설정 언어로 표시될 수 있습니다',
       },
       
       // 로그 화면
@@ -392,7 +393,7 @@ IsYafit은 피트니스 장치와의 연결을 제공하는 모바일 애플리�
         status: {
           init: 'App is in test mode.',
           ready: 'BLE Manager initialized. You can start scanning.',
-          scanning: 'Scanning for FTMS devices...',
+          scanning: 'Scanning for nearby devices...',
           scanComplete: 'Scan complete. Select a device.',
           bluetoothOff: 'Bluetooth is turned off. Please turn on Bluetooth and try again.',
           permissionDenied: 'Required permissions have been denied.',
@@ -588,6 +589,7 @@ IsYafit은 피트니스 장치와의 연결을 제공하는 모바일 애플리�
         deleteSuccess: 'Report has been deleted.',
         deleteError: 'Failed to delete report.',
         emptyStateDescription: 'Reports will be saved here when you complete compatibility tests',
+        languageNote: '*Compatibility judgment results may be displayed in the language set at the time.',
       },
       
       // Logs Screen
@@ -758,8 +760,8 @@ IsYafit is a mobile application that provides connectivity with fitness devices.
         version: 'v0.8.3',
         status: {
           init: '应用测试中。',
-          ready: 'BLE管理器初始化完成。可以开始扫描。',
-          scanning: '正在扫描FTMS设备...',
+          ready: 'BLE 管理器已初始化。可以开始扫描。',
+          scanning: '正在搜索附近设备...',
           scanComplete: '扫描完成。请选择设备。',
           bluetoothOff: '蓝牙已关闭。请打开蓝牙后重试。',
           permissionDenied: '必需权限已被拒绝。',
@@ -955,6 +957,7 @@ IsYafit is a mobile application that provides connectivity with fitness devices.
         deleteSuccess: '报告已删除。',
         deleteError: '删除报告失败。',
         emptyStateDescription: '完成兼容性测试后，报告将保存在这里',
+        languageNote: '*兼容性判定结果可能会以当时的语言显示。',
       },
       
       // 日志屏幕

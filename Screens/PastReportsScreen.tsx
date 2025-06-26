@@ -220,7 +220,10 @@ const PastReportsScreen: React.FC<PastReportsScreenProps> = ({ onBack }) => {
           <TouchableOpacity style={styles.backButton} onPress={onBack}>
             <Icon name="arrow-left" size={24} color={Colors.primary} />
           </TouchableOpacity>
-          <Text style={styles.title}>{t('pastReports.title')}</Text>
+          <View style={{ flex: 1, alignItems: 'center' }}>
+            <Text style={styles.title}>{t('pastReports.title')}</Text>
+            <Text style={styles.languageNote}>{t('pastReports.languageNote')}</Text>
+          </View>
           <View style={{ width: 24 }} />
         </View>
 
@@ -275,6 +278,12 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: 'bold',
     color: Colors.text,
+  },
+  languageNote: {
+    fontSize: 12,
+    color: Colors.textSecondary,
+    marginTop: 2,
+    textAlign: 'center',
   },
   loadingContainer: {
     flex: 1,

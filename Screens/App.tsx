@@ -578,13 +578,12 @@ function App() {
     </TouchableOpacity>
   );
 
-  return (
-    <TouchableWithoutFeedback onPress={() => isHelpPopupVisible && hideHelpPopup()}>
-      <SafeAreaView style={styles.safeArea}>{/* Show loading screen for compatibility test */}
+  // 조건부로 TouchableWithoutFeedback으로 감싸기
+  const SafeAreaContent = (
+    <SafeAreaView style={styles.safeArea}>
+      {/* Show loading screen for compatibility test */}
       {isLoadingCompatibilityTest && selectedDevice ? (
-        <LoadingScreen
-          device={selectedDevice}
-        />
+        <LoadingScreen device={selectedDevice} />
       ) :
       /* Show mode selection screen */
       showModeSelection && selectedDevice ? (
@@ -735,9 +734,9 @@ function App() {
                   </>
                 ) : (
                   <>
-                    <View style={[CardStyles.elevated, { alignItems: 'center' }]}>
+                    <View style={[CardStyles.elevated, { alignItems: 'center' }]}> 
                       <Icon name="check-circle" size={48} color={Colors.success} />
-                      <Text style={[styles.connectedDeviceText, { marginTop: 12 }]}>
+                      <Text style={[styles.connectedDeviceText, { marginTop: 12 }]}> 
                         {t('app.sections.connectedDevice')} {connectedDevice.name || connectedDevice.id}
                       </Text>
                     </View>
@@ -754,54 +753,58 @@ function App() {
               </LinearGradient>
             </ScrollView>
           )}        </>
-      )}        {/* Help Popup (absolute, animated, not Modal) */}
-        {isHelpPopupVisible && (
-          <TouchableWithoutFeedback onPress={hideHelpPopup}>
-            <Animated.View
-              style={[
-                styles.animatedHelpPopup,
+      )}    
+      {/* Help Popup (absolute, animated, not Modal) */}
+      {isHelpPopupVisible && (
+        <Animated.View
+          style={[
+            styles.animatedHelpPopup,
+            {
+              left: helpPopupPos.x,
+              top: helpPopupPos.y,
+              opacity: helpPopupAnim,
+              transform: [
                 {
-                  left: helpPopupPos.x,
-                  top: helpPopupPos.y,
-                  opacity: helpPopupAnim,
-                  transform: [
-                    {
-                      scale: helpPopupAnim.interpolate({
-                        inputRange: [0, 1],
-                        outputRange: [0.92, 1],
-                      }),
-                    },
-                  ],
+                  scale: helpPopupAnim.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [0.92, 1],
+                  }),
                 },
-              ]}
-            >
-              <View style={styles.helpBubble}>
-                <View style={styles.helpBubbleContent}>
-                  <View style={styles.helpBubbleHeader}>
-                    <Icon name="help-circle" size={20} color={Colors.primary} />
-                    <Text style={styles.helpBubbleTitle}>{t('help.title')}</Text>
-                    <TouchableOpacity onPress={hideHelpPopup}>
-                      <Icon name="close" size={16} color={Colors.textSecondary} />
-                    </TouchableOpacity>
-                  </View>
-                  <Text style={styles.helpBubbleText}>
-                    {t('help.description')}
-                  </Text>
-                  <Text style={styles.helpBubbleText}>
-                    {t('help.note')}
-                  </Text>
-                  <View style={styles.helpBubbleProtocols}>
-                    <Text style={styles.helpBubbleSubtitle}>{t('help.protocols')}</Text>
-                    <Text style={styles.helpBubbleProtocolText}>{t('help.protocolsList')}</Text>
-                    <Text style={styles.helpBubbleSubtitle}>{t('help.customProtocols')}</Text>
-                    <Text style={styles.helpBubbleProtocolText}>{t('help.customProtocolsList')}</Text>
-                  </View>
-                </View>
+              ],
+            },
+          ]}
+        >
+          <View style={styles.helpBubble}>
+            <View style={styles.helpBubbleContent}>
+              <View style={styles.helpBubbleHeader}>
+                <Icon name="help-circle" size={20} color={Colors.primary} />
+                <Text style={styles.helpBubbleTitle}>{t('help.title')}</Text>
+                <TouchableOpacity onPress={hideHelpPopup}>
+                  <Icon name="close" size={16} color={Colors.textSecondary} />
+                </TouchableOpacity>
               </View>
-            </Animated.View>
-          </TouchableWithoutFeedback>
-        )}
+              <Text style={styles.helpBubbleText}>
+                {t('help.description')}
+              </Text>
+              <Text style={styles.helpBubbleText}>
+                {t('help.note')}
+              </Text>
+              <View style={styles.helpBubbleProtocols}>
+                <Text style={styles.helpBubbleSubtitle}>{t('help.protocols')}</Text>
+                <Text style={styles.helpBubbleProtocolText}>{t('help.protocolsList')}</Text>
+                <Text style={styles.helpBubbleSubtitle}>{t('help.customProtocols')}</Text>
+                <Text style={styles.helpBubbleProtocolText}>{t('help.customProtocolsList')}</Text>
+              </View>
+            </View>
+          </View>
+        </Animated.View>
+      )}
+    </SafeAreaView>
+  );
 
+  if (isHelpPopupVisible) {
+    return (
+      <>
         {/* Menu Modal */}
         <Modal
           visible={isMenuVisible}
@@ -819,24 +822,20 @@ function App() {
                       <Icon name="close" size={24} color={Colors.textSecondary} />
                     </TouchableOpacity>
                   </View>
-                  
                   <TouchableOpacity style={styles.menuItem} onPress={handleToggleLanguage}>
                     <Icon name="translate" size={20} color={Colors.primary} />
                     <Text style={styles.menuItemText}>{t('app.languageSettings')}</Text>
                     <Text style={styles.menuItemSubtext}>{languageLabels[i18n.language as 'ko' | 'en' | 'zh']}</Text>
                   </TouchableOpacity>
-                  
                   <TouchableOpacity style={styles.menuItem} onPress={handlePastReports}>
                     <Icon name="file-document-outline" size={20} color={Colors.primary} />
                     <Text style={styles.menuItemText}>{t('app.pastReports')}</Text>
                   </TouchableOpacity>
-                  
                   <TouchableOpacity style={styles.menuItem} onPress={handlePatchNotes}>
                     <Icon name="update" size={20} color={Colors.primary} />
                     <Text style={styles.menuItemText}>{t('app.patchNotes')}</Text>
                     <Text style={styles.menuItemSubtext}>{t('menu.preparing')}</Text>
                   </TouchableOpacity>
-                  
                   <TouchableOpacity style={styles.menuItem} onPress={handleTermsOfService}>
                     <Icon name="file-document" size={20} color={Colors.primary} />
                     <Text style={styles.menuItemText}>{t('app.termsOfService')}</Text>
@@ -846,42 +845,24 @@ function App() {
             </View>
           </TouchableWithoutFeedback>
         </Modal>
-
         {/* Terms of Service Modal */}
         <Modal
           visible={showTermsOfService}
-          transparent={true}
           animationType="slide"
+          transparent={true}
           onRequestClose={() => setShowTermsOfService(false)}
         >
-          <View style={styles.modalOverlay}>
+          <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.5)' }}>
             <View style={styles.termsModal}>
               <View style={styles.termsHeader}>
-                <Text style={styles.termsTitle}>{t('app.termsOfService')}</Text>
+                <Text style={styles.termsTitle}>{t('terms.title')}</Text>
                 <TouchableOpacity onPress={() => setShowTermsOfService(false)}>
-                  <Icon name="close" size={24} color={Colors.textSecondary} />
+                  <Icon name="close" size={24} color={Colors.text} />
                 </TouchableOpacity>
               </View>
-              
               <ScrollView style={styles.termsContent}>
-                <Text style={styles.termsText}>
-                  IsYafit 앱 이용약관{'\n\n'}
-                  
-                  1. 서비스 개요{'\n'}
-                  IsYafit은 피트니스 장치와의 연결을 제공하는 모바일 애플리케이션입니다.{'\n\n'}
-                  
-                  2. 서비스 이용{'\n'}
-                  - 본 앱은 블루투스 연결을 통해 피트니스 장치와 통신합니다.{'\n'}
-                  - 위치 권한이 블루투스 스캔을 위해 필요합니다.{'\n'}
-                  - 연결된 장치로부터 실시간 운동 데이터를 수집할 수 있습니다.{'\n\n'}
-                  
-                  3. 개인정보 보호{'\n'}
-                  - 수집된 데이터는 앱 내에서만 사용되며 외부로 전송되지 않습니다.{'\n'}
-                  - 장치 정보 및 운동 데이터는 사용자의 기기에만 저장됩니다.{'\n\n'}
-                  
-                </Text>
+                <Text style={styles.termsText}>{t('terms.content')}</Text>
               </ScrollView>
-              
               <TouchableOpacity 
                 style={styles.termsCloseButton}
                 onPress={() => setShowTermsOfService(false)}
@@ -891,9 +872,85 @@ function App() {
             </View>
           </View>
         </Modal>
-    </SafeAreaView>
-    </TouchableWithoutFeedback>
-  );
+        <TouchableWithoutFeedback onPress={hideHelpPopup}>
+          {SafeAreaContent}
+        </TouchableWithoutFeedback>
+      </>
+    );
+  } else {
+    return (
+      <>
+        {/* Menu Modal */}
+        <Modal
+          visible={isMenuVisible}
+          transparent={true}
+          animationType="fade"
+          onRequestClose={() => setIsMenuVisible(false)}
+        >
+          <TouchableWithoutFeedback onPress={() => setIsMenuVisible(false)}>
+            <View style={styles.modalOverlay}>
+              <TouchableWithoutFeedback>
+                <View style={styles.menuModal}>
+                  <View style={styles.menuHeader}>
+                    <Text style={styles.menuTitle}>{t('app.menu')}</Text>
+                    <TouchableOpacity onPress={() => setIsMenuVisible(false)}>
+                      <Icon name="close" size={24} color={Colors.textSecondary} />
+                    </TouchableOpacity>
+                  </View>
+                  <TouchableOpacity style={styles.menuItem} onPress={handleToggleLanguage}>
+                    <Icon name="translate" size={20} color={Colors.primary} />
+                    <Text style={styles.menuItemText}>{t('app.languageSettings')}</Text>
+                    <Text style={styles.menuItemSubtext}>{languageLabels[i18n.language as 'ko' | 'en' | 'zh']}</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.menuItem} onPress={handlePastReports}>
+                    <Icon name="file-document-outline" size={20} color={Colors.primary} />
+                    <Text style={styles.menuItemText}>{t('app.pastReports')}</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.menuItem} onPress={handlePatchNotes}>
+                    <Icon name="update" size={20} color={Colors.primary} />
+                    <Text style={styles.menuItemText}>{t('app.patchNotes')}</Text>
+                    <Text style={styles.menuItemSubtext}>{t('menu.preparing')}</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.menuItem} onPress={handleTermsOfService}>
+                    <Icon name="file-document" size={20} color={Colors.primary} />
+                    <Text style={styles.menuItemText}>{t('app.termsOfService')}</Text>
+                  </TouchableOpacity>
+                </View>
+              </TouchableWithoutFeedback>
+            </View>
+          </TouchableWithoutFeedback>
+        </Modal>
+        {/* Terms of Service Modal */}
+        <Modal
+          visible={showTermsOfService}
+          animationType="slide"
+          transparent={true}
+          onRequestClose={() => setShowTermsOfService(false)}
+        >
+          <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.5)' }}>
+            <View style={styles.termsModal}>
+              <View style={styles.termsHeader}>
+                <Text style={styles.termsTitle}>{t('terms.title')}</Text>
+                <TouchableOpacity onPress={() => setShowTermsOfService(false)}>
+                  <Icon name="close" size={24} color={Colors.text} />
+                </TouchableOpacity>
+              </View>
+              <ScrollView style={styles.termsContent}>
+                <Text style={styles.termsText}>{t('terms.content')}</Text>
+              </ScrollView>
+              <TouchableOpacity 
+                style={styles.termsCloseButton}
+                onPress={() => setShowTermsOfService(false)}
+              >
+                <Text style={styles.termsCloseButtonText}>{t('app.close')}</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
+        {SafeAreaContent}
+      </>
+    );
+  }
 }
 
 const styles = StyleSheet.create({
