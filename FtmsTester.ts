@@ -32,14 +32,15 @@ export class FTMSTester {
     private onProgressUpdate?: (progress: number, message: string) => void;
     private onTestComplete?: (results: TestResults) => void;
     private testTimeoutId?: NodeJS.Timeout;
+    private connectionCheckInterval?: NodeJS.Timeout;
     private resistanceTracking = {
         commandPending: false,
         lastCommandType: '',
         commandSentTime: 0,
         expectedResistance: undefined as number | undefined,
         resistanceChangeNotedForLastCmd: false,
-        commandCompletedTime: 0, // Track when command was fully completed
-        allowResistanceAttributionWindow: 0 // Time window to still attribute resistance changes to last command
+        commandCompletedTime: 0,
+        allowResistanceAttributionWindow: 0
     };
 
     // Tacx 사용자 상호작용 테스트를 위한 콜백들
@@ -353,8 +354,18 @@ export class FTMSTester {
     stopTest(): void {
         if (!this.isTestRunning) return;
         
+        this.logInteraction('INFO - FTMSTester: Stopping test...');
+        
+        // Clear all timers and intervals
         if (this.testTimeoutId) {
             clearTimeout(this.testTimeoutId);
+            this.testTimeoutId = undefined;
+        }
+        
+        // Clear any other potential timers/intervals
+        if (this.connectionCheckInterval) {
+            clearInterval(this.connectionCheckInterval);
+            this.connectionCheckInterval = undefined;
         }
         
         this.isTestRunning = false;
@@ -363,6 +374,8 @@ export class FTMSTester {
         if (this.onTestComplete) {
             this.onTestComplete(this.testResults);
         }
+        
+        this.logInteraction('INFO - FTMSTester: Test stopped');
     }
 
     // --- 추가: 대기 중 중단 체크 유틸 ---
@@ -1076,18 +1089,23 @@ export class FTMSTester {
             this.logInteraction(`INFO - [runDataCollection] Starting data collection phase for ${duration / 1000} seconds.`);
             
             // Set up periodic connection checks during data collection
-            const connectionCheckInterval = setInterval(() => {
+            this.connectionCheckInterval = setInterval(() => {
                 if (!this.checkConnectionAndStopIfNeeded()) {
-                    clearInterval(connectionCheckInterval);
+                    if (this.connectionCheckInterval) {
+                        clearInterval(this.connectionCheckInterval);
+                        this.connectionCheckInterval = undefined;
+                    }
                     if (this.testTimeoutId) {
                         clearTimeout(this.testTimeoutId);
+                        this.testTimeoutId = undefined;
                     }
                     resolve();
                 }
             }, 2000); // Check every 2 seconds
             
             this.testTimeoutId = setTimeout(() => {
-                clearInterval(connectionCheckInterval);
+                clearInterval(this.connectionCheckInterval);
+                this.connectionCheckInterval = undefined;
                 this.logInteraction('INFO - [runDataCollection] Data collection phase ended - checking pending commands');
                 
                 // Check any pending resistance commands that didn't get confirmation

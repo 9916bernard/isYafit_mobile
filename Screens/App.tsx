@@ -20,7 +20,7 @@ import { setLanguage, initializeLanguage } from '../utils/i18n';
 
 
 // 0.8.0 FitShow 프로토콜 구현 개선 (FTMS indoor bike data 형식 사용)
-const APP_VERSION = 'v0.8.5';
+const APP_VERSION = 'v0.9.0';
 
 function App() {
   const { t, i18n } = useTranslation();
@@ -128,7 +128,9 @@ function App() {
     }
     return true;
   }, []);
-    useEffect(() => {    // FTMSManager 초기화를 한 번만 수행
+
+  // FTMSManager 초기화를 한 번만 수행
+  useEffect(() => {
     const initializeFtmsManager = async () => {
       // 이미 초기화되었으면 건너뛰기
       if (ftmsManagerRef.current) {
@@ -138,7 +140,8 @@ function App() {
       try {
         const manager = new FTMSManager();
         ftmsManagerRef.current = manager;
-          // Set up log callback to capture logs
+        
+        // Set up log callback to capture logs
         manager.setLogCallback((newLogs) => {
           setLogs(newLogs);
           // Format logs for display
@@ -165,15 +168,16 @@ function App() {
     initializeFtmsManager();
     requestPermissions();
 
-    // 컴포넌트 언마운트 시 한 번만 정리
+    // 컴포넌트 언마운트 시 정리
     return () => {
       if (ftmsManagerRef.current) {
         ftmsManagerRef.current.destroy();
         ftmsManagerRef.current = null;
       }
     };
-  }, [requestPermissions]);
-    const handleScan = async () => {
+  }, [t]); // t 함수를 의존성으로 추가하여 언어 변경 시 재실행
+
+  const handleScan = async () => {
     if (!ftmsManagerRef.current) {
       setStatusMessage(t('app.status.init'));
       return;

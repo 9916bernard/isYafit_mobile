@@ -146,12 +146,16 @@ const TestScreen: React.FC<TestScreenProps> = ({ device, ftmsManager, onClose, i
   };
 
   useEffect(() => {
+    let isMounted = true;
+    
     // Initialize the FTMSTester
     testerRef.current = new FTMSTester(ftmsManager);
     
     // Check detected protocol
     const protocol = ftmsManager.getDetectedProtocol();
-    setDetectedProtocol(protocol);
+    if (isMounted) {
+      setDetectedProtocol(protocol);
+    }
     
     // Entrance animations
     Animated.parallel([
@@ -175,7 +179,7 @@ const TestScreen: React.FC<TestScreenProps> = ({ device, ftmsManager, onClose, i
     
     // Set up log listener to capture logs in real-time
     const originalLogs = ftmsManager.getLogs();
-    if (originalLogs.length > 0) {
+    if (originalLogs.length > 0 && isMounted) {
       const formattedLogs = originalLogs.map(log => 
         `${new Date(log.timestamp).toLocaleTimeString()} - ${log.message}`
       );
@@ -183,7 +187,9 @@ const TestScreen: React.FC<TestScreenProps> = ({ device, ftmsManager, onClose, i
     }
     
     // Set up log callback to get real-time updates
-    ftmsManager.setLogCallback((logs) => {
+    const logCallback = (logs: any[]) => {
+      if (!isMounted) return;
+      
       const formattedLogs = logs.map(log => 
         `${new Date(log.timestamp).toLocaleTimeString()} - ${log.message}`
       );
@@ -192,18 +198,51 @@ const TestScreen: React.FC<TestScreenProps> = ({ device, ftmsManager, onClose, i
       // Scroll to bottom on update
       if (logScrollViewRef.current && showLogs) {
         setTimeout(() => {
-          logScrollViewRef.current?.scrollToEnd({ animated: true });
+          if (isMounted && logScrollViewRef.current) {
+            logScrollViewRef.current.scrollToEnd({ animated: true });
+          }
         }, 100);
       }
-    });
+    };
+    
+    ftmsManager.setLogCallback(logCallback);
 
     return () => {
-      // Clean up if needed
+      isMounted = false;
+      
+      // Clean up animations
+      fadeAnim.stopAnimation();
+      scaleAnim.stopAnimation();
+      slideAnim.stopAnimation();
+      countdownAnim.stopAnimation();
+      progressAnim.stopAnimation();
+      animationContainerHeight.stopAnimation();
+      animationOpacity.stopAnimation();
+      
+      // Clean up log callback
+      ftmsManager.setLogCallback(null);
+      
+      // Clean up tester if running
       if (isRunning && testerRef.current) {
         testerRef.current.stopTest();
       }
     };
-  }, [ftmsManager, showLogs, fadeAnim, scaleAnim, slideAnim]);
+  }, [ftmsManager]); // showLogs 제거하여 불필요한 재실행 방지
+
+  // 별도의 useEffect로 로그 스크롤 처리
+  useEffect(() => {
+    if (showLogs && logScrollViewRef.current) {
+      const timeoutId = setTimeout(() => {
+        if (logScrollViewRef.current) {
+          logScrollViewRef.current.scrollToEnd({ animated: true });
+        }
+      }, 100);
+      
+      return () => {
+        clearTimeout(timeoutId);
+      };
+    }
+  }, [showLogs, realtimeLogs]);
 
   // 사용자 상호작용 핸들러
   const handleUserInteraction = (interaction: UserInteractionRequest): Promise<boolean> => {

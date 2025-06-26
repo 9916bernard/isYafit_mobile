@@ -7,6 +7,8 @@ export class BluetoothManager {
     private bluetoothStateSubscription: Subscription | null = null;
     private currentState: State = State.Unknown;
     private logManager: LogManager;
+    private isScanning: boolean = false;
+    private connectedDevice: Device | null = null;
 
     constructor(logManager: LogManager) {
         this.bleManager = new BleManager();
@@ -39,6 +41,7 @@ export class BluetoothManager {
             throw new Error("Bluetooth is not powered on");
         }
 
+        this.isScanning = true;
         return new Promise((resolve, reject) => {
             try {
                 const serviceUUIDs = [
@@ -52,6 +55,7 @@ export class BluetoothManager {
                     if (error) {
                         console.error("Scan error:", error);
                         this.bleManager.stopDeviceScan();
+                        this.isScanning = false;
                         reject(error);
                         return;
                     }
@@ -63,10 +67,12 @@ export class BluetoothManager {
 
                 setTimeout(() => {
                     this.bleManager.stopDeviceScan();
+                    this.isScanning = false;
                     console.log("Scan finished.");
                     resolve();
                 }, scanDuration);
             } catch (e) {
+                this.isScanning = false;
                 console.error("Error starting scan:", e);
                 reject(e);
             }
@@ -80,6 +86,7 @@ export class BluetoothManager {
             this.logManager.logSuccess(`Connected to ${device.name}`);
             await device.discoverAllServicesAndCharacteristics();
             this.logManager.logInfo("Services and characteristics discovered");
+            this.connectedDevice = device;
             return device;
         } catch (error) {
             this.logManager.logError(`Connection error: ${error instanceof Error ? error.message : String(error)}`);
@@ -93,6 +100,7 @@ export class BluetoothManager {
                 this.logManager.logInfo(`Disconnecting from ${device.name}...`);
                 await this.bleManager.cancelDeviceConnection(device.id);
                 this.logManager.logSuccess("Disconnected successfully");
+                this.connectedDevice = null;
             } catch (error) {
                 if ((error as any).errorCode !== 201) {
                     this.logManager.logError(`Disconnection error: ${error instanceof Error ? error.message : String(error)}`);
@@ -109,15 +117,33 @@ export class BluetoothManager {
         return this.currentState;
     }
 
-    destroy(): void {
-        if (this.bluetoothStateSubscription) {
-            this.bluetoothStateSubscription.remove();
-            this.bluetoothStateSubscription = null;
-        }
-        if (this.bleManager) {
+    async destroy(): Promise<void> {
+        this.logManager.logInfo("BluetoothManager destroying...");
+        
+        try {
+            // Stop scanning if active
+            if (this.isScanning) {
+                this.bleManager.stopDeviceScan();
+                this.isScanning = false;
+            }
+            
+            // Disconnect any connected devices
+            if (this.connectedDevice) {
+                await this.disconnectDevice(this.connectedDevice);
+            }
+            
+            // Clean up bluetooth state subscription
+            if (this.bluetoothStateSubscription) {
+                this.bluetoothStateSubscription.remove();
+                this.bluetoothStateSubscription = null;
+            }
+            
+            // Destroy BLE manager
             this.bleManager.destroy();
-            console.log("BluetoothManager destroyed.");
-            (this as any).bleManager = null;
+            
+            this.logManager.logInfo("BluetoothManager destroyed");
+        } catch (error) {
+            this.logManager.logError(`Error during BluetoothManager destroy: ${error instanceof Error ? error.message : String(error)}`);
         }
     }
 } 

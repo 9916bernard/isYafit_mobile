@@ -783,10 +783,41 @@ export class FTMSManager {
     }
 
     destroy() {
-        if (this.connectedDevice) {
-            this.disconnectDevice();
+        this.logManager.logInfo("FTMS Manager destroying...");
+        
+        // Clean up all subscriptions
+        if (this.controlPointSubscription) {
+            this.controlPointSubscription.remove();
+            this.controlPointSubscription = null;
         }
-        this.bluetoothManager.destroy();
-        console.log("FTMSManager destroyed.");
+        
+        if (this.indoorBikeDataSubscription) {
+            this.indoorBikeDataSubscription.remove();
+            this.indoorBikeDataSubscription = null;
+        }
+        
+        // Disconnect device if connected
+        if (this.connectedDevice) {
+            this.disconnectDevice().catch(error => {
+                this.logManager.logError(`Error during destroy disconnect: ${error instanceof Error ? error.message : String(error)}`);
+            });
+        }
+        
+        // Reset all state
+        this.connectedDevice = null;
+        this.isDeviceActive = false;
+        this.detectedProtocol = null;
+        this.allDetectedProtocols = [];
+        this.ftmsFeatureBits = 0;
+        
+        // Clear log callback
+        this.logManager.setLogCallback(null);
+        
+        // Destroy bluetooth manager
+        this.bluetoothManager.destroy().catch(error => {
+            this.logManager.logError(`Error during bluetooth manager destroy: ${error instanceof Error ? error.message : String(error)}`);
+        });
+        
+        this.logManager.logInfo("FTMS Manager destroyed");
     }
 }

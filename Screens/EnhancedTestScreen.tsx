@@ -37,9 +37,11 @@ const EnhancedTestScreen: React.FC<EnhancedTestScreenProps> = ({
   const safeAreaStyles = useSafeAreaStyles();
   
   useEffect(() => {
+    let isMounted = true;
+    
     // Get initial logs
     const initialLogs = ftmsManager.getLogs();
-    if (initialLogs.length > 0) {
+    if (initialLogs.length > 0 && isMounted) {
       const formattedLogs = initialLogs.map(log => 
         `${new Date(log.timestamp).toLocaleTimeString()} - ${log.message}`
       );
@@ -48,6 +50,8 @@ const EnhancedTestScreen: React.FC<EnhancedTestScreenProps> = ({
     
     // Set up log callback to get real-time updates
     const handleNewLogs = (newLogs: any[]) => {
+      if (!isMounted) return;
+      
       const formattedLogs = newLogs.map(log => 
         `${new Date(log.timestamp).toLocaleTimeString()} - ${log.message}`
       );
@@ -56,7 +60,9 @@ const EnhancedTestScreen: React.FC<EnhancedTestScreenProps> = ({
       // Scroll to bottom when new logs are added
       if (scrollViewRef.current && showLogs) {
         setTimeout(() => {
-          scrollViewRef.current?.scrollToEnd({ animated: true });
+          if (isMounted && scrollViewRef.current) {
+            scrollViewRef.current.scrollToEnd({ animated: true });
+          }
         }, 100);
       }
     };
@@ -64,9 +70,25 @@ const EnhancedTestScreen: React.FC<EnhancedTestScreenProps> = ({
     ftmsManager.setLogCallback(handleNewLogs);
 
     return () => {
+      isMounted = false;
       ftmsManager.setLogCallback(null);
     };
-  }, [ftmsManager, showLogs]);
+  }, [ftmsManager]);
+
+  // 별도의 useEffect로 로그 스크롤 처리
+  useEffect(() => {
+    if (showLogs && scrollViewRef.current) {
+      const timeoutId = setTimeout(() => {
+        if (scrollViewRef.current) {
+          scrollViewRef.current.scrollToEnd({ animated: true });
+        }
+      }, 100);
+      
+      return () => {
+        clearTimeout(timeoutId);
+      };
+    }
+  }, [showLogs, logs]);
 
   const handleDisconnect = async () => {
     Alert.alert(

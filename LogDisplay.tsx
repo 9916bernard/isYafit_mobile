@@ -36,14 +36,24 @@ const LogDisplay: React.FC<LogDisplayProps> = ({ logs, visible, onClose }) => {
         useNativeDriver: true,
       }).start();
     }
+
+    return () => {
+      slideAnim.stopAnimation();
+    };
   }, [visible, slideAnim]);
 
   useEffect(() => {
     // Scroll to the bottom when logs change
     if (visible && scrollViewRef.current) {
-      setTimeout(() => {
-        scrollViewRef.current?.scrollToEnd({ animated: true });
+      const timeoutId = setTimeout(() => {
+        if (scrollViewRef.current) {
+          scrollViewRef.current.scrollToEnd({ animated: true });
+        }
       }, 100);
+      
+      return () => {
+        clearTimeout(timeoutId);
+      };
     }
   }, [logs, visible]);
 

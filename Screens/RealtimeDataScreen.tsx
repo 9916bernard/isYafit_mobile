@@ -38,16 +38,26 @@ const RealtimeDataScreen: React.FC<RealtimeDataScreenProps> = ({
     };
     
     spin();
+
+    // Cleanup animation on unmount
+    return () => {
+      spinValue.stopAnimation();
+    };
   }, [spinValue]);
 
   useEffect(() => {
+    let isMounted = true;
+    
     const connectToDevice = async () => {
       try {
+        if (!isMounted) return;
         setStatusMessage(t('realtimeData.status.connecting'));
-        // await ftmsManager.disconnectDevice(); // Consider if this is needed here or if connectToDevice handles it
+        
         const connectedDevice = await ftmsManager.connectToDevice(device.id);
         
+        if (!isMounted) return;
         setStatusMessage(t('realtimeData.status.subscribing'));
+        
         await ftmsManager.subscribeToNotifications(
           (cpResponse) => {
             // Control point response handling
@@ -59,31 +69,37 @@ const RealtimeDataScreen: React.FC<RealtimeDataScreenProps> = ({
             }
           },
           (newBikeData) => {
-            setBikeData(newBikeData);
+            if (isMounted) {
+              setBikeData(newBikeData);
+            }
           }
         );
         
+        if (!isMounted) return;
         setStatusMessage(t('realtimeData.status.runningSequence'));
         const success = await ftmsManager.connectSequence();
-        if (success) {
+        if (success && isMounted) {
           setIsConnected(true);
           setStatusMessage(t('realtimeData.status.receiving'));
-        } else {
+        } else if (isMounted) {
           setStatusMessage(t('realtimeData.status.sequenceFailed'));
         }
       } catch (error) {
-        console.error("Connection error:", error);
-        setStatusMessage(`${t('common.error')}: ${error instanceof Error ? error.message : String(error)}`);
+        if (isMounted) {
+          console.error("Connection error:", error);
+          setStatusMessage(`${t('common.error')}: ${error instanceof Error ? error.message : String(error)}`);
+        }
       }
     };
 
     connectToDevice();
 
     return () => {
-      // Cleanup
+      isMounted = false;
+      // Cleanup - disconnect device and stop all subscriptions
       ftmsManager.disconnectDevice().catch(console.error);
     };
-  }, [device, ftmsManager, t]);
+  }, [device.id, ftmsManager, t]); // device.id만 의존성으로 사용하여 불필요한 재연결 방지
   
   const handleBackPress = async () => {
     onBack();
