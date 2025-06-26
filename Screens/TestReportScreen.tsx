@@ -18,6 +18,7 @@ import Clipboard from '@react-native-clipboard/clipboard'; // Added for clipboar
 import { TestResults, formatRangeInfo } from '../FtmsTestReport';
 import { useSafeAreaStyles, Colors } from '../styles/commonStyles';
 import { useTranslation } from 'react-i18next';
+import { useCompatibilityUtils } from '../utils/compatibilityUtils';
 
 interface TestReportScreenProps {
   results: TestResults;
@@ -27,43 +28,13 @@ interface TestReportScreenProps {
 const TestReportScreen: React.FC<TestReportScreenProps> = ({ results, onClose }) => {
   const safeAreaStyles = useSafeAreaStyles();
   const { t } = useTranslation();
+  const { translateCompatibilityLevel, isCompatibilityLevel, getCompatibilityColor } = useCompatibilityUtils();
   const [showFullLog, setShowFullLog] = React.useState(false);
   const [showFullReasons, setShowFullReasons] = React.useState(true);
   
   // Animation values
   const fadeAnim = React.useRef(new Animated.Value(0)).current;
   const slideAnim = React.useRef(new Animated.Value(30)).current;
-  
-  // 호환성 레벨을 현재 언어에 맞게 변환하는 함수
-  const translateCompatibilityLevel = (level: string): string => {
-    // 저장된 레벨을 현재 언어의 키로 매핑
-    const levelMapping: { [key: string]: string } = {
-      // 한국어 -> 현재 언어
-      '완전 호환': t('test.compatibilityLevels.fullyCompatible'),
-      '부분 호환': t('test.compatibilityLevels.partiallyCompatible'),
-      '수정 필요': t('test.compatibilityLevels.needsModification'),
-      '불가능': t('test.compatibilityLevels.impossible'),
-      // 영어 -> 현재 언어
-      'Fully Compatible': t('test.compatibilityLevels.fullyCompatible'),
-      'Partially Compatible': t('test.compatibilityLevels.partiallyCompatible'),
-      'Needs Modification': t('test.compatibilityLevels.needsModification'),
-      'Impossible': t('test.compatibilityLevels.impossible'),
-      // 중국어 -> 현재 언어
-      '完全兼容': t('test.compatibilityLevels.fullyCompatible'),
-      '部分兼容': t('test.compatibilityLevels.partiallyCompatible'),
-      '需要修改': t('test.compatibilityLevels.needsModification'),
-      '不可能': t('test.compatibilityLevels.impossible'),
-    };
-    
-    return levelMapping[level] || level;
-  };
-
-  // 호환성 레벨이 특정 레벨인지 확인하는 헬퍼 함수
-  const isCompatibilityLevel = (level: string, targetLevel: 'fullyCompatible' | 'partiallyCompatible' | 'needsModification' | 'impossible'): boolean => {
-    const targetKey = t(`test.compatibilityLevels.${targetLevel}`);
-    const translatedLevel = translateCompatibilityLevel(level);
-    return translatedLevel === targetKey;
-  };
   
   React.useEffect(() => {
     // Entrance animation
@@ -405,34 +376,13 @@ const TestReportScreen: React.FC<TestReportScreenProps> = ({ results, onClose })
   // Function to copy interaction logs
   const handleCopyLogs = () => {
     if (results.interactionLogs && results.interactionLogs.length > 0) {
-      try {
-        const logString = results.interactionLogs.join('\n');
-        Clipboard.setString(logString);
-        Alert.alert(t('testReport.clipboard.success'), t('testReport.clipboard.copySuccess'));
-      } catch (error) {
-        console.error('Failed to copy logs:', error);
-        Alert.alert(t('testReport.clipboard.error'), t('testReport.clipboard.copyError'));
-      }
+      const logText = results.interactionLogs.join('\n');
+      Clipboard.setString(logText);
+      Alert.alert(t('testReport.clipboard.success'), t('testReport.clipboard.copied'));
     } else {
       Alert.alert(t('testReport.clipboard.info'), t('testReport.clipboard.noLogs'));
     }
-  };  // Helper function to get compatibility color based on level
-const getCompatibilityColor = (compatibilityLevel?: string): string => {
-  const translatedLevel = translateCompatibilityLevel(compatibilityLevel || '');
-  
-  switch (translatedLevel) {
-    case t('test.compatibilityLevels.fullyCompatible'):
-      return '#4CAF50';
-    case t('test.compatibilityLevels.partiallyCompatible'):
-      return '#FF9800';
-    case t('test.compatibilityLevels.needsModification'):
-      return '#2196F3';
-    case t('test.compatibilityLevels.impossible'):
-      return '#F44336';
-    default:
-      return '#666';
-  }
-};
+  };
 
   // Helper function to extract reason codes from detailed reasons
   return (

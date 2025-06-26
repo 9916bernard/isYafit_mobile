@@ -16,6 +16,7 @@ import { SavedReport, ReportStorage } from '../utils/reportStorage';
 import { Colors, useSafeAreaStyles } from '../styles/commonStyles';
 import TestReportScreen from './TestReportScreen';
 import { useTranslation } from 'react-i18next';
+import { useCompatibilityUtils } from '../utils/compatibilityUtils';
 
 interface PastReportsScreenProps {
   onBack: () => void;
@@ -23,35 +24,12 @@ interface PastReportsScreenProps {
 
 const PastReportsScreen: React.FC<PastReportsScreenProps> = ({ onBack }) => {
   const { t } = useTranslation();
+  const { translateCompatibilityLevel, getCompatibilityColorForPastReports } = useCompatibilityUtils();
   const [reports, setReports] = useState<SavedReport[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [selectedReport, setSelectedReport] = useState<SavedReport | null>(null);
   const safeAreaStyles = useSafeAreaStyles();
-
-  // 호환성 레벨을 현재 언어에 맞게 변환하는 함수
-  const translateCompatibilityLevel = (level: string): string => {
-    // 저장된 레벨을 현재 언어의 키로 매핑
-    const levelMapping: { [key: string]: string } = {
-      // 한국어 -> 현재 언어
-      '완전 호환': t('test.compatibilityLevels.fullyCompatible'),
-      '부분 호환': t('test.compatibilityLevels.partiallyCompatible'),
-      '수정 필요': t('test.compatibilityLevels.needsModification'),
-      '불가능': t('test.compatibilityLevels.impossible'),
-      // 영어 -> 현재 언어
-      'Fully Compatible': t('test.compatibilityLevels.fullyCompatible'),
-      'Partially Compatible': t('test.compatibilityLevels.partiallyCompatible'),
-      'Needs Modification': t('test.compatibilityLevels.needsModification'),
-      'Impossible': t('test.compatibilityLevels.impossible'),
-      // 중국어 -> 현재 언어
-      '完全兼容': t('test.compatibilityLevels.fullyCompatible'),
-      '部分兼容': t('test.compatibilityLevels.partiallyCompatible'),
-      '需要修改': t('test.compatibilityLevels.needsModification'),
-      '不可能': t('test.compatibilityLevels.impossible'),
-    };
-    
-    return levelMapping[level] || level;
-  };
 
   const loadReports = async () => {
     try {
@@ -114,24 +92,6 @@ const PastReportsScreen: React.FC<PastReportsScreenProps> = ({ onBack }) => {
     }
   };
 
-  const getCompatibilityColor = (level: string): string => {
-    // 변환된 레벨을 사용하여 색상 결정
-    const translatedLevel = translateCompatibilityLevel(level);
-    
-    switch (translatedLevel) {
-      case t('test.compatibilityLevels.fullyCompatible'):
-        return '#00c663';
-      case t('test.compatibilityLevels.partiallyCompatible'):
-        return '#f59e0b';
-      case t('test.compatibilityLevels.needsModification'):
-        return '#ef4444';
-      case t('test.compatibilityLevels.impossible'):
-        return '#6b7280';
-      default:
-        return '#9ca3af';
-    }
-  };
-
   const formatDate = (timestamp: number): string => {
     const date = new Date(timestamp);
     return date.toLocaleString('ko-KR', {
@@ -169,13 +129,13 @@ const PastReportsScreen: React.FC<PastReportsScreenProps> = ({ onBack }) => {
           <View
             style={[
               styles.compatibilityBadge,
-              { backgroundColor: getCompatibilityColor(item.compatibilityLevel) + '20' },
+              { backgroundColor: getCompatibilityColorForPastReports(item.compatibilityLevel) + '20' },
             ]}
           >
             <Text
               style={[
                 styles.compatibilityText,
-                { color: getCompatibilityColor(item.compatibilityLevel) },
+                { color: getCompatibilityColorForPastReports(item.compatibilityLevel) },
               ]}
             >
               {translateCompatibilityLevel(item.compatibilityLevel)}
