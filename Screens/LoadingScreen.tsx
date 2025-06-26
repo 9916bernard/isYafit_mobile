@@ -18,7 +18,9 @@ const LoadingScreen: React.FC<LoadingScreenProps> = ({ device }) => {
   const { t } = useTranslation();
 
   return (
-    <View style={safeAreaStyles.safeContainerMinPadding}>      <View style={styles.container}>        <View style={styles.animationContainer}>
+    <View style={safeAreaStyles.safeContainerMinPadding}>
+      <View style={styles.container}>
+        <View style={styles.animationContainer}>
           <LottieView
             source={require('../assets/animation/bluetooth_loading_animation.json')}
             autoPlay

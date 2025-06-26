@@ -92,7 +92,7 @@ export class FTMSTester {
         if (message.includes('SUCCESS') || message.includes('FAILED') || message.includes('Status changed') || 
             message.includes('RESISTANCE CHANGED') || message.includes('Command pending') || 
             message.includes('CP Response') || message.includes('status changed')) {
-            console.log(`[FTMS_DEBUG] ${logEntry}`);
+            // console.log(`[FTMS_DEBUG] ${logEntry}`); // log was here
         }
     }
 
@@ -539,7 +539,7 @@ export class FTMSTester {
                 }
             } catch (e) {
                 this.logInteraction(`WARN - FTMSTester: Speed range not available: ${e}`);
-                console.log("Speed range not available:", e);
+                // console.log("Speed range not available:", e); // log was here
             }
             
             // Read Incline Range
@@ -563,7 +563,7 @@ export class FTMSTester {
                 }
             } catch (e) {
                 this.logInteraction(`WARN - FTMSTester: Incline range not available: ${e}`);
-                console.log("Incline range not available:", e);
+                // console.log("Incline range not available:", e); // log was here
             }
             
             // Read Resistance Range
@@ -586,7 +586,7 @@ export class FTMSTester {
                 }
             } catch (e) {
                 this.logInteraction(`WARN - FTMSTester: Resistance range not available: ${e}`);
-                console.log("Resistance range not available:", e);
+                // console.log("Resistance range not available:", e); // log was here
             }
             
             // Read Power Range
@@ -600,7 +600,6 @@ export class FTMSTester {
                     const buffer = Buffer.from(powerChar.value, 'base64');
                     const range = parseRangeCharacteristic(buffer);
                     
-                    // Power is in watts
                     this.testResults.supportRanges.power = {
                         min: range.min,
                         max: range.max,
@@ -610,7 +609,7 @@ export class FTMSTester {
                 }
             } catch (e) {
                 this.logInteraction(`WARN - FTMSTester: Power range not available: ${e}`);
-                console.log("Power range not available:", e);
+                // console.log("Power range not available:", e); // log was here
             }
             
         } catch (error) {
@@ -1229,11 +1228,11 @@ export class FTMSTester {
         
         try {
             this.logInteraction(`INFO - [testTacxControlCommandWithUserInteraction] ${commandName} 사용자 상호작용 테스트 시작`);
-            console.log(`[DEBUG] Tacx 사용자 상호작용 테스트 시작: ${commandName}`);
+            // console.log(`[DEBUG] Tacx 사용자 상호작용 테스트 시작: ${commandName}`);
 
             // 1. 사용자에게 명령 시작 요청
             if (this.onUserInteractionRequest) {
-                console.log(`[DEBUG] 사용자 상호작용 콜백이 설정되어 있음`);
+                // console.log(`[DEBUG] 사용자 상호작용 콜백이 설정되어 있음`);
                 const startInteraction: UserInteractionRequest = {
                     type: 'command_start',
                     commandName: commandName,
@@ -1241,9 +1240,9 @@ export class FTMSTester {
                     message: `${commandDisplayName} 명령을 실행하시겠습니까?`
                 };
 
-                console.log(`[DEBUG] 사용자에게 명령 시작 요청: ${commandDisplayName}`);
+                // console.log(`[DEBUG] 사용자에게 명령 시작 요청: ${commandDisplayName}`);
                 const userConfirmed = await this.onUserInteractionRequest(startInteraction);
-                console.log(`[DEBUG] 사용자 응답: ${userConfirmed}`);
+                // console.log(`[DEBUG] 사용자 응답: ${userConfirmed}`);
                 
                 if (!userConfirmed) {
                     this.logInteraction(`INFO - [testTacxControlCommandWithUserInteraction] 사용자가 ${commandName} 명령 실행을 취소했습니다`);
@@ -1255,19 +1254,19 @@ export class FTMSTester {
                     return;
                 }
             } else {
-                console.log(`[DEBUG] 사용자 상호작용 콜백이 설정되지 않음!`);
+                // console.log(`[DEBUG] 사용자 상호작용 콜백이 설정되지 않음!`);
                 this.logInteraction(`WARN - [testTacxControlCommandWithUserInteraction] 사용자 상호작용 콜백이 설정되지 않음`);
             }
 
             // 2. 3초 카운트다운
             this.logInteraction(`INFO - [testTacxControlCommandWithUserInteraction] ${commandName} 명령 실행을 위한 3초 카운트다운 시작`);
-            console.log(`[DEBUG] 3초 카운트다운 시작`);
+            // console.log(`[DEBUG] 3초 카운트다운 시작`);
             for (let i = 3; i > 0; i--) {
                 if (this.onCountdownUpdate) {
                     this.onCountdownUpdate(i);
                 }
                 this.logInteraction(`INFO - [testTacxControlCommandWithUserInteraction] 카운트다운: ${i}`);
-                console.log(`[DEBUG] 카운트다운: ${i}`);
+                // console.log(`[DEBUG] 카운트다운: ${i}`);
                 await this.waitWithEarlyExit(1000);
             }
             if (this.onCountdownUpdate) {
@@ -1276,7 +1275,7 @@ export class FTMSTester {
 
             // 3. 명령 실행
             this.logInteraction(`[CONTROL_COMMAND] 🟢 Tacx 제어 명령 실행: ${commandName}`);
-            console.log(`[DEBUG] 명령 실행: ${commandName}`);
+            // console.log(`[DEBUG] 명령 실행: ${commandName}`);
             const details = await commandExecutor();
 
             // 4. 사용자에게 저항 변화 확인 요청
@@ -1288,9 +1287,9 @@ export class FTMSTester {
                     message: `${commandDisplayName} 명령 실행 후 실제로 저항이 변했습니까?`
                 };
 
-                console.log(`[DEBUG] 사용자에게 저항 변화 확인 요청`);
+                // console.log(`[DEBUG] 사용자에게 저항 변화 확인 요청`);
                 const resistanceChanged = await this.onUserInteractionRequest(resistanceCheckInteraction);
-                console.log(`[DEBUG] 저항 변화 확인 응답: ${resistanceChanged}`);
+                // console.log(`[DEBUG] 저항 변화 확인 응답: ${resistanceChanged}`);
                 
                 // 결과 저장
                 this.testResults.controlTests[commandName] = {
@@ -1302,7 +1301,7 @@ export class FTMSTester {
                 };
 
                 this.logInteraction(`INFO - [testTacxControlCommandWithUserInteraction] ${commandName} 테스트 완료 - 사용자 확인 결과: ${resistanceChanged ? t('test.controlCommands.success') : t('test.controlCommands.failure')}`);
-                console.log(`[DEBUG] 테스트 완료: ${commandName} - ${resistanceChanged ? '성공' : '실패'}`);
+                // console.log(`[DEBUG] 테스트 완료: ${commandName} - ${resistanceChanged ? '성공' : '실패'}`);
             } else {
                 // 콜백이 없는 경우 기본 처리
                 this.testResults.controlTests[commandName] = {
@@ -1311,12 +1310,12 @@ export class FTMSTester {
                     details: `${details} - ${t('test.controlCommands.userInteractionNotSet')}`
                 };
                 this.logInteraction(`WARN - [testTacxControlCommandWithUserInteraction] ${commandName} 사용자 상호작용 콜백이 설정되지 않음`);
-                console.log(`[DEBUG] 사용자 상호작용 콜백 없음 - Pending 상태로 설정`);
+                // console.log(`[DEBUG] 사용자 상호작용 콜백 없음 - Pending 상태로 설정`);
             }
 
         } catch (error) {
             this.logInteraction(`ERROR - [testTacxControlCommandWithUserInteraction] ${commandName} 실행 실패: ${error instanceof Error ? error.message : String(error)}`);
-            console.log(`[DEBUG] 오류 발생: ${error instanceof Error ? error.message : String(error)}`);
+            // console.log(`[DEBUG] 오류 발생: ${error instanceof Error ? error.message : String(error)}`);
             this.testResults.controlTests[commandName] = {
                 status: "Failed",
                 timestamp: Date.now(),

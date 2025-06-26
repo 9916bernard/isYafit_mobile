@@ -245,30 +245,30 @@ export function determineCompatibility(results: TestResults): TestResults {
         const automaticChanges = results.resistanceChanges.filter(change => 
             !change.command || change.command === t('testResult.autoChange')
         );
-        console.log('자동변화 디버깅:', {
-            totalChanges: results.resistanceChanges.length,
-            automaticChanges: automaticChanges.length,
-            allChanges: results.resistanceChanges.map(c => ({ 
-                paramType: c.paramType, 
-                command: c.command, 
-                isAutomatic: !c.command || c.command === t('testResult.autoChange')
-            }))
-        });
+        // console.log('자동변화 디버깅:', { // log was here
+        //     totalChanges: results.resistanceChanges.length,
+        //     automaticChanges: automaticChanges.length,
+        //     allChanges: results.resistanceChanges.map(c => ({ 
+        //         paramType: c.paramType, 
+        //         command: c.command, 
+        //         isAutomatic: !c.command || c.command === t('testResult.autoChange')
+        //     }))
+        // }); // log was here
         if (automaticChanges.length >= 5) {
             warningReasons.push(t('testResult.reasons.autoChange'));
-            console.log('자동변화 5회 이상 감지됨 - 수정 필요로 분류');
+            // console.log('자동변화 5회 이상 감지됨 - 수정 필요로 분류'); // log was here
         }
     }
       // Determine final compatibility level based on priority: 불가능 > 수정필요/부분호환 > 완전호환
     let compatLevel: string;
     let displayReasons: string[] = [];
     
-    console.log('호환성 판정 디버깅:', {
-        impossibleReasons,
-        warningReasons,
-        partialReasons,
-        hasFTMS
-    });
+    // console.log('호환성 판정 디버깅:', { // log was here
+    //     impossibleReasons,
+    //     warningReasons,
+    //     partialReasons,
+    //     hasFTMS
+    // }); // log was here
 
     if (impossibleReasons.length > 0) {
         compatLevel = t('testResult.compatibilityLevels.impossible');
@@ -277,19 +277,22 @@ export function determineCompatibility(results: TestResults): TestResults {
         // 자동변화가 있으면 수정 필요 (부분 호환 이유와 함께 표시)
         compatLevel = t('testResult.compatibilityLevels.needsModification');
         displayReasons = [...partialReasons, ...warningReasons];
-        console.log('수정 필요로 분류됨:', displayReasons);    } else if (partialReasons.length > 0) {
+        // console.log('수정 필요로 분류됨:', displayReasons); // log was here
+    } else if (partialReasons.length > 0) {
         compatLevel = t('testResult.compatibilityLevels.partiallyCompatible');
         displayReasons = partialReasons;
+        // console.log('부분 호환으로 분류됨:', displayReasons); // log was here
     } else if (hasFTMS || hasPriorityProtocol) {
         // FTMS 또는 우선순위 프로토콜이 있으면 완전 호환 가능
         compatLevel = t('testResult.compatibilityLevels.fullyCompatible');
         displayReasons = [];
+        // console.log('최종 호환성 레벨:', compatLevel, '이유:', displayReasons); // log was here
     } else {
         compatLevel = t('testResult.compatibilityLevels.impossible');
         displayReasons = [t('testResult.reasons.protocol')];
     }
     
-    console.log('최종 호환성 레벨:', compatLevel, '이유:', displayReasons);
+    // console.log('최종 호환성 레벨:', compatLevel, '이유:', displayReasons); // log was here
     
     // Update results with new compatibility system
     updatedResults.compatibilityLevel = compatLevel;

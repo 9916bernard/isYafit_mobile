@@ -37,7 +37,8 @@ const ModeSelectionScreen: React.FC<ModeSelectionScreenProps> = ({
         <Text style={styles.subtitle}>{t('modeSelection.subtitle')}</Text>
         
         <View style={styles.buttonContainer}>
-          <TouchableOpacity            style={styles.modeButton}
+          <TouchableOpacity
+            style={styles.modeButton}
             onPress={onSelectRealtimeData}
           >
             <View style={styles.buttonIconContainer}>
@@ -50,7 +51,8 @@ const ModeSelectionScreen: React.FC<ModeSelectionScreenProps> = ({
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={styles.modeButton}            onPress={onSelectCompatibilityTest}
+            style={styles.modeButton}
+            onPress={onSelectCompatibilityTest}
           >
             <View style={styles.buttonIconContainer}>
               <Icon name="test-tube" size={36} color="#00c663" />
@@ -60,7 +62,8 @@ const ModeSelectionScreen: React.FC<ModeSelectionScreenProps> = ({
               {t('modeSelection.compatibilityTest.description')}
             </Text>
           </TouchableOpacity>
-        </View>        <TouchableOpacity style={styles.backButton} onPress={onDisconnect}>
+        </View>
+        <TouchableOpacity style={styles.backButton} onPress={onDisconnect}>
           <Icon name="arrow-left" size={20} color="#fff" />
           <Text style={styles.backButtonText}>{t('common.back')}</Text>
         </TouchableOpacity>

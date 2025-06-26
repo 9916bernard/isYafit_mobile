@@ -179,7 +179,8 @@ const EnhancedTestScreen: React.FC<EnhancedTestScreenProps> = ({
             )}
           </ScrollView>
         </View>
-      )}      <TouchableOpacity
+      )}
+      <TouchableOpacity
         style={deviceConnected ? styles.disconnectButton : styles.backButton}
         onPress={handleDisconnect}
       >

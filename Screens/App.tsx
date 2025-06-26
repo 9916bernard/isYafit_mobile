@@ -508,11 +508,13 @@ function App() {
             </Text>
           </View>
         </LinearGradient>
-      </TouchableOpacity>      <View style={styles.sectionHeader}>
+      </TouchableOpacity>
+      <View style={styles.sectionHeader}>
         <View style={styles.sectionTitleContainer}>
           <Icon name="devices" size={20} color={Colors.primary} />
           <Text style={styles.sectionTitle}>{t('app.sections.devices')}</Text>
-        </View>        <View style={styles.helpIconWrapper}>
+        </View>
+        <View style={styles.helpIconWrapper}>
           <TouchableOpacity 
             ref={helpIconRef}
             onPress={showHelpPopup}
@@ -569,8 +571,9 @@ function App() {
             size={24} 
             color={selectedDevice?.id === item.id ? Colors.text : Colors.primary} 
           />
-        </View>        <View style={{ flex: 1 }}>
-          <Text style={[styles.deviceText, { marginBottom: 4 }]}>
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={[styles.deviceText, { marginBottom: 4 }]}> 
             {item.name || 'Unknown Device'}
           </Text>
           <Text style={styles.deviceTextSmall}>{item.id.substring(0, 16)}...</Text>
@@ -597,7 +600,8 @@ function App() {
           onSelectCompatibilityTest={handleSelectCompatibilityTest}
           onDisconnect={handleBackFromModeSelection}
         />
-      ) :      /* Show realtime data screen */
+      ) :
+      /* Show realtime data screen */
       showRealtimeData && connectedDevice && ftmsManagerRef.current ? (
         <RealtimeDataScreen
           device={connectedDevice}
@@ -605,7 +609,8 @@ function App() {
           onBack={handleBackFromRealtimeData}
           //onConnectionError={handleRealtimeDataConnectionError}
         />
-      ) :      /* Show the test screen when a device is connected and test is requested */
+      ) :
+      /* Show the test screen when a device is connected and test is requested */
       showTestScreen && connectedDevice && ftmsManagerRef.current ? (
         <TestScreen
           device={connectedDevice}
@@ -613,7 +618,8 @@ function App() {
           onClose={handleCloseTestScreen}
           isDeviceConnected={!!connectedDevice}
         />
-      ) :/* Show the enhanced log screen */
+      ) :
+      /* Show the enhanced log screen */
       showLogScreen && connectedDevice && ftmsManagerRef.current ? (
         <EnhancedTestScreen
           device={connectedDevice}
@@ -621,13 +627,14 @@ function App() {
           onClose={handleCloseLogScreen}
           isDeviceConnected={!!connectedDevice}
         />
-      ) :/* Show past reports screen */
+      ) :
+      /* Show past reports screen */
       showPastReports ? (
         <PastReportsScreen
           onBack={() => setShowPastReports(false)}
         />
       ) : (
-        <>          {!connectedDevice && scannedDevices.length > 0 ? (
+        <>{!connectedDevice && scannedDevices.length > 0 ? (
             <FlatList
               style={{ flex: 1 }}
               data={scannedDevices}
@@ -670,7 +677,7 @@ function App() {
                       style={[
                         styles.scanButton,
                         (isScanning || !managerInitialized) && styles.buttonDisabled
-                      ]}                      onPress={handleScan}
+                      ]} onPress={handleScan}
                       disabled={isScanning || !managerInitialized}
                     >
                       <LinearGradient
@@ -688,7 +695,6 @@ function App() {
                         </View>
                       </LinearGradient>
                     </TouchableOpacity>
-                    
                     {scannedDevices.length === 0 && !isScanning && statusMessage.includes(t('app.status.scanComplete')) && (
                       <View style={{
                         backgroundColor: Colors.secondary,
@@ -716,7 +722,6 @@ function App() {
                         </Text>
                       </View>
                     )}
-                    
                     {selectedDevice && (
                       <View style={styles.connectButtonContainer}>
                         <TouchableOpacity 
@@ -756,7 +761,8 @@ function App() {
                 )}
               </LinearGradient>
             </ScrollView>
-          )}        </>
+          )}
+        </>
       )}    
       {/* Help Popup (absolute, animated, not Modal) */}
       {isHelpPopupVisible && (

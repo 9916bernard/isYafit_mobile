@@ -65,7 +65,7 @@ const RealtimeDataScreen: React.FC<RealtimeDataScreenProps> = ({
               const responseOpCode = cpResponse[0];
               const requestOpCode = cpResponse[1];
               const resultCode = cpResponse[2];
-              console.log(`RealtimeData: CP Response - OpCode: ${requestOpCode.toString(16)}, Result: ${resultCode === 1 ? 'SUCCESS' : 'FAILURE'}`);
+              // console.log(`RealtimeData: CP Response - OpCode: ${requestOpCode.toString(16)}, Result: ${resultCode === 1 ? 'SUCCESS' : 'FAILURE'}`); // log was here
             }
           },
           (newBikeData) => {

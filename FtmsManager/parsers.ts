@@ -178,7 +178,7 @@ export function parseTacxData(data: Buffer): IndoorBikeData {
         case 0xFB: // Gear/Resistance data
             const frontGear = data[10];
             const rearGear = data[11];
-            console.log(frontGear, rearGear);
+            // console.log(frontGear, rearGear); // log was here
             parsed.resistanceLevel = frontGear - rearGear;
             break;
     }
@@ -190,10 +190,10 @@ export function parseFitShowData(data: Buffer): IndoorBikeData {
     const parsed: IndoorBikeData = { raw: data.toString('hex') };
     
     try {
-        console.log(`[FitShow Debug] Raw data length: ${data.length}, hex: ${data.toString('hex')}`);
+        // console.log(`[FitShow Debug] Raw data length: ${data.length}, hex: ${data.toString('hex')}`); // log was here
         
         if (data.length < 12) {
-            console.log(`[FitShow Debug] Data too short: ${data.length} bytes, need at least 12 bytes`);
+            // console.log(`[FitShow Debug] Data too short: ${data.length} bytes, need at least 12 bytes`); // log was here
             return parsed;
         }
         
@@ -222,10 +222,10 @@ export function parseFitShowData(data: Buffer): IndoorBikeData {
         // 배터리는 항상 100%로 고정
         parsed.batteryLevel = 100;
         
-        console.log(`[FitShow Debug] Parsed - Speed: ${speed} km/h, Cadence: ${cadence} RPM, Resistance: ${resistance}, Power: ${power}W`);
+        // console.log(`[FitShow Debug] Parsed - Speed: ${speed} km/h, Cadence: ${cadence} RPM, Resistance: ${resistance}, Power: ${power}W`); // log was here
         
     } catch (error) {
-        console.error('[FitShow Debug] Parsing error:', error);
+        // console.error('[FitShow Debug] Parsing error:', error); // log was here
     }
     
     return parsed;

@@ -18,14 +18,14 @@ export class BluetoothManager {
 
     private monitorBluetoothState(): void {
         this.bluetoothStateSubscription = this.bleManager.onStateChange((state) => {
-            console.log(`Bluetooth state changed to: ${state}`);
+            // console.log(`Bluetooth state changed to: ${state}`);
             this.currentState = state;
         }, true);
     }
 
     async checkBluetoothState(): Promise<boolean> {
         const state = await this.bleManager.state();
-        console.log(`Current Bluetooth state: ${state}`);
+        // console.log(`Current Bluetooth state: ${state}`);
         this.currentState = state;
         return state === State.PoweredOn;
     }
@@ -34,7 +34,7 @@ export class BluetoothManager {
         scanDuration: number = 10000,
         onDeviceFound: (device: Device) => void
     ): Promise<void> {
-        console.log("Scanning for fitness devices (FTMS, CSC, Mobi)...");
+        // console.log("Scanning for fitness devices (FTMS, CSC, Mobi)...");
         const isBluetoothOn = await this.checkBluetoothState();
         if (!isBluetoothOn) {
             console.error("Bluetooth is powered off. Cannot start scan.");
@@ -60,7 +60,7 @@ export class BluetoothManager {
                         return;
                     }
                     if (device) {
-                        console.log(`Found fitness device: ${device.name} (${device.id})`);
+                        // console.log(`Found fitness device: ${device.name} (${device.id})`);
                         onDeviceFound(device);
                     }
                 });
@@ -68,7 +68,7 @@ export class BluetoothManager {
                 setTimeout(() => {
                     this.bleManager.stopDeviceScan();
                     this.isScanning = false;
-                    console.log("Scan finished.");
+                    // console.log("Scan finished.");
                     resolve();
                 }, scanDuration);
             } catch (e) {

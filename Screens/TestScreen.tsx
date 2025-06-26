@@ -246,18 +246,18 @@ const TestScreen: React.FC<TestScreenProps> = ({ device, ftmsManager, onClose, i
 
   // 사용자 상호작용 핸들러
   const handleUserInteraction = (interaction: UserInteractionRequest): Promise<boolean> => {
-    console.log(`[DEBUG] handleUserInteraction 호출됨:`, interaction);
+    // console.log(`[DEBUG] handleUserInteraction 호출됨:`, interaction); // log was here
     return new Promise((resolve) => {
       setUserInteractionRequest(interaction);
       setUserInteractionResolve(() => resolve);
       setShowUserInteractionModal(true);
-      console.log(`[DEBUG] 사용자 상호작용 모달 표시됨`);
+      // console.log(`[DEBUG] 사용자 상호작용 모달 표시됨`); // log was here
     });
   };
 
   // 카운트다운 업데이트 핸들러
   const handleCountdownUpdate = (countdown: number) => {
-    console.log(`[DEBUG] handleCountdownUpdate 호출됨: ${countdown}`);
+    // console.log(`[DEBUG] handleCountdownUpdate 호출됨: ${countdown}`); // log was here
     setCountdownValue(countdown);
     if (countdown > 0) {
       setShowCountdown(true);
@@ -346,7 +346,7 @@ const TestScreen: React.FC<TestScreenProps> = ({ device, ftmsManager, onClose, i
           const saveReport = async () => {
             try {
               await ReportStorage.saveReport(results);
-              console.log('Report saved successfully from TestScreen');
+              // console.log('Report saved successfully from TestScreen'); // log was here
             } catch (error) {
               console.error('Error saving report from TestScreen:', error);
             }
@@ -586,7 +586,8 @@ const TestScreen: React.FC<TestScreenProps> = ({ device, ftmsManager, onClose, i
                   </Text>
                 </View>
               </TouchableOpacity>
-            )}            <View style={styles.progressSection}>
+            )}
+            <View style={styles.progressSection}>
               {/* 애니메이션 컨테이너 */}
               <Animated.View 
                 style={[
@@ -644,16 +645,19 @@ const TestScreen: React.FC<TestScreenProps> = ({ device, ftmsManager, onClose, i
                   </View>
                 )}
               </View>
-            </View>{testCompleted && testResults && (
+            </View>
+            {testCompleted && testResults && (
             <Animated.View style={[styles.resultsSummary, { opacity: fadeAnim }]}>
-              {renderCompatibilityBadge()}              {/* 결과 메시지를 맨 위에 표시 - 판정과 제한사항으로 분리 */}
+              {renderCompatibilityBadge()}
+              {/* 결과 메시지를 맨 위에 표시 - 판정과 제한사항으로 분리 */}
               {testResults.reasons && testResults.reasons.length > 0 && (
                 <View style={styles.resultMessageContainer}>
                   <View style={styles.resultMessageHeader}>
                     <MaterialCommunityIcons name="information" size={20} color="#00c663" />
                     <Text style={styles.resultMessageTitle}>{t('test.resultTitle')}</Text>
                   </View>
-                  <View style={styles.resultMessageContent}>                    {/* 판정 섹션 */}
+                  <View style={styles.resultMessageContent}>
+                    {/* 판정 섹션 */}
                     <View style={styles.judgmentSection}>
                       <Text style={styles.judgmentText}>
                         {testResults.reasons && testResults.reasons.length > 0 ? testResults.reasons[0] : '판정 결과 없음'}
@@ -689,7 +693,8 @@ const TestScreen: React.FC<TestScreenProps> = ({ device, ftmsManager, onClose, i
                             )}
                             {testResults.controlTests?.SET_SIM_PARAMS?.status === 'Failed' && (
                               <Text style={styles.limitationText}>{t('test.limitations.simMode')}</Text>
-                            )}{testResults.resistanceChanges && testResults.resistanceChanges.filter(change => !change.command || change.command === '자동 변경').length >= 5 && (
+                            )}
+                            {testResults.resistanceChanges && testResults.resistanceChanges.filter(change => !change.command || change.command === '자동 변경').length >= 5 && (
                               <Text style={styles.limitationText}>{t('test.limitations.unexpectedResistance')}</Text>
                             )}
                           </>
@@ -732,7 +737,8 @@ const TestScreen: React.FC<TestScreenProps> = ({ device, ftmsManager, onClose, i
                         <Text style={styles.rangeText}>
                           {formatRangeInfo(testResults.supportRanges.incline, 'incline')}
                         </Text>
-                      )}                      {testResults.supportRanges.resistance && (
+                      )}
+                      {testResults.supportRanges.resistance && (
                         <Text style={styles.rangeText}>
                           {formatRangeInfo(testResults.supportRanges.resistance, 'resistance')}
                         </Text>
@@ -779,7 +785,8 @@ const TestScreen: React.FC<TestScreenProps> = ({ device, ftmsManager, onClose, i
                         };
                         
                         return (
-                          <View key={name} style={styles.controlTestItem}>                            <MaterialCommunityIcons 
+                          <View key={name} style={styles.controlTestItem}>
+                            <MaterialCommunityIcons
                               name={getStatusIcon(test.status)} 
                               size={12} 
                               color={getStatusColor(test.status)} 
@@ -828,7 +835,8 @@ const TestScreen: React.FC<TestScreenProps> = ({ device, ftmsManager, onClose, i
                 <Text style={styles.viewReportButtonText}>{t('test.viewFullReport')}</Text>
               </TouchableOpacity>
             </Animated.View>
-          )}          <View style={styles.buttonContainer}>
+          )}          
+          <View style={styles.buttonContainer}>
             {/* Mobi Protocol Instruction */}
             {detectedProtocol === 'MOBI' && !testCompleted && (
               <View style={styles.mobiInstructionCard}>
@@ -868,7 +876,8 @@ const TestScreen: React.FC<TestScreenProps> = ({ device, ftmsManager, onClose, i
                   <Text style={styles.stopButtonText}>{t('test.stopTest')}</Text>
                 </TouchableOpacity>
               )}
-            </View>              <TouchableOpacity
+            </View>
+            <TouchableOpacity
               style={styles.backButton}
               onPress={handleBackPress}
               activeOpacity={0.8}

@@ -445,7 +445,8 @@ const getCompatibilityColor = (compatibilityLevel?: string): string => {
             transform: [{ translateY: slideAnim }]
           }
         ]}
-      >        <ScrollView 
+      >
+        <ScrollView
           style={styles.scrollViewContainer}
           showsVerticalScrollIndicator={false}
         >
@@ -458,13 +459,15 @@ const getCompatibilityColor = (compatibilityLevel?: string): string => {
               <TouchableOpacity onPress={onClose} style={styles.closeButton} activeOpacity={0.8}>
                 <Icon name="close" size={20} color="#ffffff" />
               </TouchableOpacity>
-            </View>            {/* Action Buttons */}
+            </View>
+            {/* Action Buttons */}
             <View style={styles.actionButtonsContainer}>
               <TouchableOpacity onPress={handleShare} style={styles.shareButton} activeOpacity={0.8}>
                 <Ionicons name="share-outline" size={20} color="#ffffff" />
                 <Text style={styles.shareButtonText}>{t('testReport.shareReport')}</Text>
               </TouchableOpacity>
-            </View>            {/* Device Info Section */}
+            </View>
+            {/* Device Info Section */}
             <View style={styles.section}>
               <View style={styles.sectionHeader}>
                 <MaterialCommunityIcons name="devices" size={24} color="#00c663" />
@@ -493,7 +496,8 @@ const getCompatibilityColor = (compatibilityLevel?: string): string => {
                     <Text style={styles.infoCardValue}>
                       {results.deviceInfo.protocol || '알 수 없음'}
                     </Text>
-                  </View>                  <View style={styles.infoCard}>
+                  </View>
+                  <View style={styles.infoCard}>
                     <Text style={styles.infoCardLabel}>{t('testReport.supportedProtocols')}</Text>
                     <Text style={styles.infoCardValue}>
                       {results.supportedProtocols.join(', ') || '없음'}
@@ -510,7 +514,8 @@ const getCompatibilityColor = (compatibilityLevel?: string): string => {
                   <MaterialCommunityIcons name="information" size={24} color="#00c663" />
                   <Text style={styles.resultMessageTitle}>{t('testReport.resultTitle')}</Text>
                 </View>
-                <View style={styles.resultMessageContent}>                  {/* 판정 섹션 */}
+                <View style={styles.resultMessageContent}>
+                  {/* 판정 섹션 */}
                   <View style={styles.judgmentSection}>
                     <Text style={styles.judgmentText}>
                       {results.reasons && results.reasons.length > 0 ? results.reasons[0] : '판정 결과 없음'}
@@ -522,18 +527,15 @@ const getCompatibilityColor = (compatibilityLevel?: string): string => {
                    !isCompatibilityLevel(results.compatibilityLevel, 'impossible') && (
                     <View style={styles.limitationSection}>
                       <Text style={styles.limitationTitle}>{t('testReport.limitationTitle')}</Text>
-                        {(isCompatibilityLevel(results.compatibilityLevel, 'partiallyCompatible') || isCompatibilityLevel(results.compatibilityLevel, 'needsModification')) && (
-                        <>
+                        {(isCompatibilityLevel(results.compatibilityLevel, 'partiallyCompatible') || isCompatibilityLevel(results.compatibilityLevel, 'needsModification')) && (<>
                           {/* Reborn 프로토콜 제한사항 */}
                           {results.supportedProtocols.includes('REBORN') && (
                             <Text style={styles.limitationText}>{t('testReport.limitations.reborn')}</Text>
                           )}
-                          
                           {/* FitShow 프로토콜 제한사항 */}
                           {results.supportedProtocols.includes('FITSHOW') && (
                             <Text style={styles.limitationText}>{t('testReport.limitations.fitshow')}</Text>
                           )}
-                          
                           {!results.dataFields?.resistance?.detected && (
                             <Text style={styles.limitationText}>{t('testReport.limitations.resistance')}</Text>
                           )}
@@ -548,8 +550,7 @@ const getCompatibilityColor = (compatibilityLevel?: string): string => {
                           )}{results.resistanceChanges && results.resistanceChanges.filter(change => !change.command || change.command === '자동 변경').length >= 5 && (
                             <Text style={styles.limitationText}>{t('testReport.limitations.unexpectedResistance')}</Text>
                           )}
-                        </>
-                      )}
+                        </>)}
                       
                       {/* 기존 issuesFound 표시 (불가능이 아닌 경우에만) */}
                       {results.issuesFound && results.issuesFound.map((issue, index) => (
@@ -564,7 +565,8 @@ const getCompatibilityColor = (compatibilityLevel?: string): string => {
             )}
             {/* Compatibility Reasons - Collapsible */}
             {false && results.reasons && results.reasons.length > 0 && (
-              <View style={styles.section}>                <TouchableOpacity 
+              <View style={styles.section}>
+                <TouchableOpacity
                   style={styles.sectionHeader}
                   onPress={() => setShowFullReasons(!showFullReasons)}
                 >
@@ -577,7 +579,8 @@ const getCompatibilityColor = (compatibilityLevel?: string): string => {
                   />
                 </TouchableOpacity>
                 {showFullReasons && (
-                  <View style={styles.reasonsContainer}>                    {results.reasons.map((reason, index) => (
+                  <View style={styles.reasonsContainer}>
+                    {results.reasons.map((reason, index) => (
                       <View key={index} style={styles.reasonItem}>
                         <View style={[
                           styles.reasonBullet, 
@@ -590,35 +593,36 @@ const getCompatibilityColor = (compatibilityLevel?: string): string => {
                 )}
               </View>
             )}
-          {/* Issues Found */}
-          {results.issuesFound && results.issuesFound.length > 0 && (
-            <View style={styles.section}>
-              <View style={styles.sectionHeader}>
-                <Icon name="error-outline" size={24} color="#ef4444" />
-                <Text style={styles.sectionTitle}>{t('testReport.problems')}</Text>
+            {/* Issues Found */}
+            {results.issuesFound && results.issuesFound.length > 0 && (
+              <View style={styles.section}>
+                <View style={styles.sectionHeader}>
+                  <Icon name="error-outline" size={24} color="#ef4444" />
+                  <Text style={styles.sectionTitle}>{t('testReport.problems')}</Text>
+                </View>
+                <View style={styles.issuesContainer}>
+                  {results.issuesFound.map((issue, index) => (
+                    <View key={index} style={styles.issueItem}>
+                      <View style={styles.issueBullet} />
+                      <Text style={styles.issueText}>{issue}</Text>
+                    </View>
+                  ))}
+                </View>
               </View>
-              <View style={styles.issuesContainer}>
-                {results.issuesFound.map((issue, index) => (
-                  <View key={index} style={styles.issueItem}>
-                    <View style={styles.issueBullet} />
-                    <Text style={styles.issueText}>{issue}</Text>
-                  </View>
-                ))}
-              </View>
-            </View>
-          )}          {/* Limitation Reasons - 제한 사유 (불가능한 경우 제외) */}
-          {!isCompatibilityLevel(results.compatibilityLevel || '', 'impossible') && 
-           results.controlTests && 
-           Object.entries(results.controlTests).some(([_, test]) => test.status !== 'OK') && (
-            <View style={styles.section}>
-              <View style={styles.sectionHeader}>
-                <Icon name="block" size={24} color="#FF9800" />
-                <Text style={styles.sectionTitle}>{t('testReport.limitationReasons')}</Text>
-              </View>
-              <View style={styles.limitationReasonsContainer}>
-                {Object.entries(results.controlTests)
-                  .filter(([_, test]) => test.status !== 'OK')
-                  .map(([name, test], index) => {                    const getReasonText = (commandName: string, status: string) => {
+            )}
+            {/* Limitation Reasons - 제한 사유 (불가능한 경우 제외) */}
+            {!isCompatibilityLevel(results.compatibilityLevel || '', 'impossible') && 
+             results.controlTests && 
+             Object.entries(results.controlTests).some(([_, test]) => test.status !== 'OK') && (
+              <View style={styles.section}>
+                <View style={styles.sectionHeader}>
+                  <Icon name="block" size={24} color="#FF9800" />
+                  <Text style={styles.sectionTitle}>{t('testReport.limitationReasons')}</Text>
+                </View>
+                <View style={styles.limitationReasonsContainer}>
+                  {Object.entries(results.controlTests)
+                    .filter(([_, test]) => test.status !== 'OK')
+                    .map(([name, test], index) => {                    const getReasonText = (commandName: string, status: string) => {
                       const commandLabels = {
                         'SET_RESISTANCE_LEVEL': t('testReport.limitationReasons.userGearControl'),
                         'SET_TARGET_POWER': t('testReport.limitationReasons.ergModeUnavailable'), 
@@ -640,178 +644,181 @@ const getCompatibilityColor = (compatibilityLevel?: string): string => {
                       </View>
                     );
                   })}
-              </View>
-            </View>
-          )}
-
-          {/* Support Ranges */}
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <Ionicons name="speedometer-outline" size={24} color="#00c663" />
-              <Text style={styles.sectionTitle}>{t('testReport.supportRange')}</Text>
-            </View>
-            {results.supportRanges && Object.keys(results.supportRanges).length > 0 ? (
-              <View style={styles.rangesGrid}>
-                {results.supportRanges.speed && 
-                  renderRangeCard(results.supportRanges.speed, 'speed', t('testReport.share.speed'), ' km/h', 'speedometer')
-                }
-                {results.supportRanges.incline && 
-                  renderRangeCard(results.supportRanges.incline, 'incline', t('testReport.share.incline'), '%', 'slope-uphill')
-                }
-                {results.supportRanges.resistance && 
-                  renderRangeCard(results.supportRanges.resistance, 'resistance', t('testReport.share.resistance'), ' Lv', 'dumbbell')
-                }
-                {results.supportRanges.power && 
-                  renderRangeCard(results.supportRanges.power, 'power', t('testReport.share.power'), 'W', 'flash')
-                }
-              </View>
-            ) : (              <Text style={styles.noDataText}>{t('testReport.noSupportRangeData')}</Text>
-            )}
-          </View>
-
-          {/* Features */}
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <MaterialCommunityIcons name="feature-search-outline" size={24} color="#00c663" />
-              <Text style={styles.sectionTitle}>{t('testReport.supportFeatures')}</Text>
-            </View>
-            {results.features && Object.keys(results.features).length > 0 ? (
-              <View style={styles.featuresContainer}>
-                {Object.entries(results.features).map(([name, supported]) => (
-                  <View key={name} style={styles.featureItem}>
-                    <Text style={[
-                      styles.featureText,
-                      { color: supported ? '#4CAF50' : '#ccc' }
-                    ]}>
-                      {supported ? '✓' : '✗'} {name}
-                    </Text>
-                  </View>
-                ))}
-              </View>
-            ) : (              <Text style={styles.noDataText}>{t('testReport.noSupportFeaturesData')}</Text>
-            )}
-          </View>
-
-          {/* Data Fields */}
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <MaterialCommunityIcons name="database-outline" size={24} color="#00c663" />
-              <Text style={styles.sectionTitle}>{t('testReport.detectedDataFields')}</Text>
-            </View>
-            {renderDataFields()}
-          </View>
-
-          {/* Control Tests */}
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <MaterialCommunityIcons name="test-tube" size={24} color="#00c663" />
-              <Text style={styles.sectionTitle}>{t('testReport.controlTestResult')}</Text>
-            </View>            <View style={styles.controlTestsContainer}>
-              {renderControlTests()}
-            </View>
-          </View>
-          {/* Resistance Changes Log */}
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <MaterialCommunityIcons name="chart-timeline-variant" size={24} color="#00c663" />
-              <Text style={styles.sectionTitle}>{t('testReport.resistanceChangeLog')}</Text>
-            </View>
-            {renderResistanceChanges()}
-          </View>          {/* Interaction Logs Section */}
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <MaterialCommunityIcons name="console" size={24} color="#00c663" />
-              <Text style={styles.sectionTitle}>{t('testReport.interactionLog')}</Text>
-              {results.interactionLogs && results.interactionLogs.length > 0 && (
-                <View style={styles.logCountBadge}>
-                  <Text style={styles.logCountText}>{results.interactionLogs.length}</Text>
                 </View>
+              </View>
+            )}
+
+            {/* Support Ranges */}
+            <View style={styles.section}>
+              <View style={styles.sectionHeader}>
+                <Ionicons name="speedometer-outline" size={24} color="#00c663" />
+                <Text style={styles.sectionTitle}>{t('testReport.supportRange')}</Text>
+              </View>
+              {results.supportRanges && Object.keys(results.supportRanges).length > 0 ? (
+                <View style={styles.rangesGrid}>
+                  {results.supportRanges.speed && 
+                    renderRangeCard(results.supportRanges.speed, 'speed', t('testReport.share.speed'), ' km/h', 'speedometer')
+                  }
+                  {results.supportRanges.incline && 
+                    renderRangeCard(results.supportRanges.incline, 'incline', t('testReport.share.incline'), '%', 'slope-uphill')
+                  }
+                  {results.supportRanges.resistance && 
+                    renderRangeCard(results.supportRanges.resistance, 'resistance', t('testReport.share.resistance'), ' Lv', 'dumbbell')
+                  }
+                  {results.supportRanges.power && 
+                    renderRangeCard(results.supportRanges.power, 'power', t('testReport.share.power'), 'W', 'flash')
+                  }
+                </View>
+              ) : (                <Text style={styles.noDataText}>{t('testReport.noSupportRangeData')}</Text>
               )}
             </View>
-            {results.interactionLogs && results.interactionLogs.length > 0 ? (
-              <>
-                <View style={styles.logActionsContainer}>
-                  <TouchableOpacity
-                    style={styles.toggleLogButton}
-                    onPress={() => setShowFullLog(!showFullLog)}
-                  >
-                    <Text style={styles.toggleLogButtonText}>
-                      {showFullLog ? t('testReport.logActions.hideLog') : t('testReport.logActions.showFullLog')}
-                    </Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={styles.copyLogButton}
-                    onPress={handleCopyLogs}
-                  >
-                    <Text style={styles.copyLogButtonText}>{t('testReport.copyLog')}</Text>
-                  </TouchableOpacity>
-                </View>                {showFullLog && (
-                  <ScrollView style={styles.logScrollContainer} nestedScrollEnabled={true}>
-                    <View style={styles.logContainer}>
-                      {results.interactionLogs.map((log, index) => {
-                        // 로그 타입에 따른 스타일 결정
-                        let additionalStyle = {};
-                        
-                        if (log.includes('명령 전송:')) {
-                          additionalStyle = styles.logEntryCommand;
-                        } else if (log.includes('명령 응답 [성공]') || log.includes('SUCCESS')) {
-                          additionalStyle = styles.logEntrySuccess;
-                        } else if (log.includes('명령 응답 [실패]') || log.includes('FAIL')) {
-                          additionalStyle = styles.logEntryError;
-                        } else if (log.includes('바이크 데이터:')) {
-                          additionalStyle = styles.logEntryBikeData;
-                        } else if (log.includes('Resistance changed')) {
-                          additionalStyle = styles.logEntryResistance;
-                        }
-                        
-                        return (
-                          <View key={index} style={styles.logEntryContainer}>
-                            <Text style={[styles.logEntry, additionalStyle]}>{log}</Text>
-                          </View>
-                        );
-                      })}
-                    </View>
-                  </ScrollView>
-                )}
-              </>
-            ) : (              <Text style={styles.noDataText}>{t('testReport.noInteractionLog')}</Text>
-            )}
-          </View>
 
-          {/* Test Metadata */}
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <Icon name="info-outline" size={24} color="#00c663" />
-              <Text style={styles.sectionTitle}>{t('testReport.testInfo')}</Text>
-            </View>
-            <View style={styles.metadataContainer}>
-              <View style={styles.infoRow}>
-                <Text style={styles.infoLabel}>{t('testReport.testCompletion')}</Text>
-                <Text style={[
-                  styles.infoValue, 
-                  { color: results.testCompleted ? '#4CAF50' : '#F44336' }
-                ]}>
-                  {results.testCompleted ? t('test.completion') : '미완료'}
-                </Text>
+            {/* Features */}
+            <View style={styles.section}>
+              <View style={styles.sectionHeader}>
+                <MaterialCommunityIcons name="feature-search-outline" size={24} color="#00c663" />
+                <Text style={styles.sectionTitle}>{t('testReport.supportFeatures')}</Text>
               </View>
-              {results.testCompletedTimestamp && (
+              {results.features && Object.keys(results.features).length > 0 ? (
+                <View style={styles.featuresContainer}>
+                  {Object.entries(results.features).map(([name, supported]) => (
+                    <View key={name} style={styles.featureItem}>
+                      <Text style={[
+                        styles.featureText,
+                        { color: supported ? '#4CAF50' : '#ccc' }
+                      ]}>
+                        {supported ? '✓' : '✗'} {name}
+                      </Text>
+                    </View>
+                  ))}
+                </View>
+              ) : (                <Text style={styles.noDataText}>{t('testReport.noSupportFeaturesData')}</Text>
+              )}
+            </View>
+
+            {/* Data Fields */}
+            <View style={styles.section}>
+              <View style={styles.sectionHeader}>
+                <MaterialCommunityIcons name="database-outline" size={24} color="#00c663" />
+                <Text style={styles.sectionTitle}>{t('testReport.detectedDataFields')}</Text>
+              </View>
+              {renderDataFields()}
+            </View>
+
+            {/* Control Tests */}
+            <View style={styles.section}>
+              <View style={styles.sectionHeader}>
+                <MaterialCommunityIcons name="test-tube" size={24} color="#00c663" />
+                <Text style={styles.sectionTitle}>{t('testReport.controlTestResult')}</Text>
+              </View>
+              <View style={styles.controlTestsContainer}>
+                {renderControlTests()}
+              </View>
+            </View>
+            {/* Resistance Changes Log */}
+            <View style={styles.section}>
+              <View style={styles.sectionHeader}>
+                <MaterialCommunityIcons name="chart-timeline-variant" size={24} color="#00c663" />
+                <Text style={styles.sectionTitle}>{t('testReport.resistanceChangeLog')}</Text>
+              </View>
+              {renderResistanceChanges()}
+            </View>
+            {/* Interaction Logs Section */}
+            <View style={styles.section}>
+              <View style={styles.sectionHeader}>
+                <MaterialCommunityIcons name="console" size={24} color="#00c663" />
+                <Text style={styles.sectionTitle}>{t('testReport.interactionLog')}</Text>
+                {results.interactionLogs && results.interactionLogs.length > 0 && (
+                  <View style={styles.logCountBadge}>
+                    <Text style={styles.logCountText}>{results.interactionLogs.length}</Text>
+                  </View>
+                )}
+              </View>
+              {results.interactionLogs && results.interactionLogs.length > 0 ? (
+                <>
+                  <View style={styles.logActionsContainer}>
+                    <TouchableOpacity
+                      style={styles.toggleLogButton}
+                      onPress={() => setShowFullLog(!showFullLog)}
+                    >
+                      <Text style={styles.toggleLogButtonText}>
+                        {showFullLog ? t('testReport.logActions.hideLog') : t('testReport.logActions.showFullLog')}
+                      </Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={styles.copyLogButton}
+                      onPress={handleCopyLogs}
+                    >
+                      <Text style={styles.copyLogButtonText}>{t('testReport.copyLog')}</Text>
+                    </TouchableOpacity>
+                  </View>
+                  {showFullLog && (
+                    <ScrollView style={styles.logScrollContainer} nestedScrollEnabled={true}>
+                      <View style={styles.logContainer}>
+                        {results.interactionLogs.map((log, index) => {
+                          // 로그 타입에 따른 스타일 결정
+                          let additionalStyle = {};
+                          
+                          if (log.includes('명령 전송:')) {
+                            additionalStyle = styles.logEntryCommand;
+                          } else if (log.includes('명령 응답 [성공]') || log.includes('SUCCESS')) {
+                            additionalStyle = styles.logEntrySuccess;
+                          } else if (log.includes('명령 응답 [실패]') || log.includes('FAIL')) {
+                            additionalStyle = styles.logEntryError;
+                          } else if (log.includes('바이크 데이터:')) {
+                            additionalStyle = styles.logEntryBikeData;
+                          } else if (log.includes('Resistance changed')) {
+                            additionalStyle = styles.logEntryResistance;
+                          }
+                          
+                          return (
+                            <View key={index} style={styles.logEntryContainer}>
+                              <Text style={[styles.logEntry, additionalStyle]}>{log}</Text>
+                            </View>
+                          );
+                        })}
+                      </View>
+                    </ScrollView>
+                  )}
+                </>
+              ) : (                <Text style={styles.noDataText}>{t('testReport.noInteractionLog')}</Text>
+              )}
+            </View>
+
+            {/* Test Metadata */}
+            <View style={styles.section}>
+              <View style={styles.sectionHeader}>
+                <Icon name="info-outline" size={24} color="#00c663" />
+                <Text style={styles.sectionTitle}>{t('testReport.testInfo')}</Text>
+              </View>
+              <View style={styles.metadataContainer}>
                 <View style={styles.infoRow}>
-                  <Text style={styles.infoLabel}>{t('testReport.completionTime')}</Text>
-                  <Text style={styles.infoValue}>
-                    {new Date(results.testCompletedTimestamp).toLocaleString()}
+                  <Text style={styles.infoLabel}>{t('testReport.testCompletion')}</Text>
+                  <Text style={[
+                    styles.infoValue, 
+                    { color: results.testCompleted ? '#4CAF50' : '#F44336' }
+                  ]}>
+                    {results.testCompleted ? t('test.completion') : '미완료'}
                   </Text>
                 </View>
-              )}
-              {results.reportId && (
-                <View style={styles.infoRow}>
-                  <Text style={styles.infoLabel}>{t('testReport.reportId')}</Text>
-                  <Text style={styles.infoValue}>{results.reportId}</Text>
-                </View>
-              )}
+                {results.testCompletedTimestamp && (
+                  <View style={styles.infoRow}>
+                    <Text style={styles.infoLabel}>{t('testReport.completionTime')}</Text>
+                    <Text style={styles.infoValue}>
+                      {new Date(results.testCompletedTimestamp).toLocaleString()}
+                    </Text>
+                  </View>
+                )}
+                {results.reportId && (
+                  <View style={styles.infoRow}>
+                    <Text style={styles.infoLabel}>{t('testReport.reportId')}</Text>
+                    <Text style={styles.infoValue}>{results.reportId}</Text>
+                  </View>
+                )}
+              </View>
             </View>
           </View>
-        </View>
-      </ScrollView>
+        </ScrollView>
       </Animated.View>
     </View>
   );

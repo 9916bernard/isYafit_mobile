@@ -31,7 +31,7 @@ export class LogManager {
         const timestamp = new Date().toISOString();
         const log: LogEntry = { timestamp, message, type };
         this.logs.push(log);
-        console.log(`[${type.toUpperCase()}] ${message}`);
+        // console.log(`[${type.toUpperCase()}] ${message}`); // log was here
         if (this.logCallback) {
             this.logCallback([...this.logs]);
         }

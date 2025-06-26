@@ -380,7 +380,8 @@ export class FTMSManager {
             if (characteristic.value) {
                 const buffer = Buffer.from(characteristic.value, 'base64');
                 this.ftmsFeatureBits = buffer.readUInt32LE(0);
-                console.log(`FTMS Features raw: ${buffer.toString('hex')}, bits: ${this.ftmsFeatureBits.toString(16)}`);
+                // console.log(`FTMS Features raw: ${buffer.toString('hex')}, bits: ${this.ftmsFeatureBits.toString(16)}`); // log was here
+                this.logManager.logInfo(`FTMS Features: ${this.ftmsFeatureBits.toString(16)}`);
                 return this.ftmsFeatureBits;
             }
             throw new Error("No value in FTMS Feature characteristic");
