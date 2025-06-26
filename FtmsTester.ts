@@ -991,7 +991,7 @@ export class FTMSTester {
                     currentTime - this.resistanceTracking.commandSentTime : 0;
                 
                 // Determine the cause of resistance change
-                let changeCause = t('test.data.automaticChange');
+                let changeCause = 'autoChange';
                 let isCommandRelated = false;
                 
                 if (this.resistanceTracking.commandPending && 
@@ -1024,43 +1024,29 @@ export class FTMSTester {
                 if (isCommandRelated && this.resistanceTracking.lastCommandType) {
                     const actualCommandName = this.resistanceTracking.lastCommandType;
                     
-                    if (this.resistanceTracking.commandPending && 
-                        !this.resistanceTracking.resistanceChangeNotedForLastCmd) {
-                        
+                    if (this.resistanceTracking.commandPending && !this.resistanceTracking.resistanceChangeNotedForLastCmd) {
                         this.logInteraction(`DEBUG - [handleBikeData] Processing resistance change for pending command: ${actualCommandName}`);
-
-                        if (actualCommandName === 'SET_RESISTANCE_LEVEL' || actualCommandName === 'SET_TARGET_POWER' || actualCommandName === 'SET_SIM_PARAMS') {
-                            this.logInteraction(`INFO - [handleBikeData] ${actualCommandName} SUCCESS - Resistance change detected (${this.lastResistanceLevel} -> ${newResistance}) after ${timeFromCommand}ms`);
-
-                            const currentStatus = this.testResults.controlTests[actualCommandName]?.status || 'Unknown';
-                            this.testResults.controlTests[actualCommandName] = {
-                                ...this.testResults.controlTests[actualCommandName],
-                                status: "OK", // Final success status
-                                details: `${actualCommandName} successful. CP Response: Success, Resistance changed from ${this.lastResistanceLevel} to ${newResistance} after ${timeFromCommand}ms.`
-                            };
-                              this.logInteraction(`INFO - [handleBikeData] ${actualCommandName} status changed from ${currentStatus} to OK - resistance change confirmed`);
-                            this.logInteraction(`INFO - [RESISTANCE] Control command COMPLETED SUCCESSFULLY for ${actualCommandName} - resistance change confirmed (${this.lastResistanceLevel} -> ${newResistance})`);
-                            this.logInteraction(`DEBUG - [RESISTANCE_DEBUG] testResults.controlTests[${actualCommandName}] updated: ${JSON.stringify(this.testResults.controlTests[actualCommandName])}`);
-                            this.resistanceTracking.resistanceChangeNotedForLastCmd = true;
-                            this.resistanceTracking.commandPending = false;
-                            this.resistanceTracking.commandCompletedTime = currentTime;
-
-                            // Set attribution window based on command type
-                            let attributionWindowDuration;
-                            if (actualCommandName === 'SET_TARGET_POWER') {
-                                attributionWindowDuration = 12000; // 12 seconds for target power mode (extended to capture more changes)
-                                this.logInteraction(`INFO - [handleBikeData] SET_TARGET_POWER mode activated - resistance will continuously adjust for power target. Attribution window: ${attributionWindowDuration}ms`);
-                            } else if (actualCommandName === 'SET_RESISTANCE_LEVEL') {
-                                attributionWindowDuration = 3000; // 3 seconds for resistance level
-                                this.logInteraction(`INFO - [handleBikeData] SET_RESISTANCE_LEVEL executed - setting fixed resistance mode`);
-                            } else {
-                                attributionWindowDuration = 3000; // 3 seconds for normal commands
-                            }
-                            
-                            this.resistanceTracking.allowResistanceAttributionWindow = currentTime + attributionWindowDuration;
-                            
-                            this.logInteraction(`DEBUG - [handleBikeData] Command ${actualCommandName} completed successfully. Attribution window set for ${attributionWindowDuration}ms until ${new Date(this.resistanceTracking.allowResistanceAttributionWindow).toLocaleTimeString()}`);
-                        }                    } else if (!this.resistanceTracking.commandPending) {
+                        if (actualCommandName === 'SET_TARGET_POWER') {
+                            // SET_TARGET_POWER는 attribution window 유지 (지연 변화 허용)
+                            this.logInteraction(`INFO - [handleBikeData] SET_TARGET_POWER mode activated - resistance will continuously adjust for power target. Attribution window: 12000ms`);
+                            this.resistanceTracking.allowResistanceAttributionWindow = currentTime + 12000;
+                        } else {
+                            // SET_RESISTANCE_LEVEL, SET_SIM_PARAMS 등은 첫 변화만 명령어로 인정, attribution window 없음
+                            this.resistanceTracking.allowResistanceAttributionWindow = 0;
+                        }
+                        const currentStatus = this.testResults.controlTests[actualCommandName]?.status || 'Unknown';
+                        this.testResults.controlTests[actualCommandName] = {
+                            ...this.testResults.controlTests[actualCommandName],
+                            status: "OK",
+                            details: `${actualCommandName} successful. CP Response: Success, Resistance changed from ${this.lastResistanceLevel} to ${newResistance} after ${timeFromCommand}ms.`
+                        };
+                        this.logInteraction(`INFO - [handleBikeData] ${actualCommandName} status changed from ${currentStatus} to OK - resistance change confirmed`);
+                        this.logInteraction(`INFO - [RESISTANCE] Control command COMPLETED SUCCESSFULLY for ${actualCommandName} - resistance change confirmed (${this.lastResistanceLevel} -> ${newResistance})`);
+                        this.logInteraction(`DEBUG - [RESISTANCE_DEBUG] testResults.controlTests[${actualCommandName}] updated: ${JSON.stringify(this.testResults.controlTests[actualCommandName])}`);
+                        this.resistanceTracking.resistanceChangeNotedForLastCmd = true;
+                        this.resistanceTracking.commandPending = false;
+                        this.resistanceTracking.commandCompletedTime = currentTime;
+                    } else if (!this.resistanceTracking.commandPending) {
                         // This is a delayed resistance change for an already completed command
                         this.logInteraction(`DEBUG - [handleBikeData] Delayed resistance change for completed command: ${actualCommandName}`);
                     }

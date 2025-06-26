@@ -18,7 +18,7 @@ import { setLanguage, initializeLanguage } from '../utils/i18n';
 
 
 // 0.8.0 FitShow 프로토콜 구현 개선 (FTMS indoor bike data 형식 사용)
-const APP_VERSION = 'v0.9.3';
+const APP_VERSION = 'v0.9.5';
 
 function App() {
   const { t, i18n } = useTranslation();
@@ -456,7 +456,7 @@ function App() {
     setIsLoadingCompatibilityTest(false);
     setStatusMessage(t('app.status.ready'));
   };
-
+  //#region Device List 
   const renderListHeader = () => (
     <LinearGradient 
       colors={[Colors.background, Colors.cardBackground]} 
@@ -526,7 +526,7 @@ function App() {
             colors={[Colors.primary, Colors.accent]}
             style={styles.connectButtonGradient}
           >
-            <Icon name="connection" size={20} color={Colors.text} style={{ marginRight: 8 }} />
+            <Icon name="connection" size={30} color={Colors.text} style={{ marginRight: 8 }} />
             <Text style={styles.scanButtonText}>
               {t('app.buttons.connectDevice', { deviceName: selectedDevice.name || t('common.unknown') })}
             </Text>
@@ -572,7 +572,7 @@ function App() {
       </View>
     </TouchableOpacity>
   );
-
+  //#region Touch feedback part
   // 조건부로 TouchableWithoutFeedback으로 감싸기
   const SafeAreaContent = (
     <SafeAreaView style={styles.safeArea}>
@@ -790,7 +790,7 @@ function App() {
       )}
     </SafeAreaView>
   );
-
+  //#region Menu
   if (isHelpPopupVisible) {
     return (
       <>

@@ -626,7 +626,7 @@ const TestScreen: React.FC<TestScreenProps> = ({ device, ftmsManager, onClose, i
                             {testResults.controlTests?.SET_SIM_PARAMS?.status === 'Failed' && (
                               <Text style={styles.limitationText}>{t('test.limitations.simMode')}</Text>
                             )}
-                            {testResults.resistanceChanges && testResults.resistanceChanges.filter(change => !change.command || change.command === '자동 변경').length >= 5 && (
+                            {testResults.resistanceChanges && testResults.resistanceChanges.filter(change => !change.command || change.command === 'autoChange').length >= 5 && (
                               <Text style={styles.limitationText}>{t('test.limitations.unexpectedResistance')}</Text>
                             )}
                           </>

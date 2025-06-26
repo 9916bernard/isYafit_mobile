@@ -113,7 +113,7 @@ const TestReportScreen: React.FC<TestReportScreenProps> = ({ results, onClose })
         if (results.controlTests?.SET_RESISTANCE_LEVEL?.status === 'Failed') limitations.push('기어 변경 불가능');
         if (results.controlTests?.SET_TARGET_POWER?.status === 'Failed') limitations.push('ERG 모드 사용 불가능');
         if (results.controlTests?.SET_SIM_PARAMS?.status === 'Failed') limitations.push('SIM 모드 사용 불가능');
-        if (results.resistanceChanges && results.resistanceChanges.filter(change => !change.command).length >= 5) limitations.push('저항값이 명령 없이 자동 변화함');
+        if (results.resistanceChanges && results.resistanceChanges.filter(change => !change.command || change.command === 'autoChange').length >= 5) limitations.push('저항값이 명령 없이 자동 변화함');
       }
       if (results.issuesFound && results.issuesFound.length > 0) limitations.push(...results.issuesFound);
       if (limitations.length > 0) {
@@ -346,7 +346,7 @@ const TestReportScreen: React.FC<TestReportScreenProps> = ({ results, onClose })
 
         {results.resistanceChanges.map((change, index) => {
           // 명령어에 따른 스타일 적용
-          const isCommandChange = change.command && change.command !== '자동 변경';
+          const isCommandChange = change.command && change.command !== 'autoChange';
           const textColor = isCommandChange ? '#00c663' : '#fff';
           const bgColor = isCommandChange ? 'rgba(0, 198, 99, 0.1)' : 'transparent';
           
@@ -365,7 +365,7 @@ const TestReportScreen: React.FC<TestReportScreenProps> = ({ results, onClose })
               </Text>
               <Text style={[styles.tableCell, { flex: 0.8, color: textColor }]}>{change.newValue}</Text>
               <Text style={[styles.tableCell, { flex: 2, color: textColor, fontWeight: isCommandChange ? 'bold' : 'normal' }]}>
-                {change.command || t('testReport.share.autoChange')}
+                {change.command === 'autoChange' || !change.command ? t('testReport.share.autoChange') : change.command}
               </Text>
             </View>
           );
@@ -497,7 +497,7 @@ const TestReportScreen: React.FC<TestReportScreenProps> = ({ results, onClose })
                           )}
                           {results.controlTests?.SET_SIM_PARAMS?.status === 'Failed' && (
                             <Text style={styles.limitationText}>{t('testReport.limitations.simMode')}</Text>
-                          )}{results.resistanceChanges && results.resistanceChanges.filter(change => !change.command || change.command === '자동 변경').length >= 5 && (
+                          )}{results.resistanceChanges && results.resistanceChanges.filter(change => !change.command || change.command === 'autoChange').length >= 5 && (
                             <Text style={styles.limitationText}>{t('testReport.limitations.unexpectedResistance')}</Text>
                           )}
                         </>)}

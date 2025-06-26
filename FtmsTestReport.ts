@@ -243,20 +243,10 @@ export function determineCompatibility(results: TestResults): TestResults {
     }    // 8. Check for automatic resistance changes (수정 필요)
     if (results.resistanceChanges) {
         const automaticChanges = results.resistanceChanges.filter(change => 
-            !change.command || change.command === t('testResult.autoChange')
+            !change.command || change.command === 'autoChange'
         );
-        // console.log('자동변화 디버깅:', { // log was here
-        //     totalChanges: results.resistanceChanges.length,
-        //     automaticChanges: automaticChanges.length,
-        //     allChanges: results.resistanceChanges.map(c => ({ 
-        //         paramType: c.paramType, 
-        //         command: c.command, 
-        //         isAutomatic: !c.command || c.command === t('testResult.autoChange')
-        //     }))
-        // }); // log was here
         if (automaticChanges.length >= 5) {
             warningReasons.push(t('testResult.reasons.autoChange'));
-            // console.log('자동변화 5회 이상 감지됨 - 수정 필요로 분류'); // log was here
         }
     }
       // Determine final compatibility level based on priority: 불가능 > 수정필요/부분호환 > 완전호환
