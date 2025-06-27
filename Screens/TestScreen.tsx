@@ -64,8 +64,8 @@ const TestScreen: React.FC<TestScreenProps> = ({ device, ftmsManager, onClose })
   // Animation values
   const progressAnim = useRef(new Animated.Value(0)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
-  const scaleAnim = useRef(new Animated.Value(0.9)).current;
-  const slideAnim = useRef(new Animated.Value(50)).current;
+  const scaleAnim = useRef(new Animated.Value(0.95)).current;
+  const slideAnim = useRef(new Animated.Value(20)).current;
   const animationContainerHeight = useRef(new Animated.Value(0)).current;
   const animationOpacity = useRef(new Animated.Value(0)).current;
 
@@ -92,18 +92,17 @@ const TestScreen: React.FC<TestScreenProps> = ({ device, ftmsManager, onClose })
     Animated.parallel([
       Animated.timing(fadeAnim, {
         toValue: 1,
-        duration: 800,
+        duration: 400,
         useNativeDriver: true,
       }),
-      Animated.spring(scaleAnim, {
+      Animated.timing(scaleAnim, {
         toValue: 1,
-        tension: 50,
-        friction: 7,
+        duration: 500,
         useNativeDriver: true,
       }),
       Animated.timing(slideAnim, {
         toValue: 0,
-        duration: 600,
+        duration: 400,
         useNativeDriver: true,
       }),
     ]).start();
