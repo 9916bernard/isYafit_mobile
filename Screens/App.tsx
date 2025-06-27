@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { StyleSheet, View, Text, FlatList, TouchableOpacity, PermissionsAndroid, Platform, ScrollView, SafeAreaView, Modal, Alert, Dimensions, TouchableWithoutFeedback, Animated, findNodeHandle, UIManager } from 'react-native';
+import { StyleSheet, View, Text, FlatList, TouchableOpacity, PermissionsAndroid, Platform, ScrollView, SafeAreaView, Modal, Alert, Dimensions, TouchableWithoutFeedback, Animated, findNodeHandle, UIManager, ActivityIndicator } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import LinearGradient from 'react-native-linear-gradient';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -24,10 +24,11 @@ function App() {
   const insets = useSafeAreaInsets();
   const ftmsManagerRef = useRef<FTMSManager | null>(null);
   const [managerInitialized, setManagerInitialized] = useState<boolean>(false);
+  const [languageInitialized, setLanguageInitialized] = useState<boolean>(false);
   const [scannedDevices, setScannedDevices] = useState<Device[]>([]);  const [selectedDevice, setSelectedDevice] = useState<Device | null>(null);
   const [connectedDevice, setConnectedDevice] = useState<Device | null>(null);
   const [isScanning, setIsScanning] = useState(false);
-  const [statusMessage, setStatusMessage] = useState(t('app.status.init'));
+  const [statusMessage, setStatusMessage] = useState('');
   const [showTestScreen, setShowTestScreen] = useState(false); // For showing the test screen
   const [showModeSelection, setShowModeSelection] = useState(false); // For showing mode selection
   const [showRealtimeData, setShowRealtimeData] = useState(false); // For showing realtime data screen
@@ -46,7 +47,19 @@ function App() {
 
   // 언어 초기화
   useEffect(() => {
-    initializeLanguage();
+    const initLanguage = async () => {
+      try {
+        await initializeLanguage();
+        setLanguageInitialized(true);
+        setStatusMessage(t('app.status.init'));
+      } catch (error) {
+        console.error('Failed to initialize language:', error);
+        setLanguageInitialized(true);
+        setStatusMessage(t('app.status.init'));
+      }
+    };
+    
+    initLanguage();
   }, []);
 
   // FTMSManager 초기화를 한 번만 수행
@@ -567,8 +580,15 @@ function App() {
   // 조건부로 TouchableWithoutFeedback으로 감싸기
   const SafeAreaContent = (
     <SafeAreaView style={styles.safeArea}>
-      {/* Show loading screen for compatibility test */}
-      {isLoadingCompatibilityTest && selectedDevice ? (
+      {/* Show loading screen while language is initializing */}
+      {!languageInitialized ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={Colors.primary} />
+          <Text style={styles.loadingText}>언어 설정을 불러오는 중...</Text>
+        </View>
+      ) :
+      /* Show loading screen for compatibility test */
+      isLoadingCompatibilityTest && selectedDevice ? (
         <LoadingScreen device={selectedDevice} />
       ) :
       /* Show mode selection screen */
@@ -1469,6 +1489,17 @@ const styles = StyleSheet.create({
     color: Colors.text,
     fontSize: 16,
     fontWeight: 'bold',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    color: Colors.primary,
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginTop: 20,
   },
 });
 

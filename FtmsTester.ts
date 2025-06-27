@@ -934,7 +934,7 @@ export class FTMSTester {
                     this.resistanceTracking.commandPending = false;
                     this.resistanceTracking.commandCompletedTime = Date.now();
                     this.resistanceTracking.allowResistanceAttributionWindow = Date.now() + 1500; // 1.5 seconds for failed commands
-                    this.logInteraction(`ERROR - [handleControlPointResponse] ${commandName} command FAILED via CP response. Status changed to: Failed. CommandPending cleared. Attribution window set until ${new Date(this.resistanceTracking.allowResistanceAttributionWindow).toLocaleTimeString()}`);
+                    this.logInteraction(`ERROR - [handleControlPointResponse] ${commandName} command FAILED via CP response. Status changed to: Failed. CommandPending cleared. Attribution window set until ${new Date(this.resistanceTracking.allowResistanceAttributionWindow).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true })}`);
                 }
             } else {
                 this.logInteraction(`WARN - [handleControlPointResponse] Received response for ${commandName} but pending command is ${this.resistanceTracking.lastCommandType}. Possible command mismatch.`);

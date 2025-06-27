@@ -1161,7 +1161,7 @@ i18n
   .use(initReactI18next)
   .init({
     resources,
-    fallbackLng: 'ko',
+    fallbackLng: null,
     debug: __DEV__,
     pluralSeparator: '_',
     interpolation: {
@@ -1170,30 +1170,39 @@ i18n
     react: {
       useSuspense: false,
     },
-    detection: {
-      order: ['asyncLocalStorage', 'navigator'],
-      caches: ['localStorage'],
-    },
   });
 
 // 언어 설정 함수 추가
 export const setLanguage = async (lng: string) => {
+  console.log('Setting language to:', lng);
   await i18n.changeLanguage(lng);
   await AsyncStorage.setItem('user-language', lng);
+  console.log('Language saved to AsyncStorage:', lng);
+  console.log('Current i18n language after setLanguage:', i18n.language);
 };
 
 // 초기 언어 로드 - 앱 시작 시 호출
 export const initializeLanguage = async () => {
   try {
     const savedLanguage = await AsyncStorage.getItem('user-language');
-    if (savedLanguage && i18n.languages.includes(savedLanguage)) {
+    console.log('Saved language from AsyncStorage:', savedLanguage);
+    
+    // 사용 가능한 언어 목록 확인
+    const availableLanguages = ['ko', 'en', 'zh'];
+    console.log('Available languages:', availableLanguages);
+    
+    if (savedLanguage && availableLanguages.includes(savedLanguage)) {
+      console.log('Setting language to saved language:', savedLanguage);
       await i18n.changeLanguage(savedLanguage);
     } else {
       // 저장된 언어가 없으면 기본 언어(한국어)로 설정
+      console.log('No saved language found, setting to default (ko)');
       await i18n.changeLanguage('ko');
     }
-  } catch {
-    console.error('Failed to initialize language');
+    
+    console.log('Current i18n language after initialization:', i18n.language);
+  } catch (error) {
+    console.error('Failed to initialize language:', error);
     // 오류 발생 시 기본 언어로 설정
     await i18n.changeLanguage('ko');
   }

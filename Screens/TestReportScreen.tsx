@@ -90,7 +90,7 @@ const TestReportScreen: React.FC<TestReportScreenProps> = ({ results, onClose })
           const statusText = test.status === 'OK' ? '성공' : test.status === 'Failed' ? '실패' : '미지원';
           controlTestsSection += `\n- ${commandLabel} (${name}): ${statusText}`;
           if (test.details) controlTestsSection += ` (상세: ${test.details})`;
-          controlTestsSection += `, 테스트 시간: ${new Date(test.timestamp).toLocaleTimeString()}`;
+          controlTestsSection += `, 테스트 시간: ${new Date(test.timestamp).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true })}`;
         });
       }
 
@@ -170,7 +170,7 @@ const TestReportScreen: React.FC<TestReportScreenProps> = ({ results, onClose })
       if (results.resistanceChanges && results.resistanceChanges.length > 0) {
         resistanceChangesSection = '\n[저항 변화 이력]';
         results.resistanceChanges.forEach((change, _idx) => {
-          const time = new Date(change.timestamp).toLocaleTimeString();
+          const time = new Date(change.timestamp).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
           resistanceChangesSection += `\n- 시간: ${time}, 이전값: ${change.oldValue ?? '-'}, 현재값: ${change.newValue}, 원인: ${change.command || '자동 변경'}`;
         });
       }
@@ -234,7 +234,21 @@ const TestReportScreen: React.FC<TestReportScreenProps> = ({ results, onClose })
               
               <View style={styles.testInfoRow}>
                 <Text style={styles.controlTestTimestamp}>
-                  {t('testReport.testTime')} {new Date(test.timestamp).toLocaleTimeString()}
+                  {t('testReport.testTime')} {(() => {
+                    if (!test.timestamp || isNaN(test.timestamp)) {
+                      return 'N/A';
+                    }
+                    try {
+                      return new Date(test.timestamp).toLocaleTimeString('en-US', { 
+                        hour: '2-digit', 
+                        minute: '2-digit', 
+                        second: '2-digit', 
+                        hour12: false 
+                      });
+                    } catch (error) {
+                      return 'N/A';
+                    }
+                  })()}
                 </Text>
                 
                 {/* 상태에 따른 아이콘 표시 */}
@@ -357,7 +371,12 @@ const TestReportScreen: React.FC<TestReportScreenProps> = ({ results, onClose })
               ]}
             >
               <Text style={[styles.tableCell, { flex: 1.2 }]}>
-                {new Date(change.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', fractionalSecondDigits: 3 })}
+                {new Date(change.timestamp).toLocaleTimeString('en-US', { 
+                  hour: '2-digit', 
+                  minute: '2-digit', 
+                  second: '2-digit', 
+                  hour12: false 
+                })}
               </Text>
               <Text style={[styles.tableCell, { flex: 0.8 }]}>
                 {change.oldValue !== undefined ? change.oldValue.toString() : '-'}
@@ -443,13 +462,13 @@ const TestReportScreen: React.FC<TestReportScreenProps> = ({ results, onClose })
                   <View style={styles.infoCard}>
                     <Text style={styles.infoCardLabel}>{t('testReport.protocol')}</Text>
                     <Text style={styles.infoCardValue}>
-                      {results.deviceInfo.protocol || '알 수 없음'}
+                      {results.deviceInfo.protocol || 'Unknown'}
                     </Text>
                   </View>
                   <View style={styles.infoCard}>
                     <Text style={styles.infoCardLabel}>{t('testReport.supportedProtocols')}</Text>
                     <Text style={styles.infoCardValue}>
-                      {results.supportedProtocols.join(', ') || '없음'}
+                      {results.supportedProtocols.join(', ') || 'Unknown'}
                     </Text>
                   </View>
                 </View>
@@ -755,7 +774,15 @@ const TestReportScreen: React.FC<TestReportScreenProps> = ({ results, onClose })
                   <View style={styles.infoRow}>
                     <Text style={styles.infoLabel}>{t('testReport.completionTime')}</Text>
                     <Text style={styles.infoValue}>
-                      {new Date(results.testCompletedTimestamp).toLocaleString()}
+                      {new Date(results.testCompletedTimestamp).toLocaleString('en-US', { 
+                        year: 'numeric', 
+                        month: '2-digit', 
+                        day: '2-digit',
+                        hour: '2-digit', 
+                        minute: '2-digit', 
+                        second: '2-digit', 
+                        hour12: false 
+                      })}
                     </Text>
                   </View>
                 )}
@@ -1387,6 +1414,11 @@ const styles = StyleSheet.create({
     fontSize: 14,
     flex: 1,
     lineHeight: 20,
+  },
+  tableCellText: {
+    fontSize: 13,
+    color: '#ffffff',
+    fontWeight: 'bold',
   },
 });
 

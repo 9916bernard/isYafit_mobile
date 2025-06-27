@@ -111,9 +111,16 @@ const TestScreen: React.FC<TestScreenProps> = ({ device, ftmsManager, onClose })
     // Set up log listener to capture logs in real-time
     const originalLogs = ftmsManager.getLogs();
     if (originalLogs.length > 0 && isMounted) {
-      const formattedLogs = originalLogs.map(log => 
-        `${new Date(log.timestamp).toLocaleTimeString()} - ${log.message}`
-      );
+      const formattedLogs = originalLogs.map(log => {
+        const date = new Date(log.timestamp);
+        const timeString = date.toLocaleTimeString('en-US', { 
+          hour: '2-digit', 
+          minute: '2-digit', 
+          second: '2-digit', 
+          hour12: true 
+        });
+        return `${timeString} - ${log.message}`;
+      });
       setRealtimeLogs(formattedLogs);
     }
     
@@ -121,9 +128,16 @@ const TestScreen: React.FC<TestScreenProps> = ({ device, ftmsManager, onClose })
     const logCallback = (logs: any[]) => {
       if (!isMounted) return;
       
-      const formattedLogs = logs.map(log => 
-        `${new Date(log.timestamp).toLocaleTimeString()} - ${log.message}`
-      );
+      const formattedLogs = logs.map(log => {
+        const date = new Date(log.timestamp);
+        const timeString = date.toLocaleTimeString('en-US', { 
+          hour: '2-digit', 
+          minute: '2-digit', 
+          second: '2-digit', 
+          hour12: true 
+        });
+        return `${timeString} - ${log.message}`;
+      });
       setRealtimeLogs(formattedLogs);
       
       // Scroll to bottom on update
