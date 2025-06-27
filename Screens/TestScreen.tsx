@@ -25,7 +25,7 @@ import { Device } from 'react-native-ble-plx';
 import { FTMSManager } from '../FtmsManager'; // Your existing manager
 import TestReportScreen from './TestReportScreen';
 import LogDisplay from '../LogDisplay'; // Import the Log Display component
-import { useSafeAreaStyles, Colors } from '../styles/commonStyles';
+import { useSafeAreaStyles } from '../styles/commonStyles';
 import Toast from 'react-native-root-toast';
 import { ReportStorage } from '../utils/reportStorage';
 import { useTranslation } from 'react-i18next';
@@ -35,10 +35,9 @@ interface TestScreenProps {
   device: Device;
   ftmsManager: FTMSManager;
   onClose: () => void;
-  isDeviceConnected: boolean;
 }
 
-const TestScreen: React.FC<TestScreenProps> = ({ device, ftmsManager, onClose, isDeviceConnected }) => {
+const TestScreen: React.FC<TestScreenProps> = ({ device, ftmsManager, onClose }) => {
   const { t } = useTranslation();
   const { translateCompatibilityLevel, isCompatibilityLevel, getCompatibilityColor } = useCompatibilityUtils();
   const [progress, setProgress] = useState(0);
@@ -57,7 +56,7 @@ const TestScreen: React.FC<TestScreenProps> = ({ device, ftmsManager, onClose, i
   // Tacx 사용자 상호작용을 위한 상태
   const [showUserInteractionModal, setShowUserInteractionModal] = useState(false);
   const [userInteractionRequest, setUserInteractionRequest] = useState<UserInteractionRequest | null>(null);
-  const [userInteractionResolve, setUserInteractionResolve] = useState<((value: boolean) => void) | null>(null);
+  const [userInteractionResolve, setUserInteractionResolve] = useState<((_value: boolean) => void) | null>(null);
   const [showCountdown, setShowCountdown] = useState(false);
   const [countdownValue, setCountdownValue] = useState(3);
   const countdownAnim = useRef(new Animated.Value(1)).current;
@@ -254,9 +253,9 @@ const TestScreen: React.FC<TestScreenProps> = ({ device, ftmsManager, onClose, i
       ]).start();
 
       // Run the test with progress updates
-      const results = await testerRef.current.runDeviceTest(
+      const _results = await testerRef.current.runDeviceTest(
         device,
-        30000, // 30 seconds test
+        13000, // 10 seconds test
         (progress, message) => {
           setProgress(progress);
           setMessage(message);

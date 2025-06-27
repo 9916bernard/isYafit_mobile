@@ -1,4 +1,4 @@
-import { Device, Characteristic } from 'react-native-ble-plx';
+import { Device } from 'react-native-ble-plx';
 import { Buffer } from 'buffer';
 import { LogManager } from './LogManager';
 import { REBORN_SERVICE_UUID, REBORN_WRITE_CHAR_UUID } from './constants';

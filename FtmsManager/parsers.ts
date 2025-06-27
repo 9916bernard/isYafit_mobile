@@ -105,7 +105,7 @@ export function parseMobiData(data: Buffer): IndoorBikeData {
             }
             parsed.batteryLevel = 100;
         }
-    } catch (error) {
+    } catch (_error) {
         // Optionally log error
     }
     return parsed;
@@ -119,21 +119,21 @@ export function parseCSCData(data: Buffer): IndoorBikeData {
             let index = 1;
             if (flags & 0x01) {
                 if (data.length >= index + 6) {
-                    const wheelRevolutions = data.readUInt32LE(index);
-                    const lastWheelEventTime = data.readUInt16LE(index + 4);
+                    const _wheelRevolutions = data.readUInt32LE(index);
+                    const _lastWheelEventTime = data.readUInt16LE(index + 4);
                     index += 6;
                 }
             }
             if (flags & 0x02) {
                 if (data.length >= index + 4) {
                     const crankRevolutions = data.readUInt16LE(index);
-                    const lastCrankEventTime = data.readUInt16LE(index + 2);
+                    const _lastCrankEventTime = data.readUInt16LE(index + 2);
                     parsed.instantaneousCadence = crankRevolutions;
                     index += 4;
                 }
             }
         }
-    } catch (error) {
+    } catch (_error) {
         // Optionally log error
     }
     return parsed;
@@ -160,7 +160,7 @@ export function parseRebornData(data: Buffer): IndoorBikeData {
             }
             parsed.batteryLevel = 100;
         }
-    } catch (error) {
+    } catch (_error) {
         // Optionally log error
     }
     return parsed;

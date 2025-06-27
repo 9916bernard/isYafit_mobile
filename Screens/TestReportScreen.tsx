@@ -9,14 +9,13 @@ import {
   Share,
   Alert,
   Animated,
-  Dimensions,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import Clipboard from '@react-native-clipboard/clipboard'; // Added for clipboard functionality
-import { TestResults, formatRangeInfo } from '../FtmsTestReport';
-import { useSafeAreaStyles, Colors } from '../styles/commonStyles';
+import { TestResults } from '../FtmsTestReport';
+import { useSafeAreaStyles } from '../styles/commonStyles';
 import { useTranslation } from 'react-i18next';
 import { useCompatibilityUtils } from '../utils/compatibilityUtils';
 
@@ -170,7 +169,7 @@ const TestReportScreen: React.FC<TestReportScreenProps> = ({ results, onClose })
       let resistanceChangesSection = '';
       if (results.resistanceChanges && results.resistanceChanges.length > 0) {
         resistanceChangesSection = '\n[저항 변화 이력]';
-        results.resistanceChanges.forEach((change, idx) => {
+        results.resistanceChanges.forEach((change, _idx) => {
           const time = new Date(change.timestamp).toLocaleTimeString();
           resistanceChangesSection += `\n- 시간: ${time}, 이전값: ${change.oldValue ?? '-'}, 현재값: ${change.newValue}, 원인: ${change.command || '자동 변경'}`;
         });
@@ -572,28 +571,29 @@ const TestReportScreen: React.FC<TestReportScreenProps> = ({ results, onClose })
                 <View style={styles.limitationReasonsContainer}>
                   {Object.entries(results.controlTests)
                     .filter(([_, test]) => test.status !== 'OK')
-                    .map(([name, test], index) => {                    const getReasonText = (commandName: string, status: string) => {
-                      const commandLabels = {
-                        'SET_RESISTANCE_LEVEL': t('testReport.limitationReasons.userGearControl'),
-                        'SET_TARGET_POWER': t('testReport.limitationReasons.ergModeUnavailable'), 
-                        'SET_SIM_PARAMS': t('testReport.limitationReasons.simModeUnavailable')
+                    .map(([name, test], index) => {
+                      const getReasonText = (commandName: string, status: string) => {
+                        const commandLabels = {
+                          'SET_RESISTANCE_LEVEL': t('testReport.limitationReasons.userGearControl'),
+                          'SET_TARGET_POWER': t('testReport.limitationReasons.ergModeUnavailable'), 
+                          'SET_SIM_PARAMS': t('testReport.limitationReasons.simModeUnavailable')
+                        };
+                        
+                        const commandLabel = commandLabels[commandName as keyof typeof commandLabels] || commandName;
+                        const statusReason = status === 'Failed' ? t('testReport.limitationReasons.notWorking') : t('testReport.limitationReasons.notSupported');
+                        
+                        return `${commandLabel} ⇒ ${commandName.toLowerCase()} ${statusReason}`;
                       };
                       
-                      const commandLabel = commandLabels[commandName as keyof typeof commandLabels] || commandName;
-                      const statusReason = status === 'Failed' ? t('testReport.limitationReasons.notWorking') : t('testReport.limitationReasons.notSupported');
-                      
-                      return `${commandLabel} ⇒ ${commandName.toLowerCase()} ${statusReason}`;
-                    };
-                    
-                    return (
-                      <View key={index} style={styles.limitationReasonItem}>
-                        <View style={styles.limitationReasonBullet} />
-                        <Text style={styles.limitationReasonText}>
-                          {getReasonText(name, test.status)}
-                        </Text>
-                      </View>
-                    );
-                  })}
+                      return (
+                        <View key={index} style={styles.limitationReasonItem}>
+                          <View style={styles.limitationReasonBullet} />
+                          <Text style={styles.limitationReasonText}>
+                            {getReasonText(name, test.status)}
+                          </Text>
+                        </View>
+                      );
+                    })}
                 </View>
               </View>
             )}

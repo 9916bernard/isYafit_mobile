@@ -5,7 +5,6 @@ import { FTMSManager, ProtocolType } from './FtmsManager';
 import { 
     RANGE_CHAR_UUIDS, 
     TestResults, 
-    RangeInfo, 
     initTestResults, 
     updateDataField,
     trackResistanceChange,
@@ -27,7 +26,7 @@ export class FTMSTester {
     private testResults: TestResults;
     private isTestRunning: boolean = false;
     private startTime: number = 0;
-    private testDuration: number = 30000; // Default test duration in ms
+    private testDuration: number = 10000; // Default test duration in ms
     private lastResistanceLevel?: number;
     private onProgressUpdate?: (progress: number, message: string) => void;
     private onTestComplete?: (results: TestResults) => void;
@@ -45,7 +44,7 @@ export class FTMSTester {
 
     // Tacx 사용자 상호작용 테스트를 위한 콜백들
     private onUserInteractionRequest?: (interaction: UserInteractionRequest) => Promise<boolean>;
-    private onCountdownUpdate?: (countdown: number) => void;
+    private onCountdownUpdate?: (_countdown: number) => void;
 
     constructor(ftmsManager: FTMSManager) {
         this.ftmsManager = ftmsManager;
@@ -56,7 +55,7 @@ export class FTMSTester {
     // 사용자 상호작용 요청을 위한 인터페이스
     public setUserInteractionCallbacks(
         onUserInteractionRequest: (interaction: UserInteractionRequest) => Promise<boolean>,
-        onCountdownUpdate?: (countdown: number) => void
+        onCountdownUpdate?: (_countdown: number) => void
     ) {
         this.onUserInteractionRequest = onUserInteractionRequest;
         this.onCountdownUpdate = onCountdownUpdate;
@@ -113,8 +112,8 @@ export class FTMSTester {
     async runDeviceTest(
         device: Device, 
         duration: number = 20000,
-        onProgressUpdate?: (progress: number, message: string) => void,
-        onTestComplete?: (results: TestResults) => void
+        onProgressUpdate?: (_progress: number, _message: string) => void,
+        onTestComplete?: (_results: TestResults) => void
     ): Promise<TestResults> {
         if (this.isTestRunning) {
             throw new Error(t('test.status.testRunning'));

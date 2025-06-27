@@ -1,11 +1,11 @@
-import { Device, Characteristic, Subscription } from 'react-native-ble-plx';
+import { Device, Subscription } from 'react-native-ble-plx';
 import { Buffer } from 'buffer';
 import {
   FTMS_SERVICE_UUID, FTMS_FEATURE_CHAR_UUID, FTMS_CONTROL_POINT_CHAR_UUID, FTMS_INDOOR_BIKE_DATA_CHAR_UUID,
   MOBI_SERVICE_UUID, MOBI_DATA_CHAR_UUID,
   REBORN_SERVICE_UUID, REBORN_DATA_CHAR_UUID,
   TACX_SERVICE_UUID, TACX_READ_CHAR_UUID,
-  FITSHOW_SERVICE_UUID, FITSHOW_DATA_CHAR_UUID, FITSHOW_BIKE_DATA_CHAR_UUID, FITSHOW_WRITE_CHAR_UUID
+  FITSHOW_SERVICE_UUID, FITSHOW_BIKE_DATA_CHAR_UUID, FITSHOW_WRITE_CHAR_UUID
 } from './constants';
 import { ProtocolType } from './protocols';
 import { IndoorBikeData } from './types';
@@ -49,7 +49,7 @@ export class FTMSManager {
 
     async scanForFTMSDevices(
         scanDuration: number = 10000,
-        onDeviceFound: (device: Device) => void
+        onDeviceFound: (foundDevice: Device) => void
     ): Promise<void> {
         return await this.bluetoothManager.scanForFTMSDevices(scanDuration, onDeviceFound);
     }
@@ -321,7 +321,7 @@ export class FTMSManager {
         return this.logManager.getLogs();
     }
 
-    setLogCallback(callback: (logs: LogEntry[]) => void): void {
+    setLogCallback(callback: (_logs: LogEntry[]) => void): void {
         this.logManager.setLogCallback(callback);
     }
 
@@ -401,8 +401,8 @@ export class FTMSManager {
 
     // --- Notification Subscriptions ---
     private async subscribeToFTMSNotifications(
-        onControlPointResponse: (data: Buffer) => void,
-        onIndoorBikeData: (data: IndoorBikeData) => void
+        onControlPointResponse: (_data: Buffer) => void,
+        onIndoorBikeData: (_data: IndoorBikeData) => void
     ): Promise<void> {
         this.controlPointSubscription = this.connectedDevice!.monitorCharacteristicForService(
             FTMS_SERVICE_UUID,
@@ -438,7 +438,7 @@ export class FTMSManager {
     }
 
     private async subscribeToCSCNotifications(
-        onIndoorBikeData: (data: IndoorBikeData) => void
+        onIndoorBikeData: (_data: IndoorBikeData) => void
     ): Promise<void> {
         this.indoorBikeDataSubscription = this.connectedDevice!.monitorCharacteristicForService(
             "00001816-0000-1000-8000-00805f9b34fb",
@@ -458,7 +458,7 @@ export class FTMSManager {
     }
 
     private async subscribeToMobiNotifications(
-        onIndoorBikeData: (data: IndoorBikeData) => void
+        onIndoorBikeData: (_data: IndoorBikeData) => void
     ): Promise<void> {
         this.indoorBikeDataSubscription = this.connectedDevice!.monitorCharacteristicForService(
             MOBI_SERVICE_UUID,
@@ -478,7 +478,7 @@ export class FTMSManager {
     }
 
     private async subscribeToRebornNotifications(
-        onIndoorBikeData: (data: IndoorBikeData) => void
+        onIndoorBikeData: (_data: IndoorBikeData) => void
     ): Promise<void> {
         if (!this.rebornAuthManager.isAuthCompleted()) {
             this.logManager.logInfo("Starting Reborn authentication process...");
@@ -509,8 +509,8 @@ export class FTMSManager {
     }
 
     private async subscribeToTacxNotifications(
-        onControlPointResponse: (data: Buffer) => void,
-        onIndoorBikeData: (data: IndoorBikeData) => void
+        onControlPointResponse: (_data: Buffer) => void,
+        onIndoorBikeData: (_data: IndoorBikeData) => void
     ): Promise<void> {
         if (!this.connectedDevice) throw new Error("Device not connected.");
         
@@ -537,8 +537,8 @@ export class FTMSManager {
     }
 
     private async subscribeToFitShowNotifications(
-        onControlPointResponse: (data: Buffer) => void,
-        onIndoorBikeData: (data: IndoorBikeData) => void
+        onControlPointResponse: (_data: Buffer) => void,
+        onIndoorBikeData: (_data: IndoorBikeData) => void
     ): Promise<void> {
         // FitShow는 CP response가 없으므로 제어 응답 구독 제거
         // C# 코드를 보면 FitShow bike data characteristic을 사용하지만, 로그에서는 FTMS characteristic에서도 데이터를 받음

@@ -170,7 +170,7 @@ export function determineCompatibility(results: TestResults): TestResults {
     const ftmsBasedProtocols = ["FTMS", "YAFIT_S3", "YAFIT_S4", "FITSHOW", "TACX", "REBORN"];
     const hasFTMS = results.supportedProtocols.some(p => ftmsBasedProtocols.includes(p));
     const hasCSC = results.supportedProtocols.includes("CSC");
-    const hasMobi = results.supportedProtocols.includes("MOBI");
+    const _hasMobi = results.supportedProtocols.includes("MOBI");
 
     const impossibleReasons: string[] = [];
     const partialReasons: string[] = [];

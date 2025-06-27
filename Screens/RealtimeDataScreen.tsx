@@ -3,7 +3,7 @@ import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Animated } from '
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { Device } from 'react-native-ble-plx';
 import { FTMSManager } from '../FtmsManager';
-import { useSafeAreaStyles, Colors } from '../styles/commonStyles';
+import { useSafeAreaStyles } from '../styles/commonStyles';
 import { useTranslation } from 'react-i18next';
 
 interface RealtimeDataScreenProps {
@@ -53,7 +53,7 @@ const RealtimeDataScreen: React.FC<RealtimeDataScreenProps> = ({
         if (!isMounted) return;
         setStatusMessage(t('realtimeData.status.connecting'));
         
-        const connectedDevice = await ftmsManager.connectToDevice(device.id);
+        await ftmsManager.connectToDevice(device.id);
         
         if (!isMounted) return;
         setStatusMessage(t('realtimeData.status.subscribing'));
@@ -62,10 +62,7 @@ const RealtimeDataScreen: React.FC<RealtimeDataScreenProps> = ({
           (cpResponse) => {
             // Control point response handling
             if (cpResponse.length >= 3) {
-              const responseOpCode = cpResponse[0];
-              const requestOpCode = cpResponse[1];
-              const resultCode = cpResponse[2];
-              // console.log(`RealtimeData: CP Response - OpCode: ${requestOpCode.toString(16)}, Result: ${resultCode === 1 ? 'SUCCESS' : 'FAILURE'}`); // log was here
+              // console.log(`RealtimeData: CP Response - OpCode: ${cpResponse[1].toString(16)}, Result: ${cpResponse[2] === 1 ? 'SUCCESS' : 'FAILURE'}`); // log was here
             }
           },
           (newBikeData) => {

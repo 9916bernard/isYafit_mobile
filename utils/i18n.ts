@@ -9,7 +9,7 @@ if (typeof global.Intl === 'undefined') {
 
 if (typeof (global as any).Intl.PluralRules === 'undefined') {
   (global as any).Intl.PluralRules = class PluralRules {
-    constructor(locale?: string, options?: any) {}
+    constructor() {}
     select(value: number): string {
       // 기본적인 복수형 규칙 (한국어, 영어, 중국어 대응)
       if (value === 1) return 'one';
@@ -1156,34 +1156,7 @@ IsYafit是一个提供与健身设备连接的移动应用程序。
   },
 };
 
-// 언어 감지 및 저장 함수 - 타입 오류 해결
-const languageDetector = {
-  type: 'languageDetector' as const,
-  async: true,
-  detect: async (callback: (lng: string) => void) => {
-    try {
-      const savedLanguage = await AsyncStorage.getItem('user-language');
-      if (savedLanguage) {
-        callback(savedLanguage);
-      } else {
-        // 기본 언어는 한국어
-        callback('ko');
-      }
-    } catch (error) {
-      callback('ko');
-    }
-  },
-  init: () => {},
-  cacheUserLanguage: async (lng: string) => {
-    try {
-      await AsyncStorage.setItem('user-language', lng);
-    } catch (error) {
-      console.error('Failed to save language preference:', error);
-    }
-  },
-};
-
-// i18n 초기화 - languageDetector 사용하여 저장된 언어 설정 로드
+// i18n 초기화 - 저장된 언어 설정 로드
 i18n
   .use(initReactI18next)
   .init({
@@ -1219,8 +1192,8 @@ export const initializeLanguage = async () => {
       // 저장된 언어가 없으면 기본 언어(한국어)로 설정
       await i18n.changeLanguage('ko');
     }
-  } catch (error) {
-    console.error('Failed to initialize language:', error);
+  } catch {
+    console.error('Failed to initialize language');
     // 오류 발생 시 기본 언어로 설정
     await i18n.changeLanguage('ko');
   }

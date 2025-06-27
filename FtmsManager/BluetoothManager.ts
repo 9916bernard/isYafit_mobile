@@ -51,7 +51,7 @@ export class BluetoothManager {
                     REBORN_SERVICE_UUID
                 ];
                 
-                this.bleManager.startDeviceScan(serviceUUIDs, null, (error, device) => {
+                this.bleManager.startDeviceScan(serviceUUIDs, null, (error, foundDevice) => {
                     if (error) {
                         console.error("Scan error:", error);
                         this.bleManager.stopDeviceScan();
@@ -59,9 +59,9 @@ export class BluetoothManager {
                         reject(error);
                         return;
                     }
-                    if (device) {
-                        // console.log(`Found fitness device: ${device.name} (${device.id})`);
-                        onDeviceFound(device);
+                    if (foundDevice) {
+                        // console.log(`Found fitness device: ${foundDevice.name} (${foundDevice.id})`);
+                        onDeviceFound(foundDevice);
                     }
                 });
 

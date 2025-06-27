@@ -8,7 +8,6 @@ import {
   Alert,
   RefreshControl,
   ActivityIndicator,
-  Share,
   Animated,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
@@ -194,19 +193,6 @@ const PastReportsScreen: React.FC<PastReportsScreenProps> = ({ onBack }) => {
     setSelectedItems(new Set());
   };
 
-  const handleShareReport = async (report: SavedReport) => {
-    try {
-      const reportText = `${t('testReport.share.title')}\n${t('testReport.share.deviceName')} ${report.deviceName}\n${t('testReport.share.mainProtocol')} ${report.results.deviceInfo.protocol || t('common.unknown')}\n${t('testReport.share.testDateTime')} ${new Date(report.timestamp).toLocaleString()}`;
-      
-      await Share.share({
-        message: reportText,
-        title: t('testReport.title'),
-      });
-    } catch (error) {
-      console.error('Failed to share report:', error);
-    }
-  };
-
   const formatDate = (timestamp: number): string => {
     const date = new Date(timestamp);
     return date.toLocaleString('ko-KR', {
@@ -329,7 +315,7 @@ const PastReportsScreen: React.FC<PastReportsScreenProps> = ({ onBack }) => {
   }
 
   return (
-    <SafeAreaView style={safeAreaStyles.safeContainerMinPadding}>
+    <View style={safeAreaStyles.safeContainerMinPadding}>
       <View style={styles.container}>
         <View style={styles.header}>
           <TouchableOpacity style={styles.backButton} onPress={onBack}>
@@ -417,6 +403,7 @@ const PastReportsScreen: React.FC<PastReportsScreenProps> = ({ onBack }) => {
             renderItem={renderReportItem}
             keyExtractor={(item) => item.id}
             contentContainerStyle={styles.listContainer}
+            style={styles.flatList}
             showsVerticalScrollIndicator={false}
             refreshControl={
               <RefreshControl
@@ -430,7 +417,7 @@ const PastReportsScreen: React.FC<PastReportsScreenProps> = ({ onBack }) => {
           />
         )}
       </View>
-    </SafeAreaView>
+    </View>
   );
 };
 
@@ -475,8 +462,11 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
   },
   listContainer: {
-    padding: 16,
-    flexGrow: 1,
+    padding: 5,
+    paddingBottom: 20,
+  },
+  flatList: {
+    flex: 1,
   },
   reportCard: {
     backgroundColor: Colors.cardBackground,

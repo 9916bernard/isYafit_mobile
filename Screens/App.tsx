@@ -1,17 +1,16 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { StyleSheet, View, Text, FlatList, TouchableOpacity, PermissionsAndroid, Platform, Linking, ScrollView, SafeAreaView, Modal, Alert, Dimensions, TouchableWithoutFeedback, Animated, findNodeHandle, UIManager } from 'react-native';
+import { StyleSheet, View, Text, FlatList, TouchableOpacity, PermissionsAndroid, Platform, ScrollView, SafeAreaView, Modal, Alert, Dimensions, TouchableWithoutFeedback, Animated, findNodeHandle, UIManager } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import LinearGradient from 'react-native-linear-gradient';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { FTMSManager } from '../FtmsManager';
-import { LogEntry } from '../FtmsManager/LogManager';
-import { BleError, Device, BleErrorCode, State } from 'react-native-ble-plx';
+import { BleError, Device, BleErrorCode } from 'react-native-ble-plx';
 import TestScreen from './TestScreen';
 import ModeSelectionScreen from './ModeSelectionScreen';
 import RealtimeDataScreen from './RealtimeDataScreen';
 import LoadingScreen from './LoadingScreen';
 import PastReportsScreen from './PastReportsScreen';
-import { Colors, ButtonStyles, CardStyles, TextStyles, Shadows } from '../styles/commonStyles';
+import { Colors, ButtonStyles, CardStyles, Shadows } from '../styles/commonStyles';
 import Toast from 'react-native-root-toast';
 import { useTranslation } from 'react-i18next';
 import { setLanguage, initializeLanguage } from '../utils/i18n';
@@ -29,9 +28,6 @@ function App() {
   const [connectedDevice, setConnectedDevice] = useState<Device | null>(null);
   const [isScanning, setIsScanning] = useState(false);
   const [statusMessage, setStatusMessage] = useState(t('app.status.init'));
-  const [logs, setLogs] = useState<LogEntry[]>([]);
-  const [showLogs, setShowLogs] = useState(false);
-  const [formattedLogs, setFormattedLogs] = useState<string[]>([]);
   const [showTestScreen, setShowTestScreen] = useState(false); // For showing the test screen
   const [showModeSelection, setShowModeSelection] = useState(false); // For showing mode selection
   const [showRealtimeData, setShowRealtimeData] = useState(false); // For showing realtime data screen
@@ -66,13 +62,8 @@ function App() {
         ftmsManagerRef.current = manager;
         
         // Set up log callback to capture logs
-        manager.setLogCallback((newLogs) => {
-          setLogs(newLogs);
-          // Format logs for display
-          const formatted = newLogs.map(log => 
-            `${new Date(log.timestamp).toLocaleTimeString()} - ${log.message}`
-          );
-          setFormattedLogs(formatted);
+        manager.setLogCallback((_newLogs) => {
+          // Log callback is set up but not used in UI
         });
         
         // 블루투스 상태 확인
@@ -604,7 +595,6 @@ function App() {
           device={connectedDevice}
           ftmsManager={ftmsManagerRef.current}
           onClose={handleCloseTestScreen}
-          isDeviceConnected={!!connectedDevice}
         />
       ) :
       /* Show past reports screen */

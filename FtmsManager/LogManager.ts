@@ -12,7 +12,7 @@ export class LogManager {
         this.clearLogs();
     }
 
-    setLogCallback(callback: (logs: LogEntry[]) => void): void {
+    setLogCallback(callback: (_logs: LogEntry[]) => void): void {
         this.logCallback = callback;
     }
 
