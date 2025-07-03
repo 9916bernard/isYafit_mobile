@@ -1,6 +1,16 @@
 import { BleManager, Device, State, Subscription } from 'react-native-ble-plx';
 import { LogManager } from './LogManager';
-import { FTMS_SERVICE_UUID, MOBI_SERVICE_UUID, REBORN_SERVICE_UUID } from './constants';
+import { 
+    FTMS_SERVICE_UUID, 
+    MOBI_SERVICE_UUID, 
+    REBORN_SERVICE_UUID,
+    NUS_SERVICE_UUID,
+    HRS_SERVICE_UUID,
+    CPS_SERVICE_UUID,
+    BMS_SERVICE_UUID,
+    DIS_SERVICE_UUID,
+    CSC_SERVICE_UUID
+} from './constants';
 
 export class BluetoothManager {
     private bleManager: BleManager;
@@ -46,9 +56,15 @@ export class BluetoothManager {
             try {
                 const serviceUUIDs = [
                     FTMS_SERVICE_UUID,
-                    "00001816-0000-1000-8000-00805f9b34fb", // CSC Service
+                    CSC_SERVICE_UUID, // CSC Service
                     MOBI_SERVICE_UUID,
-                    REBORN_SERVICE_UUID
+                    REBORN_SERVICE_UUID,
+                    // 새로운 표준 프로토콜들 (우선순위 낮음)
+                    NUS_SERVICE_UUID,  // Nordic UART Service
+                    HRS_SERVICE_UUID,  // Heart Rate Service
+                    CPS_SERVICE_UUID,  // Cycling Power Service
+                    BMS_SERVICE_UUID,  // Battery Management Service
+                    DIS_SERVICE_UUID   // Device Information Service
                 ];
                 
                 this.bleManager.startDeviceScan(serviceUUIDs, null, (error, foundDevice) => {

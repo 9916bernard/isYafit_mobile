@@ -82,6 +82,26 @@ const testResources = {
             complete: 'CSC 테스트 완료 (제한된 기능)',
             setupComplete: 'CSC 알림 설정 완료',
           },
+          nus: {
+            detectedButNotTested: 'NUS 프로토콜 감지됨 테스트 안함 (낮은 우선순위)',
+            complete: 'NUS 감지 완료',
+          },
+          hrs: {
+            detectedButNotTested: 'HRS 프로토콜 감지됨 테스트 안함 (낮은 우선순위)',
+            complete: 'HRS 감지 완료',
+          },
+          cps: {
+            detectedButNotTested: 'CPS 프로토콜 감지됨 테스트 안함 (낮은 우선순위)',
+            complete: 'CPS 감지 완료',
+          },
+          bms: {
+            detectedButNotTested: 'BMS 프로토콜 감지됨 테스트 안함 (낮은 우선순위)',
+            complete: 'BMS 감지 완료',
+          },
+          dis: {
+            detectedButNotTested: 'DIS 프로토콜 감지됨 테스트 안함 (낮은 우선순위)',
+            complete: 'DIS 감지 완료',
+          },
           noSupportedProtocols: '지원되는 프로토콜을 찾을 수 없습니다. 우선순위: MOBI > REBORN > TACX > FITSHOW > YAFIT_S3 > YAFIT_S4 > FTMS > CSC',
           incompatibleProtocol: '호환 불가능한 프로토콜',
         },
@@ -265,8 +285,27 @@ const testResources = {
           csc: {
             monitoring: 'Monitoring CSC data...',
             dataCollection: 'Collecting CSC data...',
-            complete: 'CSC test complete (limited features)',
-            setupComplete: 'CSC notifications setup completed',
+            complete: 'CSC test complete',
+          },
+          nus: {
+            detectedButNotTested: 'NUS protocol detected but not tested (low priority)',
+            complete: 'NUS detection complete',
+          },
+          hrs: {
+            detectedButNotTested: 'HRS protocol detected but not tested (low priority)',
+            complete: 'HRS detection complete',
+          },
+          cps: {
+            detectedButNotTested: 'CPS protocol detected but not tested (low priority)',
+            complete: 'CPS detection complete',
+          },
+          bms: {
+            detectedButNotTested: 'BMS protocol detected but not tested (low priority)',
+            complete: 'BMS detection complete',
+          },
+          dis: {
+            detectedButNotTested: 'DIS protocol detected but not tested (low priority)',
+            complete: 'DIS detection complete',
           },
           noSupportedProtocols: 'No supported protocols found. Priority: MOBI > REBORN > TACX > FITSHOW > YAFIT_S3 > YAFIT_S4 > FTMS > CSC',
           incompatibleProtocol: 'Incompatible protocol',
@@ -453,6 +492,26 @@ const testResources = {
             dataCollection: '正在收集CSC数据...',
             complete: 'CSC测试完成（功能有限）',
             setupComplete: 'CSC通知设置完成',
+          },
+          nus: {
+            detectedButNotTested: 'NUS 프로토콜 감지됨 테스트 안함 (낮은 우선순위)',
+            complete: 'NUS 감지 완료',
+          },
+          hrs: {
+            detectedButNotTested: 'HRS 프로토콜 감지됨 테스트 안함 (낮은 우선순위)',
+            complete: 'HRS 감지 완료',
+          },
+          cps: {
+            detectedButNotTested: 'CPS 프로토콜 감지됨 테스트 안함 (낮은 우선순위)',
+            complete: 'CPS 감지 완료',
+          },
+          bms: {
+            detectedButNotTested: 'BMS 프로토콜 감지됨 테스트 안함 (낮은 우선순위)',
+            complete: 'BMS 감지 완료',
+          },
+          dis: {
+            detectedButNotTested: 'DIS 프로토콜 감지됨 테스트 안함 (낮은 우선순위)',
+            complete: 'DIS 감지 완료',
           },
           noSupportedProtocols: '未找到支持的协议。优先级：MOBI > REBORN > TACX > FITSHOW > YAFIT_S3 > YAFIT_S4 > FTMS > CSC',
           incompatibleProtocol: '不兼容的协议',

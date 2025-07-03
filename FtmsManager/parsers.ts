@@ -229,4 +229,134 @@ export function parseFitShowData(data: Buffer): IndoorBikeData {
     }
     
     return parsed;
+}
+
+// 새로운 표준 프로토콜 파서들 (우선순위 낮음)
+
+export function parseHRSData(data: Buffer): IndoorBikeData {
+    const parsed: IndoorBikeData = { raw: data.toString('hex') };
+    try {
+        if (data.length >= 2) {
+            const flags = data[0];
+            let index = 1;
+            
+            if (flags & 0x01) {
+                // Heart Rate Value Format bit
+                if (data.length >= index + 1) {
+                    parsed.heartRate = data.readUInt8(index);
+                    index += 1;
+                }
+            } else {
+                // 16-bit Heart Rate Value Format
+                if (data.length >= index + 2) {
+                    parsed.heartRate = data.readUInt16LE(index);
+                    index += 2;
+                }
+            }
+            
+            // Energy Expended Status bit
+            if (flags & 0x08) {
+                if (data.length >= index + 2) {
+                    parsed.expendedEnergy = data.readUInt16LE(index);
+                }
+            }
+        }
+    } catch (_error) {
+        // Optionally log error
+    }
+    return parsed;
+}
+
+export function parseCPSData(data: Buffer): IndoorBikeData {
+    const parsed: IndoorBikeData = { raw: data.toString('hex') };
+    try {
+        if (data.length >= 4) {
+            const flags = data.readUInt16LE(0);
+            let index = 2;
+            
+            // Instantaneous Power
+            if (data.length >= index + 2) {
+                parsed.instantaneousPower = data.readInt16LE(index);
+                index += 2;
+            }
+            
+            // Pedal Power Balance
+            if (flags & 0x0001) {
+                if (data.length >= index + 1) {
+                    // const pedalPowerBalance = data.readUInt8(index);
+                    index += 1;
+                }
+            }
+            
+            // Accumulated Torque
+            if (flags & 0x0002) {
+                if (data.length >= index + 2) {
+                    // const accumulatedTorque = data.readUInt16LE(index);
+                    index += 2;
+                }
+            }
+            
+            // Cumulative Wheel Revolutions
+            if (flags & 0x0004) {
+                if (data.length >= index + 4) {
+                    // const cumulativeWheelRevolutions = data.readUInt32LE(index);
+                    index += 4;
+                }
+            }
+            
+            // Last Wheel Event Time
+            if (flags & 0x0004) {
+                if (data.length >= index + 2) {
+                    // const lastWheelEventTime = data.readUInt16LE(index);
+                    index += 2;
+                }
+            }
+            
+            // Cumulative Crank Revolutions
+            if (flags & 0x0008) {
+                if (data.length >= index + 2) {
+                    const crankRevolutions = data.readUInt16LE(index);
+                    parsed.instantaneousCadence = crankRevolutions;
+                    index += 2;
+                }
+            }
+            
+            // Last Crank Event Time
+            if (flags & 0x0008) {
+                if (data.length >= index + 2) {
+                    // const lastCrankEventTime = data.readUInt16LE(index);
+                    index += 2;
+                }
+            }
+        }
+    } catch (_error) {
+        // Optionally log error
+    }
+    return parsed;
+}
+
+export function parseBMSData(data: Buffer): IndoorBikeData {
+    const parsed: IndoorBikeData = { raw: data.toString('hex') };
+    try {
+        if (data.length >= 1) {
+            parsed.batteryLevel = data.readUInt8(0);
+        }
+    } catch (_error) {
+        // Optionally log error
+    }
+    return parsed;
+}
+
+export function parseDISData(data: Buffer): IndoorBikeData {
+    const parsed: IndoorBikeData = { raw: data.toString('hex') };
+    // DIS는 장치 정보만 제공하므로 실제 운동 데이터는 없음
+    // 하지만 raw 데이터는 기록
+    return parsed;
+}
+
+export function parseNUSData(data: Buffer): IndoorBikeData {
+    const parsed: IndoorBikeData = { raw: data.toString('hex') };
+    // NUS는 일반적인 UART 통신이므로 구체적인 파싱은 제조사별로 다름
+    // 기본적으로는 raw 데이터만 기록
+    return parsed;
 } 

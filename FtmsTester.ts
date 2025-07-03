@@ -301,6 +301,56 @@ export class FTMSTester {
                 if (this.onTestComplete) {
                     this.onTestComplete(this.testResults);
                 }
+            } else if (this.testResults.supportedProtocols.includes("NUS")) {
+                // NUS 프로토콜 감지 (우선순위 낮음 - 실제 테스트 안함)
+                this.logInteraction('INFO - Test: NUS protocol detected but not tested (low priority).');
+                this.testResults.reasons.push(t('test.protocols.nus.detectedButNotTested'));
+                this.mergeFtmsManagerLogs();
+                this.testResults = finalizeTestReport(this.testResults);
+                this.updateProgress(100, t('test.protocols.nus.complete'));
+                if (this.onTestComplete) {
+                    this.onTestComplete(this.testResults);
+                }
+            } else if (this.testResults.supportedProtocols.includes("HRS")) {
+                // HRS 프로토콜 감지 (우선순위 낮음 - 실제 테스트 안함)
+                this.logInteraction('INFO - Test: HRS protocol detected but not tested (low priority).');
+                this.testResults.reasons.push(t('test.protocols.hrs.detectedButNotTested'));
+                this.mergeFtmsManagerLogs();
+                this.testResults = finalizeTestReport(this.testResults);
+                this.updateProgress(100, t('test.protocols.hrs.complete'));
+                if (this.onTestComplete) {
+                    this.onTestComplete(this.testResults);
+                }
+            } else if (this.testResults.supportedProtocols.includes("CPS")) {
+                // CPS 프로토콜 감지 (우선순위 낮음 - 실제 테스트 안함)
+                this.logInteraction('INFO - Test: CPS protocol detected but not tested (low priority).');
+                this.testResults.reasons.push(t('test.protocols.cps.detectedButNotTested'));
+                this.mergeFtmsManagerLogs();
+                this.testResults = finalizeTestReport(this.testResults);
+                this.updateProgress(100, t('test.protocols.cps.complete'));
+                if (this.onTestComplete) {
+                    this.onTestComplete(this.testResults);
+                }
+            } else if (this.testResults.supportedProtocols.includes("BMS")) {
+                // BMS 프로토콜 감지 (우선순위 낮음 - 실제 테스트 안함)
+                this.logInteraction('INFO - Test: BMS protocol detected but not tested (low priority).');
+                this.testResults.reasons.push(t('test.protocols.bms.detectedButNotTested'));
+                this.mergeFtmsManagerLogs();
+                this.testResults = finalizeTestReport(this.testResults);
+                this.updateProgress(100, t('test.protocols.bms.complete'));
+                if (this.onTestComplete) {
+                    this.onTestComplete(this.testResults);
+                }
+            } else if (this.testResults.supportedProtocols.includes("DIS")) {
+                // DIS 프로토콜 감지 (우선순위 낮음 - 실제 테스트 안함)
+                this.logInteraction('INFO - Test: DIS protocol detected but not tested (low priority).');
+                this.testResults.reasons.push(t('test.protocols.dis.detectedButNotTested'));
+                this.mergeFtmsManagerLogs();
+                this.testResults = finalizeTestReport(this.testResults);
+                this.updateProgress(100, t('test.protocols.dis.complete'));
+                if (this.onTestComplete) {
+                    this.onTestComplete(this.testResults);
+                }
             } else {
                 // No supported protocols
                 this.testResults.reasons.push(t('test.protocols.noSupportedProtocols'));

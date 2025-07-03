@@ -36,7 +36,7 @@ const resources = {
       
       // 앱 메인
       app: {
-        title: 'IsYafit',
+        title: 'PFInspector',
         version: 'v0.8.3',
         status: {
           init: '앱 테스트 중입니다.',
@@ -332,7 +332,7 @@ const resources = {
           hideLog: '로그 숨기기',
         },
         share: {
-          title: 'IsYafit 호환성 보고서',
+          title: 'PFInspector 호환성 보고서',
           deviceInfo: '장치 정보',
           deviceName: '장치명:',
           address: '주소:',
@@ -381,11 +381,11 @@ const resources = {
       
       // 이용약관
       terms: {
-        title: 'IsYafit 앱 이용약관',
-        content: `IsYafit 앱 이용약관
+        title: 'PFInspector 앱 이용약관',
+        content: `PFInspector 앱 이용약관
 
 1. 서비스 개요
-IsYafit은 피트니스 장치와의 연결을 제공하는 모바일 애플리케이션입니다.
+PFInspector은 피트니스 장치와의 연결을 제공하는 모바일 애플리케이션입니다.
 
 2. 서비스 이용
 - 본 앱은 블루투스 연결을 통해 피트니스 장치와 통신합니다.
@@ -414,7 +414,7 @@ IsYafit은 피트니스 장치와의 연결을 제공하는 모바일 애플리�
       
       // App Main
       app: {
-        title: 'IsYafit',
+        title: 'PFInspector',
         version: 'v0.8.3',
         status: {
           init: 'App is in test mode.',
@@ -710,7 +710,7 @@ IsYafit은 피트니스 장치와의 연결을 제공하는 모바일 애플리�
           hideLog: 'Hide Log',
         },
         share: {
-          title: 'IsYafit Compatibility Report',
+          title: 'PFInspector Compatibility Report',
           deviceInfo: 'Device Information',
           deviceName: 'Device Name:',
           address: 'Address:',
@@ -759,11 +759,11 @@ IsYafit은 피트니스 장치와의 연결을 제공하는 모바일 애플리�
       
       // Terms of Service
       terms: {
-        title: 'IsYafit App Terms of Service',
-        content: `IsYafit App Terms of Service
+        title: 'PFInspector App Terms of Service',
+        content: `PFInspector App Terms of Service
 
 1. Service Overview
-IsYafit is a mobile application that provides connectivity with fitness devices.
+PFInspector is a mobile application that provides connectivity with fitness devices.
 
 2. Service Usage
 - This app communicates with fitness devices through Bluetooth connection.
@@ -792,7 +792,7 @@ IsYafit is a mobile application that provides connectivity with fitness devices.
       
       // 应用主界面
       app: {
-        title: 'IsYafit',
+        title: 'PFInspector',
         version: 'v0.8.3',
         status: {
           init: '应用测试中。',
@@ -1088,7 +1088,7 @@ IsYafit is a mobile application that provides connectivity with fitness devices.
           hideLog: '隐藏日志',
         },
         share: {
-          title: 'IsYafit兼容性报告',
+          title: 'PFInspector兼容性报告',
           deviceInfo: '设备信息',
           deviceName: '设备名称：',
           address: '地址：',
@@ -1137,11 +1137,11 @@ IsYafit is a mobile application that provides connectivity with fitness devices.
       
       // 服务条款
       terms: {
-        title: 'IsYafit应用服务条款',
-        content: `IsYafit应用服务条款
+        title: 'PFInspector应用服务条款',
+        content: `PFInspector应用服务条款
 
 1. 服务概述
-IsYafit是一个提供与健身设备连接的移动应用程序。
+PFInspector是一个提供与健身设备连接的移动应用程序。
 
 2. 服务使用
 - 本应用通过蓝牙连接与健身设备通信。

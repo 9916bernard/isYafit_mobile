@@ -26,6 +26,31 @@ export const FITSHOW_DATA_CHAR_UUID = "0000fff1-0000-1000-8000-00805f9b34fb";
 export const FITSHOW_WRITE_CHAR_UUID = "0000fff2-0000-1000-8000-00805f9b34fb";
 export const FITSHOW_BIKE_DATA_CHAR_UUID = "0000fff3-0000-1000-8000-00805f9b34fb";
 
+// 표준 프로토콜 UUIDs (우선순위 낮음)
+export const NUS_SERVICE_UUID = "6e40fec1-b5a3-f393-e0a9-e50e24dcca9e";
+export const NUS_READ_CHAR_UUID = "6e40fec2-b5a3-f393-e0a9-e50e24dcca9e";
+export const NUS_WRITE_CHAR_UUID = "6e40fec3-b5a3-f393-e0a9-e50e24dcca9e";
+
+export const HRS_SERVICE_UUID = "0000180d-0000-1000-8000-00805f9b34fb";
+export const HRS_MEASUREMENT_CHAR_UUID = "00002a37-0000-1000-8000-00805f9b34fb";
+export const HRS_CONTROL_CHAR_UUID = "00002a39-0000-1000-8000-00805f9b34fb";
+
+export const CPS_SERVICE_UUID = "00001818-0000-1000-8000-00805f9b34fb";
+export const CPS_MEASUREMENT_CHAR_UUID = "00002a63-0000-1000-8000-00805f9b34fb";
+export const CPS_FEATURE_CHAR_UUID = "00002a65-0000-1000-8000-00805f9b34fb";
+export const CPS_SENSOR_LOCATION_CHAR_UUID = "00002a5d-0000-1000-8000-00805f9b34fb";
+
+export const BMS_SERVICE_UUID = "0000180f-0000-1000-8000-00805f9b34fb";
+export const BMS_LEVEL_CHAR_UUID = "00002a19-0000-1000-8000-00805f9b34fb";
+
+export const DIS_SERVICE_UUID = "0000180a-0000-1000-8000-00805f9b34fb";
+export const DIS_MANUFACTURER_CHAR_UUID = "00002a29-0000-1000-8000-00805f9b34fb";
+export const DIS_MODEL_CHAR_UUID = "00002a24-0000-1000-8000-00805f9b34fb";
+export const DIS_SERIAL_CHAR_UUID = "00002a25-0000-1000-8000-00805f9b34fb";
+export const DIS_FIRMWARE_CHAR_UUID = "00002a26-0000-1000-8000-00805f9b34fb";
+export const DIS_HARDWARE_CHAR_UUID = "00002a27-0000-1000-8000-00805f9b34fb";
+export const DIS_SOFTWARE_CHAR_UUID = "00002a28-0000-1000-8000-00805f9b34fb";
+
 // FTMS Control Point Commands
 export const REQUEST_CONTROL = Buffer.from([0x00]);
 export const RESET = Buffer.from([0x01]);
@@ -63,4 +88,6 @@ export const DEFAULT_SIM_PARAMS = Buffer.from([
     0xD0, 0x07,  // Grade = 2000 (20.00%)  (0x07D0 little endian)
     0x00,        // Rolling Resistance Coefficient = 0
     0x00         // Wind Resistance Coefficient = 0
-]); 
+]);
+
+export const CSC_SERVICE_UUID = "00001816-0000-1000-8000-00805f9b34fb"; 

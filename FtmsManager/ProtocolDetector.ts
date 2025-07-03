@@ -1,7 +1,16 @@
 import { Device } from 'react-native-ble-plx';
 import { ProtocolType } from './protocols';
 import { LogManager } from './LogManager';
-import { FTMS_SERVICE_UUID, TACX_SERVICE_UUID } from './constants';
+import { 
+    FTMS_SERVICE_UUID, 
+    TACX_SERVICE_UUID,
+    NUS_SERVICE_UUID,
+    HRS_SERVICE_UUID,
+    CPS_SERVICE_UUID,
+    BMS_SERVICE_UUID,
+    DIS_SERVICE_UUID,
+    CSC_SERVICE_UUID
+} from './constants';
 
 export class ProtocolDetector {
     private logManager: LogManager;
@@ -14,6 +23,14 @@ export class ProtocolDetector {
     private _isS3Sensor: boolean = false;
     private _isS4Sensor: boolean = false;
     private _isFTMSSensor: boolean = false;
+    
+    // 새로운 표준 프로토콜 감지 플래그들 (우선순위 낮음)
+    private _isNUSSensor: boolean = false;
+    private _isHRSSensor: boolean = false;
+    private _isCPSSensor: boolean = false;
+    private _isBMSSensor: boolean = false;
+    private _isDISSensor: boolean = false;
+    private _isCSCSensor: boolean = false;
 
     constructor(logManager: LogManager) {
         this.logManager = logManager;
@@ -55,6 +72,37 @@ export class ProtocolDetector {
         return this._isFTMSSensor;
     }
 
+    // 새로운 표준 프로토콜 감지 메서드들 (우선순위 낮음)
+    private checkNUSSensor(device: Device): boolean {
+        this._isNUSSensor = device?.serviceUUIDs?.includes(NUS_SERVICE_UUID) ?? false;
+        return this._isNUSSensor;
+    }
+
+    private checkHRSSensor(device: Device): boolean {
+        this._isHRSSensor = device?.serviceUUIDs?.includes(HRS_SERVICE_UUID) ?? false;
+        return this._isHRSSensor;
+    }
+
+    private checkCPSSensor(device: Device): boolean {
+        this._isCPSSensor = device?.serviceUUIDs?.includes(CPS_SERVICE_UUID) ?? false;
+        return this._isCPSSensor;
+    }
+
+    private checkBMSSensor(device: Device): boolean {
+        this._isBMSSensor = device?.serviceUUIDs?.includes(BMS_SERVICE_UUID) ?? false;
+        return this._isBMSSensor;
+    }
+
+    private checkDISSensor(device: Device): boolean {
+        this._isDISSensor = device?.serviceUUIDs?.includes(DIS_SERVICE_UUID) ?? false;
+        return this._isDISSensor;
+    }
+
+    private checkCSCSensor(device: Device): boolean {
+        this._isCSCSensor = device?.serviceUUIDs?.includes(CSC_SERVICE_UUID) ?? false;
+        return this._isCSCSensor;
+    }
+
     public isMobiSensor(): boolean {
         return this._isMobiSensor;
     }
@@ -67,6 +115,14 @@ export class ProtocolDetector {
         this._isS3Sensor = false;
         this._isS4Sensor = false;
         this._isFTMSSensor = false;
+        
+        // 새로운 표준 프로토콜 플래그들 초기화
+        this._isNUSSensor = false;
+        this._isHRSSensor = false;
+        this._isCPSSensor = false;
+        this._isBMSSensor = false;
+        this._isDISSensor = false;
+        this._isCSCSensor = false;
     }
 
     public detectAllProtocols(): ProtocolType[] {
@@ -78,6 +134,14 @@ export class ProtocolDetector {
         if (this._isS3Sensor) detected.push(ProtocolType.YAFIT_S3);
         if (this._isS4Sensor) detected.push(ProtocolType.YAFIT_S4);
         if (this._isFTMSSensor) detected.push(ProtocolType.FTMS);
+        if (this._isCSCSensor) detected.push(ProtocolType.CSC);
+
+        // 새로운 표준 프로토콜들 (우선순위 낮음)
+        if (this._isNUSSensor) detected.push(ProtocolType.NUS);
+        if (this._isHRSSensor) detected.push(ProtocolType.HRS);
+        if (this._isCPSSensor) detected.push(ProtocolType.CPS);
+        if (this._isBMSSensor) detected.push(ProtocolType.BMS);
+        if (this._isDISSensor) detected.push(ProtocolType.DIS);
 
         // Fallback to CSC if no other protocol is detected
         if (detected.length === 0) {
@@ -87,6 +151,21 @@ export class ProtocolDetector {
     }
 
     private determineProtocolByPriority(): ProtocolType {
+        // CPS를 최우선으로 선택 (실시간 데이터 테스트용)
+        if (this._isCPSSensor) {
+            this.logManager.logInfo("Detected CPS sensor - using CPS protocol (highest priority)");
+            return ProtocolType.CPS;
+        }
+        
+        // FTMS가 있으면 우선적으로 선택 (완전한 Indoor Cycle 기능)
+        if (this._isFTMSSensor) {
+            this.logManager.logInfo("Detected FTMS sensor - using standard FTMS protocol");
+            return ProtocolType.FTMS;
+        }
+        
+
+        
+        // 커스텀 프로토콜들 (기존 우선순위)
         if (this.isMobiSensor()) {
             this.logManager.logInfo("Detected Mobi sensor - using Mobi protocol");
             return ProtocolType.MOBI;
@@ -105,13 +184,16 @@ export class ProtocolDetector {
         } else if (this._isS4Sensor) {
             this.logManager.logInfo("Detected YafitS4 sensor - using FTMS protocol");
             return ProtocolType.YAFIT_S4;
-        } else if (this._isFTMSSensor) {
-            this.logManager.logInfo("Detected FTMS sensor - using standard FTMS protocol");
-            return ProtocolType.FTMS;
-        } else {
-            this.logManager.logInfo("No specific protocol detected - using CSC protocol as fallback");
-            return ProtocolType.CSC;
         }
+        
+                // CSC가 있으면 우선적으로 선택 (FTMS 다음)
+        if (this._isCSCSensor) {
+            this.logManager.logInfo("Detected CSC sensor - using CSC protocol");
+            return ProtocolType.CSC;
+                }
+        // CSC (기존 fallback)
+        this.logManager.logInfo("No specific protocol detected - using CSC protocol as fallback");
+        return ProtocolType.CSC;
     }
 
     async detectProtocol(device: Device): Promise<ProtocolType> {
@@ -137,6 +219,26 @@ export class ProtocolDetector {
                 }
                 if (service.uuid.toLowerCase() === TACX_SERVICE_UUID.toLowerCase()) {
                     this._isTacxNeoSensor = true;
+                }
+                if (service.uuid.toLowerCase() === CSC_SERVICE_UUID.toLowerCase()) {
+                    this._isCSCSensor = true;
+                }
+                
+                // 새로운 표준 프로토콜들 감지 (우선순위 낮음)
+                if (service.uuid.toLowerCase() === NUS_SERVICE_UUID.toLowerCase()) {
+                    this._isNUSSensor = true;
+                }
+                if (service.uuid.toLowerCase() === HRS_SERVICE_UUID.toLowerCase()) {
+                    this._isHRSSensor = true;
+                }
+                if (service.uuid.toLowerCase() === CPS_SERVICE_UUID.toLowerCase()) {
+                    this._isCPSSensor = true;
+                }
+                if (service.uuid.toLowerCase() === BMS_SERVICE_UUID.toLowerCase()) {
+                    this._isBMSSensor = true;
+                }
+                if (service.uuid.toLowerCase() === DIS_SERVICE_UUID.toLowerCase()) {
+                    this._isDISSensor = true;
                 }
             }
             
