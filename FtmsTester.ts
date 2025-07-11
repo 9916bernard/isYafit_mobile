@@ -192,6 +192,24 @@ export class FTMSTester {
                 if (this.onTestComplete) {
                     this.onTestComplete(this.testResults);
                 }
+            } else if (this.testResults.supportedProtocols.includes("CPS")) {
+                this.updateProgress(30, t('test.protocols.cps.monitoring'));
+                this.logInteraction('INFO - Test: Starting CPS protocol testing (data only, no control commands).');
+                await this.monitorCpsData();
+                this.logInteraction('INFO - Test: Skipping control point tests for CPS (data-only protocol).');
+                const elapsed = Date.now() - this.startTime;
+                const remainingTime = Math.max(0, this.testDuration - elapsed);
+                if (remainingTime > 0) {
+                    this.updateProgress(50, t('test.protocols.cps.dataCollection'));
+                    this.logInteraction('INFO - Test: Please pedal to generate data for CPS protocol testing.');
+                    await this.runDataCollection(remainingTime);
+                }
+                this.mergeFtmsManagerLogs();
+                this.testResults = finalizeTestReport(this.testResults);
+                this.updateProgress(100, t('test.protocols.cps.complete'));
+                if (this.onTestComplete) {
+                    this.onTestComplete(this.testResults);
+                }
             } else if (this.testResults.supportedProtocols.includes("TACX")) {
                 // Tacx Neo 프로토콜 테스트 (우선순위 3)
                 this.updateProgress(30, t('test.protocols.tacx.monitoring'));
@@ -318,16 +336,6 @@ export class FTMSTester {
                 this.mergeFtmsManagerLogs();
                 this.testResults = finalizeTestReport(this.testResults);
                 this.updateProgress(100, t('test.protocols.hrs.complete'));
-                if (this.onTestComplete) {
-                    this.onTestComplete(this.testResults);
-                }
-            } else if (this.testResults.supportedProtocols.includes("CPS")) {
-                // CPS 프로토콜 감지 (우선순위 낮음 - 실제 테스트 안함)
-                this.logInteraction('INFO - Test: CPS protocol detected but not tested (low priority).');
-                this.testResults.reasons.push(t('test.protocols.cps.detectedButNotTested'));
-                this.mergeFtmsManagerLogs();
-                this.testResults = finalizeTestReport(this.testResults);
-                this.updateProgress(100, t('test.protocols.cps.complete'));
                 if (this.onTestComplete) {
                     this.onTestComplete(this.testResults);
                 }
@@ -703,6 +711,19 @@ export class FTMSTester {
             
         } catch (error) {
             this.logInteraction(`ERROR - [monitorBikeData] Error subscribing to notifications: ${error instanceof Error ? error.message : String(error)}`);
+            this.testResults.issuesFound.push(`${t('test.errors.notificationSubscriptionError')}: ${error instanceof Error ? error.message : String(error)}`);
+            throw error;
+        }
+    }
+      private async monitorCpsData(): Promise<void> {
+        try {
+            this.logInteraction('INFO - [monitorCpsData] Setting up notifications for CPS data only (no control commands).');
+            await this.ftmsManager.subscribeToCPSNotifications((data) => {
+                this.handleBikeData(data);
+            });
+            this.logInteraction('INFO - [monitorCpsData] CPS notifications setup completed.');
+        } catch (error) {
+            this.logInteraction(`ERROR - [monitorCpsData] Error subscribing to CPS notifications: ${error instanceof Error ? error.message : String(error)}`);
             this.testResults.issuesFound.push(`${t('test.errors.notificationSubscriptionError')}: ${error instanceof Error ? error.message : String(error)}`);
             throw error;
         }

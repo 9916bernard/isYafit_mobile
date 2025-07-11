@@ -605,7 +605,7 @@ export class FTMSManager {
         this.logManager.logInfo("FitShow data subscriptions completed (both FitShow bike and FTMS characteristics)");
     }
 
-    private async subscribeToCPSNotifications(
+    public async subscribeToCPSNotifications(
         onIndoorBikeData: (_data: IndoorBikeData) => void
     ): Promise<void> {
         this.logManager.logInfo("Subscribing to CPS notifications...");
@@ -630,14 +630,15 @@ export class FTMSManager {
                         typeof parsedData.cumulativeCrankRevolutions === 'number' &&
                         typeof parsedData.lastCrankEventTime === 'number'
                     ) {
-
+                        // 전 패킷 있으면 계산. 
+                        //RPM 계산식: delta Rev ((현재 패킷의 페달 회전수 누적값 - 이전 패킷의 페달 회전수 누적값)  / delta TIme (현재 패킷의 페달 회전 시간 - 이전 패킷의 페달 회전 시간)) * 60
                         if (this.prevCPSCrankRevs !== null && this.prevCPSCrankTime !== null) {
                             let deltaRevs = parsedData.cumulativeCrankRevolutions - this.prevCPSCrankRevs;
                             let deltaTime = parsedData.lastCrankEventTime - this.prevCPSCrankTime;
-                            //롤오버 시간계산 unit16
+                            //롤오버(오버플로) 시간계산 unit16
                             if (deltaTime < 0) deltaTime += 65536;
                             if (deltaRevs < 0) deltaRevs += 65536;
-                            //페달 멈추면 0으로 세팅
+                            //페달 멈추면 0으로 세팅 : 페달 멈추면 패킷이 안와서 그 전 cadence 로 고정되기 때문에 수동으로 변경
                             if (deltaRevs === 0 || deltaTime === 0) {
                                 parsedData.instantaneousCadence = 0;
    
@@ -652,6 +653,7 @@ export class FTMSManager {
                             // 첫 패킷: cadence를 0으로 강제 세팅
                             parsedData.instantaneousCadence = 0;
                         }
+                        //전 패킷으로 저장
                         this.prevCPSCrankRevs = parsedData.cumulativeCrankRevolutions;
                         this.prevCPSCrankTime = parsedData.lastCrankEventTime;
 
