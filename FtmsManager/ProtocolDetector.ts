@@ -84,8 +84,18 @@ export class ProtocolDetector {
     }
 
     private checkCPSSensor(device: Device): boolean {
-        this._isCPSSensor = device?.serviceUUIDs?.includes(CPS_SERVICE_UUID) ?? false;
-        return this._isCPSSensor;
+        const hasCPS = device?.serviceUUIDs?.includes(CPS_SERVICE_UUID) ?? false;
+        this._isCPSSensor = hasCPS;
+        
+        // CPS 감지 디버깅 로그 추가
+        this.logManager.logInfo(`CPS Detection Debug:`);
+        this.logManager.logInfo(`  Device name: ${device.name}`);
+        this.logManager.logInfo(`  Device ID: ${device.id}`);
+        this.logManager.logInfo(`  Service UUIDs: ${device?.serviceUUIDs?.join(', ') || 'None'}`);
+        this.logManager.logInfo(`  CPS Service UUID: ${CPS_SERVICE_UUID}`);
+        this.logManager.logInfo(`  CPS detected: ${hasCPS}`);
+        
+        return hasCPS;
     }
 
     private checkBMSSensor(device: Device): boolean {
@@ -139,7 +149,10 @@ export class ProtocolDetector {
         // 새로운 표준 프로토콜들 (우선순위 낮음)
         if (this._isNUSSensor) detected.push(ProtocolType.NUS);
         if (this._isHRSSensor) detected.push(ProtocolType.HRS);
-        if (this._isCPSSensor) detected.push(ProtocolType.CPS);
+        if (this._isCPSSensor) {
+            detected.push(ProtocolType.CPS);
+            this.logManager.logInfo("CPS protocol added to detected protocols");
+        }
         if (this._isBMSSensor) detected.push(ProtocolType.BMS);
         if (this._isDISSensor) detected.push(ProtocolType.DIS);
 
@@ -147,6 +160,8 @@ export class ProtocolDetector {
         if (detected.length === 0) {
             detected.push(ProtocolType.CSC);
         }
+        
+        this.logManager.logInfo(`All detected protocols: ${detected.join(', ')}`);
         return detected;
     }
 
@@ -211,6 +226,9 @@ export class ProtocolDetector {
             this.checkS3Sensor(deviceName);
             this.checkS4Sensor(deviceName);
             
+            // CPS 센서 체크 추가
+            this.checkCPSSensor(device);
+            
             const services = await device.services();
             for (const service of services) {
                 this.logManager.logInfo(`Found service: ${service.uuid}`);
@@ -233,6 +251,7 @@ export class ProtocolDetector {
                 }
                 if (service.uuid.toLowerCase() === CPS_SERVICE_UUID.toLowerCase()) {
                     this._isCPSSensor = true;
+                    this.logManager.logInfo(`CPS service detected in service scan: ${service.uuid}`);
                 }
                 if (service.uuid.toLowerCase() === BMS_SERVICE_UUID.toLowerCase()) {
                     this._isBMSSensor = true;
@@ -262,6 +281,8 @@ export class ProtocolDetector {
             case ProtocolType.MOBI:
             case ProtocolType.REBORN:
             case ProtocolType.CSC:
+            case ProtocolType.CPS:
+                return false;
             default:
                 return false;
         }

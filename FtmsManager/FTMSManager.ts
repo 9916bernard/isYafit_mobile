@@ -5,11 +5,12 @@ import {
   MOBI_SERVICE_UUID, MOBI_DATA_CHAR_UUID,
   REBORN_SERVICE_UUID, REBORN_DATA_CHAR_UUID,
   TACX_SERVICE_UUID, TACX_READ_CHAR_UUID,
-  FITSHOW_SERVICE_UUID, FITSHOW_BIKE_DATA_CHAR_UUID, FITSHOW_WRITE_CHAR_UUID
+  FITSHOW_SERVICE_UUID, FITSHOW_BIKE_DATA_CHAR_UUID, FITSHOW_WRITE_CHAR_UUID,
+  CPS_SERVICE_UUID, CPS_MEASUREMENT_CHAR_UUID
 } from './constants';
 import { ProtocolType } from './protocols';
 import { IndoorBikeData } from './types';
-import { parseIndoorBikeData, parseMobiData, parseCSCData, parseRebornData, parseTacxData, parseFitShowData } from './parsers';
+import { parseIndoorBikeData, parseMobiData, parseCSCData, parseRebornData, parseTacxData, parseFitShowData, parseCPSData } from './parsers';
 import { LogManager, LogEntry } from './LogManager';
 import { BluetoothManager } from './BluetoothManager';
 import { ProtocolDetector } from './ProtocolDetector';
@@ -125,6 +126,9 @@ export class FTMSManager {
                 break;
             case ProtocolType.FITSHOW:
                 await this.subscribeToFitShowNotifications(onControlPointResponse, onIndoorBikeData);
+                break;
+            case ProtocolType.CPS:
+                await this.subscribeToCPSNotifications(onIndoorBikeData);
                 break;
             default:
                 throw new Error("Unsupported protocol for notifications");
@@ -259,6 +263,8 @@ export class FTMSManager {
                     return await this.connectSequenceFitShow();
                 case ProtocolType.CSC:
                     return await this.connectSequenceCSC();
+                case ProtocolType.CPS:
+                    return await this.connectSequenceCPS();
                 default:
                     this.logManager.logError("Unsupported protocol for connection sequence");
                     return false;
@@ -293,6 +299,8 @@ export class FTMSManager {
                     return await this.connectSequenceFitShowRealtimeData();
                 case ProtocolType.CSC:
                     return await this.connectSequenceCSC();
+                case ProtocolType.CPS:
+                    return await this.connectSequenceCPS();
                 default:
                     this.logManager.logError("Unsupported protocol for realtime data connection sequence");
                     return false;
@@ -362,6 +370,9 @@ export class FTMSManager {
                 break;
             case ProtocolType.FITSHOW:
                 this.logManager.logInfo("FitShow protocol detected - 32-level resistance control supported");
+                break;
+            case ProtocolType.CPS:
+                this.logManager.logInfo("CPS protocol detected - cycling power meter (read-only)");
                 break;
             default:
                 this.logManager.logWarning("Unknown protocol detected");
@@ -591,6 +602,34 @@ export class FTMSManager {
         this.logManager.logInfo("FitShow data subscriptions completed (both FitShow bike and FTMS characteristics)");
     }
 
+    private async subscribeToCPSNotifications(
+        onIndoorBikeData: (_data: IndoorBikeData) => void
+    ): Promise<void> {
+        this.logManager.logInfo("Subscribing to CPS notifications...");
+        this.logManager.logInfo(`CPS Service UUID: ${CPS_SERVICE_UUID}`);
+        this.logManager.logInfo(`CPS Measurement Characteristic UUID: ${CPS_MEASUREMENT_CHAR_UUID}`);
+        
+        this.indoorBikeDataSubscription = this.connectedDevice!.monitorCharacteristicForService(
+            CPS_SERVICE_UUID,
+            CPS_MEASUREMENT_CHAR_UUID,
+            (error, characteristic) => {
+                if (error) {
+                    this.logManager.logError(`CPS Measurement Notification error: ${error.message}`);
+                    return;
+                }
+                if (characteristic?.value) {
+                    const buffer = Buffer.from(characteristic.value, 'base64');
+                    this.logManager.logInfo(`CPS data received: ${buffer.toString('hex')}`);
+                    const parsedData = parseCPSData(buffer);
+                    this.logManager.logInfo(`CPS parsed data: Power=${parsedData.instantaneousPower}W, Cadence=${parsedData.instantaneousCadence}RPM`);
+                    onIndoorBikeData(parsedData);
+                }
+            }
+        );
+        
+        this.logManager.logSuccess("CPS data subscriptions completed");
+    }
+
     // --- Connection Sequences ---
     private async connectSequenceFTMS(): Promise<boolean> {
         this.logManager.logInfo("Running FTMS connection sequence");
@@ -658,6 +697,12 @@ export class FTMSManager {
 
     private async connectSequenceCSC(): Promise<boolean> {
         this.logManager.logSuccess("CSC sensor connected and ready");
+        this.isDeviceActive = true;
+        return true;
+    }
+
+    private async connectSequenceCPS(): Promise<boolean> {
+        this.logManager.logSuccess("CPS sensor connected and ready");
         this.isDeviceActive = true;
         return true;
     }
