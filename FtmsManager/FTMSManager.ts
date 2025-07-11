@@ -33,6 +33,9 @@ export class FTMSManager {
     private detectedProtocol: ProtocolType | null = null;
     private allDetectedProtocols: ProtocolType[] = [];
 
+    private prevCPSCrankRevs: number | null = null;
+    private prevCPSCrankTime: number | null = null;
+
     constructor() {
         this.logManager = new LogManager();
         this.bluetoothManager = new BluetoothManager(this.logManager);
@@ -621,6 +624,40 @@ export class FTMSManager {
                     const buffer = Buffer.from(characteristic.value, 'base64');
                     this.logManager.logInfo(`CPS data received: ${buffer.toString('hex')}`);
                     const parsedData = parseCPSData(buffer);
+
+                    // --- Cadence 계산 (이전 패킷과 비교) ---
+                    if (
+                        typeof parsedData.cumulativeCrankRevolutions === 'number' &&
+                        typeof parsedData.lastCrankEventTime === 'number'
+                    ) {
+
+                        if (this.prevCPSCrankRevs !== null && this.prevCPSCrankTime !== null) {
+                            let deltaRevs = parsedData.cumulativeCrankRevolutions - this.prevCPSCrankRevs;
+                            let deltaTime = parsedData.lastCrankEventTime - this.prevCPSCrankTime;
+                            //롤오버 시간계산 unit16
+                            if (deltaTime < 0) deltaTime += 65536;
+                            if (deltaRevs < 0) deltaRevs += 65536;
+                            //페달 멈추면 0으로 세팅
+                            if (deltaRevs === 0 || deltaTime === 0) {
+                                parsedData.instantaneousCadence = 0;
+   
+                            } else {
+                                // LastCrankEventTime 시간단위 1/1024 초 
+                                // RPM 이니까 *60
+                                const cadence = (deltaRevs / (deltaTime / 1024)) * 60;
+                                parsedData.instantaneousCadence = cadence;
+
+                            }
+                        } else {
+                            // 첫 패킷: cadence를 0으로 강제 세팅
+                            parsedData.instantaneousCadence = 0;
+                        }
+                        this.prevCPSCrankRevs = parsedData.cumulativeCrankRevolutions;
+                        this.prevCPSCrankTime = parsedData.lastCrankEventTime;
+
+                    }
+                    // ---
+
                     this.logManager.logInfo(`CPS parsed data: Power=${parsedData.instantaneousPower}W, Cadence=${parsedData.instantaneousCadence}RPM`);
                     onIndoorBikeData(parsedData);
                 }

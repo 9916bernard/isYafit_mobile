@@ -17,7 +17,7 @@ import { setLanguage, initializeLanguage } from '../utils/i18n';
 
 
 // 0.8.0 FitShow 프로토콜 구현 개선 (FTMS indoor bike data 형식 사용)
-const APP_VERSION = 'v1.0.2';
+const APP_VERSION = 'v1.0.1';
 
 function App() {
   const { t, i18n } = useTranslation();
