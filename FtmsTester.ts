@@ -148,227 +148,217 @@ export class FTMSTester {
             await this.identifyProtocols();
               this.logInteraction(`INFO - Test: Identified protocols: ${this.testResults.supportedProtocols.join(', ') || 'None'}.`);
               // 프로토콜별 테스트 처리 (우선순위 순서: MOBI > REBORN > TACX > FITSHOW > YAFIT_S3 > YAFIT_S4 > FTMS > CSC)
-            if (this.testResults.supportedProtocols.includes("MOBI")) {
-                // Mobi 프로토콜 테스트 (우선순위 1)
-                this.updateProgress(30, t('test.protocols.mobi.monitoring'));
-                this.logInteraction('INFO - Test: Starting Mobi protocol testing (read-only).');
-                await this.monitorMobiData();
-                
-                const elapsed = Date.now() - this.startTime;
-                const remainingTime = Math.max(0, this.testDuration - elapsed);
-                
-                if (remainingTime > 0) {
-                    this.updateProgress(50, t('test.protocols.mobi.dataCollection'));
-                    await this.waitWithEarlyExit(remainingTime);
-                }
-                
-                this.mergeFtmsManagerLogs();
-                this.testResults = finalizeTestReport(this.testResults);
-                this.updateProgress(100, t('test.protocols.mobi.complete'));
-                if (this.onTestComplete) {
-                    this.onTestComplete(this.testResults);
-                }
-            } else if (this.testResults.supportedProtocols.includes("REBORN")) {
-                // Reborn 프로토콜 테스트 (우선순위 2) - 인증 외 제어 불가능
-                this.updateProgress(30, t('test.protocols.reborn.monitoring'));
-                this.logInteraction('INFO - Test: Starting Reborn protocol testing (authentication + data only).');
-                await this.monitorRebornData();
-                
-                // Reborn은 인증 외에는 제어 명령이 불가능하므로 제어 테스트 생략
-                this.logInteraction('INFO - Test: Skipping control point tests for Reborn (authentication-only protocol).');
-                
-                const elapsed = Date.now() - this.startTime;
-                const remainingTime = Math.max(0, this.testDuration - elapsed);
-                
-                if (remainingTime > 0) {
-                    this.updateProgress(50, t('test.protocols.reborn.dataCollection'));
-                    this.logInteraction('INFO - Test: Please pedal to generate data for Reborn protocol testing.');
-                    await this.runDataCollection(remainingTime);
-                }
-                
-                this.mergeFtmsManagerLogs();
-                this.testResults = finalizeTestReport(this.testResults);
-                this.updateProgress(100, t('test.protocols.reborn.complete'));
-                if (this.onTestComplete) {
-                    this.onTestComplete(this.testResults);
-                }
-            } else if (this.testResults.supportedProtocols.includes("CPS")) {
-                this.updateProgress(30, t('test.protocols.cps.monitoring'));
-                this.logInteraction('INFO - Test: Starting CPS protocol testing (data only, no control commands).');
-                await this.monitorCpsData();
-                this.logInteraction('INFO - Test: Skipping control point tests for CPS (data-only protocol).');
-                const elapsed = Date.now() - this.startTime;
-                const remainingTime = Math.max(0, this.testDuration - elapsed);
-                if (remainingTime > 0) {
-                    this.updateProgress(50, t('test.protocols.cps.dataCollection'));
-                    this.logInteraction('INFO - Test: Please pedal to generate data for CPS protocol testing.');
-                    await this.runDataCollection(remainingTime);
-                }
-                this.mergeFtmsManagerLogs();
-                this.testResults = finalizeTestReport(this.testResults);
-                this.updateProgress(100, t('test.protocols.cps.complete'));
-                if (this.onTestComplete) {
-                    this.onTestComplete(this.testResults);
-                }
-            } else if (this.testResults.supportedProtocols.includes("TACX")) {
-                // Tacx Neo 프로토콜 테스트 (우선순위 3)
-                this.updateProgress(30, t('test.protocols.tacx.monitoring'));
-                this.logInteraction('INFO - Test: Starting Tacx Neo protocol testing (with user interaction control commands).');
-                await this.monitorBikeData();
-                
-                this.updateProgress(40, t('test.protocols.tacx.controlTest'));
-                this.logInteraction('INFO - Test: Starting Tacx Neo user interaction control point tests.');
-                await this.testTacxControlPointsWithUserInteraction();
-                
-                const elapsed = Date.now() - this.startTime;
-                const remainingTime = Math.max(0, this.testDuration - elapsed);
-                
-                if (remainingTime > 0) {
-                    this.updateProgress(50, t('test.protocols.tacx.dataCollection'));
-                    await this.waitWithEarlyExit(remainingTime);
-                }
-                
-                this.mergeFtmsManagerLogs();
-                this.testResults = finalizeTestReport(this.testResults);
-                this.updateProgress(100, t('test.protocols.tacx.complete'));
-                if (this.onTestComplete) {
-                    this.onTestComplete(this.testResults);
-                }
-            } else if (this.testResults.supportedProtocols.includes("FITSHOW")) {
-                // FitShow 프로토콜 테스트 (우선순위 4)
-                this.updateProgress(30, t('test.protocols.fitshow.monitoring'));
-                this.logInteraction('INFO - Test: Starting FitShow protocol testing (with control commands).');
-                await this.monitorBikeData();
-                
-                // this.updateProgress(40, "FitShow 제어 기능 테스트 중...");
-                // this.logInteraction('INFO - Test: Starting FitShow control point tests.');
-                // await this.testControlPoints();
-                
-                const elapsed = Date.now() - this.startTime;
-                const remainingTime = Math.max(0, this.testDuration - elapsed);
-                
-                if (remainingTime > 0) {
-                    this.updateProgress(50, t('test.protocols.fitshow.dataCollection'));
-                    await this.waitWithEarlyExit(remainingTime);
-                }
-                
-                this.mergeFtmsManagerLogs();
-                this.testResults = finalizeTestReport(this.testResults);
-                this.updateProgress(100, t('test.protocols.fitshow.complete'));
-                if (this.onTestComplete) {
-                    this.onTestComplete(this.testResults);
-                }
-            } else if (this.testResults.supportedProtocols.includes("YAFIT_S3") || this.testResults.supportedProtocols.includes("YAFIT_S4") || this.testResults.supportedProtocols.includes("FTMS")) {
-                // FTMS 프로토콜 테스트 (YAFIT_S3, YAFIT_S4 포함)
-                let protocolName = "FTMS";
-                if (this.testResults.supportedProtocols.includes("YAFIT_S3")) {
-                    protocolName = "YAFIT_S3";
-                } else if (this.testResults.supportedProtocols.includes("YAFIT_S4")) {
-                    protocolName = "YAFIT_S4";
-                }
-                
-                this.updateProgress(20, `${protocolName} ${t('test.protocols.ftms.supportRange')}`);
-                this.logInteraction(`INFO - Test: Reading supported ${protocolName} ranges (using FTMS protocol).`);
-                await this.readSupportRanges();
-                this.logInteraction(`INFO - Test: Finished reading supported ranges for ${protocolName}.`);
-                
-                this.updateProgress(30, `${protocolName} ${t('test.protocols.ftms.dataFieldSetup')}`);
-                this.logInteraction(`INFO - Test: Subscribing to ${protocolName} notifications (using FTMS protocol).`);
-                await this.monitorBikeData();
-                this.logInteraction(`INFO - Test: Subscribed to notifications and initial commands sent for ${protocolName}.`);
-                
-                this.updateProgress(40, `${protocolName} ${t('test.protocols.ftms.controlTest')}`);
-                this.logInteraction(`INFO - Test: Starting ${protocolName} control point tests (using FTMS protocol).`);
-                await this.testControlPoints();
-                this.logInteraction(`INFO - Test: Control point tests completed for ${protocolName}.`);
-                
-                const elapsed = Date.now() - this.startTime;
-                const remainingTime = Math.max(0, this.testDuration - elapsed);
-                
-                if (remainingTime > 0) {
-                    this.updateProgress(50, `${protocolName} ${t('test.protocols.ftms.dataCollection')}`);
-                    this.logInteraction(`INFO - Test: Starting data collection phase for ${protocolName} for ${remainingTime / 1000} seconds.`);
-                    await this.runDataCollection(remainingTime);
-                    this.logInteraction(`INFO - Test: Data collection phase ended for ${protocolName}.`);
-                }
-                
-                this.updateProgress(90, `${protocolName} ${t('test.protocols.ftms.compatibilityAnalysis')}`);
-                this.mergeFtmsManagerLogs();
-                this.testResults = finalizeTestReport(this.testResults);
-                this.updateProgress(100, `${protocolName} ${t('test.protocols.ftms.complete')}`);
-                if (this.onTestComplete) {
-                    this.onTestComplete(this.testResults);
-                }
-            } else if (this.testResults.supportedProtocols.includes("CSC")) {
-                // CSC 프로토콜 테스트 (우선순위 8)
-                this.updateProgress(30, t('test.protocols.csc.monitoring'));
-                this.logInteraction('INFO - Test: Starting CSC protocol testing.');
-                await this.monitorCscData();
-                
-                const elapsed = Date.now() - this.startTime;
-                const remainingTime = Math.max(0, this.testDuration - elapsed);
-                
-                if (remainingTime > 0) {
-                    this.updateProgress(50, t('test.protocols.csc.dataCollection'));
-                    await this.waitWithEarlyExit(remainingTime);
-                }
-                
-                this.mergeFtmsManagerLogs();
-                this.testResults = finalizeTestReport(this.testResults);
-                this.updateProgress(100, t('test.protocols.csc.complete'));
-                if (this.onTestComplete) {
-                    this.onTestComplete(this.testResults);
-                }
-            } else if (this.testResults.supportedProtocols.includes("NUS")) {
-                // NUS 프로토콜 감지 (우선순위 낮음 - 실제 테스트 안함)
-                this.logInteraction('INFO - Test: NUS protocol detected but not tested (low priority).');
-                this.testResults.reasons.push(t('test.protocols.nus.detectedButNotTested'));
-                this.mergeFtmsManagerLogs();
-                this.testResults = finalizeTestReport(this.testResults);
-                this.updateProgress(100, t('test.protocols.nus.complete'));
-                if (this.onTestComplete) {
-                    this.onTestComplete(this.testResults);
-                }
-            } else if (this.testResults.supportedProtocols.includes("HRS")) {
-                // HRS 프로토콜 감지 (우선순위 낮음 - 실제 테스트 안함)
-                this.logInteraction('INFO - Test: HRS protocol detected but not tested (low priority).');
-                this.testResults.reasons.push(t('test.protocols.hrs.detectedButNotTested'));
-                this.mergeFtmsManagerLogs();
-                this.testResults = finalizeTestReport(this.testResults);
-                this.updateProgress(100, t('test.protocols.hrs.complete'));
-                if (this.onTestComplete) {
-                    this.onTestComplete(this.testResults);
-                }
-            } else if (this.testResults.supportedProtocols.includes("BMS")) {
-                // BMS 프로토콜 감지 (우선순위 낮음 - 실제 테스트 안함)
-                this.logInteraction('INFO - Test: BMS protocol detected but not tested (low priority).');
-                this.testResults.reasons.push(t('test.protocols.bms.detectedButNotTested'));
-                this.mergeFtmsManagerLogs();
-                this.testResults = finalizeTestReport(this.testResults);
-                this.updateProgress(100, t('test.protocols.bms.complete'));
-                if (this.onTestComplete) {
-                    this.onTestComplete(this.testResults);
-                }
-            } else if (this.testResults.supportedProtocols.includes("DIS")) {
-                // DIS 프로토콜 감지 (우선순위 낮음 - 실제 테스트 안함)
-                this.logInteraction('INFO - Test: DIS protocol detected but not tested (low priority).');
-                this.testResults.reasons.push(t('test.protocols.dis.detectedButNotTested'));
-                this.mergeFtmsManagerLogs();
-                this.testResults = finalizeTestReport(this.testResults);
-                this.updateProgress(100, t('test.protocols.dis.complete'));
-                if (this.onTestComplete) {
-                    this.onTestComplete(this.testResults);
-                }
-            } else {
-                // No supported protocols
-                this.testResults.reasons.push(t('test.protocols.noSupportedProtocols'));
-                this.mergeFtmsManagerLogs();
-                this.testResults = finalizeTestReport(this.testResults);
-                this.updateProgress(100, t('test.protocols.incompatibleProtocol'));
-                if (this.onTestComplete) {
-                    this.onTestComplete(this.testResults);
-                }
+        // FTMS, YAFIT_S3, YAFIT_S4 (FTMS 기반 프로토콜) 우선
+        let protocolName = null;
+        if (this.testResults.supportedProtocols.includes("FTMS")) {
+            protocolName = "FTMS";
+        } else if (this.testResults.supportedProtocols.includes("YAFIT_S3")) {
+            protocolName = "YAFIT_S3";
+        } else if (this.testResults.supportedProtocols.includes("YAFIT_S4")) {
+            protocolName = "YAFIT_S4";
+        }
+        if (protocolName) {
+            this.updateProgress(20, `${protocolName} ${t('test.protocols.ftms.supportRange')}`);
+            this.logInteraction(`INFO - Test: Reading supported ${protocolName} ranges (using FTMS protocol).`);
+            await this.readSupportRanges();
+            this.logInteraction(`INFO - Test: Finished reading supported ranges for ${protocolName}.`);
+            this.updateProgress(30, `${protocolName} ${t('test.protocols.ftms.dataFieldSetup')}`);
+            this.logInteraction(`INFO - Test: Subscribing to ${protocolName} notifications (using FTMS protocol).`);
+            await this.monitorBikeData();
+            this.logInteraction(`INFO - Test: Subscribed to notifications and initial commands sent for ${protocolName}.`);
+            this.updateProgress(40, `${protocolName} ${t('test.protocols.ftms.controlTest')}`);
+            this.logInteraction(`INFO - Test: Starting ${protocolName} control point tests (using FTMS protocol).`);
+            await this.testControlPoints();
+            this.logInteraction(`INFO - Test: Control point tests completed for ${protocolName}.`);
+            const elapsed = Date.now() - this.startTime;
+            const remainingTime = Math.max(0, this.testDuration - elapsed);
+            if (remainingTime > 0) {
+                this.updateProgress(50, `${protocolName} ${t('test.protocols.ftms.dataCollection')}`);
+                this.logInteraction(`INFO - Test: Starting data collection phase for ${protocolName} for ${remainingTime / 1000} seconds.`);
+                await this.runDataCollection(remainingTime);
+                this.logInteraction(`INFO - Test: Data collection phase ended for ${protocolName}.`);
             }
+            this.updateProgress(90, `${protocolName} ${t('test.protocols.ftms.compatibilityAnalysis')}`);
+            this.mergeFtmsManagerLogs();
+            this.testResults = finalizeTestReport(this.testResults);
+            this.updateProgress(100, `${protocolName} ${t('test.protocols.ftms.complete')}`);
+            if (this.onTestComplete) {
+                this.onTestComplete(this.testResults);
+            }
+            return this.testResults;
+        }
+        // 커스텀 프로토콜들 (MOBI, REBORN, TACX, FITSHOW)
+        if (this.testResults.supportedProtocols.includes("MOBI")) {
+            this.updateProgress(30, t('test.protocols.mobi.monitoring'));
+            this.logInteraction('INFO - Test: Starting Mobi protocol testing (read-only).');
+            await this.monitorMobiData();
+            const elapsed = Date.now() - this.startTime;
+            const remainingTime = Math.max(0, this.testDuration - elapsed);
+            if (remainingTime > 0) {
+                this.updateProgress(50, t('test.protocols.mobi.dataCollection'));
+                await this.waitWithEarlyExit(remainingTime);
+            }
+            this.mergeFtmsManagerLogs();
+            this.testResults = finalizeTestReport(this.testResults);
+            this.updateProgress(100, t('test.protocols.mobi.complete'));
+            if (this.onTestComplete) {
+                this.onTestComplete(this.testResults);
+            }
+            return this.testResults;
+        }
+        if (this.testResults.supportedProtocols.includes("REBORN")) {
+            this.updateProgress(30, t('test.protocols.reborn.monitoring'));
+            this.logInteraction('INFO - Test: Starting Reborn protocol testing (authentication + data only).');
+            await this.monitorRebornData();
+            this.logInteraction('INFO - Test: Skipping control point tests for Reborn (authentication-only protocol).');
+            const elapsed = Date.now() - this.startTime;
+            const remainingTime = Math.max(0, this.testDuration - elapsed);
+            if (remainingTime > 0) {
+                this.updateProgress(50, t('test.protocols.reborn.dataCollection'));
+                this.logInteraction('INFO - Test: Please pedal to generate data for Reborn protocol testing.');
+                await this.runDataCollection(remainingTime);
+            }
+            this.mergeFtmsManagerLogs();
+            this.testResults = finalizeTestReport(this.testResults);
+            this.updateProgress(100, t('test.protocols.reborn.complete'));
+            if (this.onTestComplete) {
+                this.onTestComplete(this.testResults);
+            }
+            return this.testResults;
+        }
+        if (this.testResults.supportedProtocols.includes("TACX")) {
+            this.updateProgress(30, t('test.protocols.tacx.monitoring'));
+            this.logInteraction('INFO - Test: Starting Tacx Neo protocol testing (with user interaction control commands).');
+            await this.monitorBikeData();
+            this.updateProgress(40, t('test.protocols.tacx.controlTest'));
+            this.logInteraction('INFO - Test: Starting Tacx Neo user interaction control point tests.');
+            await this.testTacxControlPointsWithUserInteraction();
+            const elapsed = Date.now() - this.startTime;
+            const remainingTime = Math.max(0, this.testDuration - elapsed);
+            if (remainingTime > 0) {
+                this.updateProgress(50, t('test.protocols.tacx.dataCollection'));
+                await this.waitWithEarlyExit(remainingTime);
+            }
+            this.mergeFtmsManagerLogs();
+            this.testResults = finalizeTestReport(this.testResults);
+            this.updateProgress(100, t('test.protocols.tacx.complete'));
+            if (this.onTestComplete) {
+                this.onTestComplete(this.testResults);
+            }
+            return this.testResults;
+        }
+        if (this.testResults.supportedProtocols.includes("FITSHOW")) {
+            this.updateProgress(30, t('test.protocols.fitshow.monitoring'));
+            this.logInteraction('INFO - Test: Starting FitShow protocol testing (with control commands).');
+            await this.monitorBikeData();
+            const elapsed = Date.now() - this.startTime;
+            const remainingTime = Math.max(0, this.testDuration - elapsed);
+            if (remainingTime > 0) {
+                this.updateProgress(50, t('test.protocols.fitshow.dataCollection'));
+                await this.waitWithEarlyExit(remainingTime);
+            }
+            this.mergeFtmsManagerLogs();
+            this.testResults = finalizeTestReport(this.testResults);
+            this.updateProgress(100, t('test.protocols.fitshow.complete'));
+            if (this.onTestComplete) {
+                this.onTestComplete(this.testResults);
+            }
+            return this.testResults;
+        }
+        // 3. CPS
+        if (this.testResults.supportedProtocols.includes("CPS")) {
+            this.updateProgress(30, t('test.protocols.cps.monitoring'));
+            this.logInteraction('INFO - Test: Starting CPS protocol testing (data only, no control commands).');
+            await this.monitorCpsData();
+            this.logInteraction('INFO - Test: Skipping control point tests for CPS (data-only protocol).');
+            const elapsed = Date.now() - this.startTime;
+            const remainingTime = Math.max(0, this.testDuration - elapsed);
+            if (remainingTime > 0) {
+                this.updateProgress(50, t('test.protocols.cps.dataCollection'));
+                this.logInteraction('INFO - Test: Please pedal to generate data for CPS protocol testing.');
+                await this.runDataCollection(remainingTime);
+            }
+            this.mergeFtmsManagerLogs();
+            this.testResults = finalizeTestReport(this.testResults);
+            this.updateProgress(100, t('test.protocols.cps.complete'));
+            if (this.onTestComplete) {
+                this.onTestComplete(this.testResults);
+            }
+            return this.testResults;
+        }
+        // 4. CSC
+        if (this.testResults.supportedProtocols.includes("CSC")) {
+            this.updateProgress(30, t('test.protocols.csc.monitoring'));
+            this.logInteraction('INFO - Test: Starting CSC protocol testing.');
+            await this.monitorCscData();
+            const elapsed = Date.now() - this.startTime;
+            const remainingTime = Math.max(0, this.testDuration - elapsed);
+            if (remainingTime > 0) {
+                this.updateProgress(50, t('test.protocols.csc.dataCollection'));
+                await this.waitWithEarlyExit(remainingTime);
+            }
+            this.mergeFtmsManagerLogs();
+            this.testResults = finalizeTestReport(this.testResults);
+            this.updateProgress(100, t('test.protocols.csc.complete'));
+            if (this.onTestComplete) {
+                this.onTestComplete(this.testResults);
+            }
+            return this.testResults;
+        }
+        // 기타 표준 프로토콜들 (NUS, HRS, BMS, DIS)
+        if (this.testResults.supportedProtocols.includes("NUS")) {
+            this.logInteraction('INFO - Test: NUS protocol detected but not tested (low priority).');
+            this.testResults.reasons.push(t('test.protocols.nus.detectedButNotTested'));
+            this.mergeFtmsManagerLogs();
+            this.testResults = finalizeTestReport(this.testResults);
+            this.updateProgress(100, t('test.protocols.nus.complete'));
+            if (this.onTestComplete) {
+                this.onTestComplete(this.testResults);
+            }
+            return this.testResults;
+        }
+        if (this.testResults.supportedProtocols.includes("HRS")) {
+            this.logInteraction('INFO - Test: HRS protocol detected but not tested (low priority).');
+            this.testResults.reasons.push(t('test.protocols.hrs.detectedButNotTested'));
+            this.mergeFtmsManagerLogs();
+            this.testResults = finalizeTestReport(this.testResults);
+            this.updateProgress(100, t('test.protocols.hrs.complete'));
+            if (this.onTestComplete) {
+                this.onTestComplete(this.testResults);
+            }
+            return this.testResults;
+        }
+        if (this.testResults.supportedProtocols.includes("BMS")) {
+            this.logInteraction('INFO - Test: BMS protocol detected but not tested (low priority).');
+            this.testResults.reasons.push(t('test.protocols.bms.detectedButNotTested'));
+            this.mergeFtmsManagerLogs();
+            this.testResults = finalizeTestReport(this.testResults);
+            this.updateProgress(100, t('test.protocols.bms.complete'));
+            if (this.onTestComplete) {
+                this.onTestComplete(this.testResults);
+            }
+            return this.testResults;
+        }
+        if (this.testResults.supportedProtocols.includes("DIS")) {
+            this.logInteraction('INFO - Test: DIS protocol detected but not tested (low priority).');
+            this.testResults.reasons.push(t('test.protocols.dis.detectedButNotTested'));
+            this.mergeFtmsManagerLogs();
+            this.testResults = finalizeTestReport(this.testResults);
+            this.updateProgress(100, t('test.protocols.dis.complete'));
+            if (this.onTestComplete) {
+                this.onTestComplete(this.testResults);
+            }
+            return this.testResults;
+        }
+        // No supported protocols
+        this.testResults.reasons.push(t('test.protocols.noSupportedProtocols'));
+        this.mergeFtmsManagerLogs();
+        this.testResults = finalizeTestReport(this.testResults);
+        this.updateProgress(100, t('test.protocols.incompatibleProtocol'));
+        if (this.onTestComplete) {
+            this.onTestComplete(this.testResults);
+        }
+        return this.testResults;
             
         } catch (error) {
             console.error("Device test error:", error);

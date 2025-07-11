@@ -137,50 +137,39 @@ export class ProtocolDetector {
 
     public detectAllProtocols(): ProtocolType[] {
         const detected: ProtocolType[] = [];
+        // 1. FTMS
+        if (this._isFTMSSensor) detected.push(ProtocolType.FTMS);
+        // 2. Custom protocols
         if (this._isMobiSensor) detected.push(ProtocolType.MOBI);
         if (this._isRebornSensor) detected.push(ProtocolType.REBORN);
         if (this._isTacxNeoSensor) detected.push(ProtocolType.TACX);
         if (this._isFSSensor) detected.push(ProtocolType.FITSHOW);
         if (this._isS3Sensor) detected.push(ProtocolType.YAFIT_S3);
         if (this._isS4Sensor) detected.push(ProtocolType.YAFIT_S4);
-        if (this._isFTMSSensor) detected.push(ProtocolType.FTMS);
+        // 3. CPS
+        if (this._isCPSSensor) detected.push(ProtocolType.CPS);
+        // 4. CSC
         if (this._isCSCSensor) detected.push(ProtocolType.CSC);
-
-        // 새로운 표준 프로토콜들 (우선순위 낮음)
+        // 기타 표준 프로토콜들 (우선순위 낮음)
         if (this._isNUSSensor) detected.push(ProtocolType.NUS);
         if (this._isHRSSensor) detected.push(ProtocolType.HRS);
-        if (this._isCPSSensor) {
-            detected.push(ProtocolType.CPS);
-            this.logManager.logInfo("CPS protocol added to detected protocols");
-        }
         if (this._isBMSSensor) detected.push(ProtocolType.BMS);
         if (this._isDISSensor) detected.push(ProtocolType.DIS);
-
         // Fallback to CSC if no other protocol is detected
         if (detected.length === 0) {
             detected.push(ProtocolType.CSC);
         }
-        
         this.logManager.logInfo(`All detected protocols: ${detected.join(', ')}`);
         return detected;
     }
 
     private determineProtocolByPriority(): ProtocolType {
-        // CPS를 최우선으로 선택 (실시간 데이터 테스트용)
-        if (this._isCPSSensor) {
-            this.logManager.logInfo("Detected CPS sensor - using CPS protocol (highest priority)");
-            return ProtocolType.CPS;
-        }
-        
-        // FTMS가 있으면 우선적으로 선택 (완전한 Indoor Cycle 기능)
+        // 1. FTMS가 있으면 최우선
         if (this._isFTMSSensor) {
-            this.logManager.logInfo("Detected FTMS sensor - using standard FTMS protocol");
+            this.logManager.logInfo("Detected FTMS sensor - using standard FTMS protocol (highest priority)");
             return ProtocolType.FTMS;
         }
-        
-
-        
-        // 커스텀 프로토콜들 (기존 우선순위)
+        // 2. 커스텀 프로토콜들 (MOBI, REBORN, TACX, FITSHOW, YAFIT_S3, YAFIT_S4)
         if (this.isMobiSensor()) {
             this.logManager.logInfo("Detected Mobi sensor - using Mobi protocol");
             return ProtocolType.MOBI;
@@ -200,13 +189,17 @@ export class ProtocolDetector {
             this.logManager.logInfo("Detected YafitS4 sensor - using FTMS protocol");
             return ProtocolType.YAFIT_S4;
         }
-        
-                // CSC가 있으면 우선적으로 선택 (FTMS 다음)
+        // 3. CPS
+        if (this._isCPSSensor) {
+            this.logManager.logInfo("Detected CPS sensor - using CPS protocol");
+            return ProtocolType.CPS;
+        }
+        // 4. CSC
         if (this._isCSCSensor) {
             this.logManager.logInfo("Detected CSC sensor - using CSC protocol");
             return ProtocolType.CSC;
-                }
-        // CSC (기존 fallback)
+        }
+        // Fallback
         this.logManager.logInfo("No specific protocol detected - using CSC protocol as fallback");
         return ProtocolType.CSC;
     }
