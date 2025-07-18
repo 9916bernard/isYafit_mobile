@@ -13,7 +13,7 @@ import {
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import Ionicons from 'react-native-vector-icons/Ionicons';
-import Clipboard from '@react-native-clipboard/clipboard'; // Added for clipboard functionality
+import * as Clipboard from 'expo-clipboard'; // Expo Clipboard 사용
 import { TestResults } from '../FtmsTestReport';
 import { useSafeAreaStyles } from '../styles/commonStyles';
 import { useTranslation } from 'react-i18next';
@@ -395,7 +395,7 @@ const TestReportScreen: React.FC<TestReportScreenProps> = ({ results, onClose })
   const handleCopyLogs = () => {
     if (results.interactionLogs && results.interactionLogs.length > 0) {
       const logText = results.interactionLogs.join('\n');
-      Clipboard.setString(logText);
+      Clipboard.setStringAsync(logText);
       Alert.alert(t('testReport.clipboard.success'), t('testReport.clipboard.copied'));
     } else {
       Alert.alert(t('testReport.clipboard.info'), t('testReport.clipboard.noLogs'));
