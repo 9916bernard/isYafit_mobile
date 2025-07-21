@@ -23,6 +23,7 @@ import { TestResults, formatRangeInfo } from '../FtmsTestReport';
 import { FTMSTester, UserInteractionRequest } from '../FtmsTester';
 import { Device } from 'react-native-ble-plx';
 import { FTMSManager } from '../FtmsManager'; // Your existing manager
+import { ProtocolType } from '../FtmsManager/protocols';
 import TestReportScreen from './TestReportScreen';
 import LogDisplay from '../LogDisplay'; // Import the Log Display component
 import { useSafeAreaStyles } from '../styles/commonStyles';
@@ -75,6 +76,11 @@ const TestScreen: React.FC<TestScreenProps> = ({ device, ftmsManager, onClose })
   const helpIconRef = useRef(null);
   const helpPopupAnim = useRef(new Animated.Value(0)).current;
   const screenWidth = Dimensions.get('window').width;
+
+  // 프로토콜 드롭다운 상태
+  const [showProtocolDropdown, setShowProtocolDropdown] = useState(false);
+  const [allProtocols, setAllProtocols] = useState<string[]>(ftmsManager.getAllDetectedProtocols() as string[]);
+  const [selectedProtocol, setSelectedProtocol] = useState<string | null>(ftmsManager.getDetectedProtocol());
 
   useEffect(() => {
     let isMounted = true;
@@ -173,6 +179,11 @@ const TestScreen: React.FC<TestScreenProps> = ({ device, ftmsManager, onClose })
     };
   }, [ftmsManager]); // showLogs 제거하여 불필요한 재실행 방지
 
+  useEffect(() => {
+    setAllProtocols(ftmsManager.getAllDetectedProtocols() as string[]);
+    setSelectedProtocol(ftmsManager.getDetectedProtocol());
+  }, [ftmsManager]);
+
   // 별도의 useEffect로 로그 스크롤 처리
   useEffect(() => {
     if (showLogs && logScrollViewRef.current) {
@@ -235,6 +246,7 @@ const TestScreen: React.FC<TestScreenProps> = ({ device, ftmsManager, onClose })
   };
 
   const handleStartTest = async () => {
+    console.log('[TestScreen] Starting test with protocol:', ftmsManager.getDetectedProtocol());
     try {
       if (!testerRef.current) {
         testerRef.current = new FTMSTester(ftmsManager);
@@ -266,8 +278,7 @@ const TestScreen: React.FC<TestScreenProps> = ({ device, ftmsManager, onClose })
       ]).start();
 
       // Run the test with progress updates
-      const _results = await testerRef.current.runDeviceTest(
-        device,
+      const _results = await testerRef.current.testCurrentProtocol(
         13000, // 10 seconds test
         (progress, message) => {
           setProgress(progress);
@@ -483,6 +494,30 @@ const TestScreen: React.FC<TestScreenProps> = ({ device, ftmsManager, onClose })
     });
   };
 
+  // 프로토콜 드롭다운 토글
+  const handleProtocolDropdownToggle = () => {
+    if (isRunning || testCompleted) return;
+    setShowProtocolDropdown((prev) => !prev);
+    console.log('[TestScreen] Protocol dropdown toggled:', !showProtocolDropdown);
+  };
+  // 프로토콜 선택 및 재연결
+  const handleProtocolSelect = async (protocol: string) => {
+    setShowProtocolDropdown(false);
+    setSelectedProtocol(protocol);
+    setMessage(t('test.reconnecting'));
+    console.log('[TestScreen] Protocol selected:', protocol);
+    try {
+      console.log('[TestScreen] Reconnecting with protocol:', protocol);
+      await ftmsManager.reconnectWithProtocol(ProtocolType[protocol as keyof typeof ProtocolType]);
+      setSelectedProtocol(protocol);
+      setMessage(t('test.ready'));
+      console.log('[TestScreen] Protocol reconnect success!');
+    } catch (error) {
+      setMessage(`${t('common.error')}: ${error instanceof Error ? error.message : String(error)}`);
+      console.error('[TestScreen] Protocol reconnect error:', error);
+    }
+  };
+
   return (
     <View style={safeAreaStyles.safeContainerMinPadding}>
       <Animated.View 
@@ -496,6 +531,43 @@ const TestScreen: React.FC<TestScreenProps> = ({ device, ftmsManager, onClose })
           showsVerticalScrollIndicator={false}
         >
           <View style={styles.container}>
+            {/* 프로토콜 드롭다운 UI */}
+            <View style={styles.protocolDropdownContainer}>
+              <TouchableOpacity
+                style={[styles.protocolDropdownButton, (isRunning || testCompleted) && styles.protocolDropdownButtonDisabled]}
+                onPress={handleProtocolDropdownToggle}
+                disabled={isRunning || testCompleted}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.protocolDropdownButtonText}>
+                  {selectedProtocol || t('test.selectProtocol')}
+                </Text>
+                <MaterialCommunityIcons name={showProtocolDropdown ? 'chevron-up' : 'chevron-down'} size={18} color="#00c663" />
+              </TouchableOpacity>
+              {showProtocolDropdown && (
+                <View style={styles.protocolDropdownList}>
+                  {allProtocols && allProtocols.length > 0 ? (
+                    allProtocols.map((protocol) => (
+                      <TouchableOpacity
+                        key={protocol}
+                        style={styles.protocolDropdownItem}
+                        onPress={() => handleProtocolSelect(protocol)}
+                        disabled={protocol === selectedProtocol}
+                      >
+                        <Text style={[
+                          styles.protocolDropdownItemText,
+                          protocol === selectedProtocol && styles.protocolDropdownItemTextSelected
+                        ]}>
+                          {protocol}
+                        </Text>
+                      </TouchableOpacity>
+                    ))
+                  ) : (
+                    <Text style={styles.protocolDropdownItemText}>{t('test.noProtocols')}</Text>
+                  )}
+                </View>
+              )}
+            </View>
             <View style={styles.header}>
               <View style={styles.headerContent}>
                 <Text style={styles.title}>{t('test.title')}</Text>
@@ -1733,6 +1805,60 @@ const styles = StyleSheet.create({
     lineHeight: 16,
     marginBottom: 8,
     textAlign: 'left',
+  },
+  protocolDropdownContainer: {
+    marginBottom: 16,
+    alignItems: 'center',
+    zIndex: 20,
+  },
+  protocolDropdownButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#232b38',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#374151',
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    minWidth: 120,
+  },
+  protocolDropdownButtonDisabled: {
+    opacity: 0.5,
+  },
+  protocolDropdownButtonText: {
+    color: '#00c663',
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginRight: 8,
+  },
+  protocolDropdownList: {
+    position: 'absolute',
+    top: 44,
+    left: 0,
+    right: 0,
+    backgroundColor: '#232b38',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#374151',
+    zIndex: 30,
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+  },
+  protocolDropdownItem: {
+    paddingVertical: 8,
+    paddingHorizontal: 6,
+  },
+  protocolDropdownItemText: {
+    color: '#fff',
+    fontSize: 15,
+  },
+  protocolDropdownItemTextSelected: {
+    color: '#00c663',
+    fontWeight: 'bold',
   },
 });
 

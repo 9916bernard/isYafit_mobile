@@ -200,7 +200,7 @@ const RealtimeDataScreen: React.FC<RealtimeDataScreenProps> = ({
         <View style={styles.deviceInfo}>
           <Icon name="bluetooth" size={28} color="#00c663" />
           <TouchableOpacity onPress={handleDeviceNamePress} style={styles.deviceNameButton}>
-            <Text style={styles.deviceName}>{device.name || t('common.unknown')}</Text>
+          <Text style={styles.deviceName}>{device.name || t('common.unknown')}</Text>
             <Icon name={showProtocolDropdown ? 'chevron-up' : 'chevron-down'} size={18} color="#00c663" />
           </TouchableOpacity>
           <Text style={styles.deviceId}>{device.id.substring(0, 8)}...</Text>

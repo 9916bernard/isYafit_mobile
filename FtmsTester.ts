@@ -109,6 +109,7 @@ export class FTMSTester {
     }
 
     // Main testing flow
+    /*
     async runDeviceTest(
         device: Device, 
         duration: number = 20000,
@@ -394,6 +395,280 @@ export class FTMSTester {
             }
         }
         
+        return this.testResults;
+    }
+    */
+
+    // 현재 연결된 프로토콜로 바로 테스트 시작 (연결/프로토콜 감지 생략)
+    async testCurrentProtocol(
+        duration: number = 20000,
+        onProgressUpdate?: (_progress: number, _message: string) => void,
+        onTestComplete?: (_results: TestResults) => void
+    ): Promise<TestResults> {
+        if (this.isTestRunning) {
+            throw new Error(t('test.status.testRunning'));
+        }
+
+        this.testResults = initTestResults();
+        this.isTestRunning = true;
+        this.startTime = Date.now();
+        this.testDuration = duration;
+        this.onProgressUpdate = onProgressUpdate;
+        this.onTestComplete = onTestComplete;
+
+        // Update device info (이미 연결된 기기 사용)
+        const connectedDevice = this.ftmsManager.getConnectedDevice();
+        if (!connectedDevice) {
+            throw new Error(t('test.status.deviceNotConnected'));
+        }
+        this.testResults.deviceInfo = {
+            name: connectedDevice.name || 'Unknown Device',
+            address: connectedDevice.id,
+            services: []
+        };
+        this.testResults.connection.timestamp = this.startTime;
+        this.testResults.connection.status = true;
+
+        try {
+            // 프로토콜 정보는 이미 FTMSManager에 세팅되어 있다고 가정
+            const primaryProtocol = this.ftmsManager.getDetectedProtocol();
+            const allSupportedProtocols = this.ftmsManager.getAllDetectedProtocols();
+            this.testResults.supportedProtocols = allSupportedProtocols;
+            this.testResults.deviceInfo.protocol = primaryProtocol || 'Unavailable';
+            this.logInteraction(`INFO - Test: Using current protocol: ${primaryProtocol}`);
+
+            // primaryProtocol 기준으로 테스트 분기
+            if (primaryProtocol === ProtocolType.FTMS || primaryProtocol === ProtocolType.YAFIT_S3 || primaryProtocol === ProtocolType.YAFIT_S4) {
+                const protocolName = primaryProtocol;
+                this.updateProgress(20, `${protocolName} ${t('test.protocols.ftms.supportRange')}`);
+                this.logInteraction(`INFO - Test: Reading supported ${protocolName} ranges (using FTMS protocol).`);
+                await this.readSupportRanges();
+                this.logInteraction(`INFO - Test: Finished reading supported ranges for ${protocolName}.`);
+                this.updateProgress(30, `${protocolName} ${t('test.protocols.ftms.dataFieldSetup')}`);
+                this.logInteraction(`INFO - Test: Subscribing to ${protocolName} notifications (using FTMS protocol).`);
+                await this.monitorBikeData();
+                this.logInteraction(`INFO - Test: Subscribed to notifications and initial commands sent for ${protocolName}.`);
+                this.updateProgress(40, `${protocolName} ${t('test.protocols.ftms.controlTest')}`);
+                this.logInteraction(`INFO - Test: Starting ${protocolName} control point tests (using FTMS protocol).`);
+                await this.testControlPoints();
+                this.logInteraction(`INFO - Test: Control point tests completed for ${protocolName}.`);
+                const elapsed = Date.now() - this.startTime;
+                const remainingTime = Math.max(0, this.testDuration - elapsed);
+                if (remainingTime > 0) {
+                    this.updateProgress(50, `${protocolName} ${t('test.protocols.ftms.dataCollection')}`);
+                    this.logInteraction(`INFO - Test: Starting data collection phase for ${protocolName} for ${remainingTime / 1000} seconds.`);
+                    await this.runDataCollection(remainingTime);
+                    this.logInteraction(`INFO - Test: Data collection phase ended for ${protocolName}.`);
+                }
+                this.updateProgress(90, `${protocolName} ${t('test.protocols.ftms.compatibilityAnalysis')}`);
+                this.mergeFtmsManagerLogs();
+                this.testResults = finalizeTestReport(this.testResults);
+                this.updateProgress(100, `${protocolName} ${t('test.protocols.ftms.complete')}`);
+                if (this.onTestComplete) {
+                    this.onTestComplete(this.testResults);
+                }
+                return this.testResults;
+            }
+            if (primaryProtocol === ProtocolType.MOBI) {
+                this.updateProgress(30, t('test.protocols.mobi.monitoring'));
+                this.logInteraction('INFO - Test: Starting Mobi protocol testing (read-only).');
+                await this.monitorMobiData();
+                const elapsed = Date.now() - this.startTime;
+                const remainingTime = Math.max(0, this.testDuration - elapsed);
+                if (remainingTime > 0) {
+                    this.updateProgress(50, t('test.protocols.mobi.dataCollection'));
+                    await this.waitWithEarlyExit(remainingTime);
+                }
+                this.mergeFtmsManagerLogs();
+                this.testResults = finalizeTestReport(this.testResults);
+                this.updateProgress(100, t('test.protocols.mobi.complete'));
+                if (this.onTestComplete) {
+                    this.onTestComplete(this.testResults);
+                }
+                return this.testResults;
+            }
+            if (primaryProtocol === ProtocolType.REBORN) {
+                this.updateProgress(30, t('test.protocols.reborn.monitoring'));
+                this.logInteraction('INFO - Test: Starting Reborn protocol testing (authentication + data only).');
+                await this.monitorRebornData();
+                this.logInteraction('INFO - Test: Skipping control point tests for Reborn (authentication-only protocol).');
+                const elapsed = Date.now() - this.startTime;
+                const remainingTime = Math.max(0, this.testDuration - elapsed);
+                if (remainingTime > 0) {
+                    this.updateProgress(50, t('test.protocols.reborn.dataCollection'));
+                    this.logInteraction('INFO - Test: Please pedal to generate data for Reborn protocol testing.');
+                    await this.runDataCollection(remainingTime);
+                }
+                this.mergeFtmsManagerLogs();
+                this.testResults = finalizeTestReport(this.testResults);
+                this.updateProgress(100, t('test.protocols.reborn.complete'));
+                if (this.onTestComplete) {
+                    this.onTestComplete(this.testResults);
+                }
+                return this.testResults;
+            }
+            if (primaryProtocol === ProtocolType.TACX) {
+                this.updateProgress(30, t('test.protocols.tacx.monitoring'));
+                this.logInteraction('INFO - Test: Starting Tacx Neo protocol testing (with user interaction control commands).');
+                await this.monitorBikeData();
+                this.updateProgress(40, t('test.protocols.tacx.controlTest'));
+                this.logInteraction('INFO - Test: Starting Tacx Neo user interaction control point tests.');
+                await this.testTacxControlPointsWithUserInteraction();
+                const elapsed = Date.now() - this.startTime;
+                const remainingTime = Math.max(0, this.testDuration - elapsed);
+                if (remainingTime > 0) {
+                    this.updateProgress(50, t('test.protocols.tacx.dataCollection'));
+                    await this.waitWithEarlyExit(remainingTime);
+                }
+                this.mergeFtmsManagerLogs();
+                this.testResults = finalizeTestReport(this.testResults);
+                this.updateProgress(100, t('test.protocols.tacx.complete'));
+                if (this.onTestComplete) {
+                    this.onTestComplete(this.testResults);
+                }
+                return this.testResults;
+            }
+            if (primaryProtocol === ProtocolType.FITSHOW) {
+                this.updateProgress(30, t('test.protocols.fitshow.monitoring'));
+                this.logInteraction('INFO - Test: Starting FitShow protocol testing (with control commands).');
+                await this.monitorBikeData();
+                const elapsed = Date.now() - this.startTime;
+                const remainingTime = Math.max(0, this.testDuration - elapsed);
+                if (remainingTime > 0) {
+                    this.updateProgress(50, t('test.protocols.fitshow.dataCollection'));
+                    await this.waitWithEarlyExit(remainingTime);
+                }
+                this.mergeFtmsManagerLogs();
+                this.testResults = finalizeTestReport(this.testResults);
+                this.updateProgress(100, t('test.protocols.fitshow.complete'));
+                if (this.onTestComplete) {
+                    this.onTestComplete(this.testResults);
+                }
+                return this.testResults;
+            }
+            if (primaryProtocol === ProtocolType.CPS) {
+                this.updateProgress(30, t('test.protocols.cps.monitoring'));
+                this.logInteraction('INFO - Test: Starting CPS protocol testing (data only, no control commands).');
+                await this.monitorCpsData();
+                this.logInteraction('INFO - Test: Skipping control point tests for CPS (data-only protocol).');
+                const elapsed = Date.now() - this.startTime;
+                const remainingTime = Math.max(0, this.testDuration - elapsed);
+                if (remainingTime > 0) {
+                    this.updateProgress(50, t('test.protocols.cps.dataCollection'));
+                    this.logInteraction('INFO - Test: Please pedal to generate data for CPS protocol testing.');
+                    await this.runDataCollection(remainingTime);
+                }
+                this.mergeFtmsManagerLogs();
+                this.testResults = finalizeTestReport(this.testResults);
+                this.updateProgress(100, t('test.protocols.cps.complete'));
+                if (this.onTestComplete) {
+                    this.onTestComplete(this.testResults);
+                }
+                return this.testResults;
+            }
+            if (primaryProtocol === ProtocolType.CSC) {
+                this.updateProgress(30, t('test.protocols.csc.monitoring'));
+                this.logInteraction('INFO - Test: Starting CSC protocol testing.');
+                await this.monitorCscData();
+                const elapsed = Date.now() - this.startTime;
+                const remainingTime = Math.max(0, this.testDuration - elapsed);
+                if (remainingTime > 0) {
+                    this.updateProgress(50, t('test.protocols.csc.dataCollection'));
+                    await this.waitWithEarlyExit(remainingTime);
+                }
+                this.mergeFtmsManagerLogs();
+                this.testResults = finalizeTestReport(this.testResults);
+                this.updateProgress(100, t('test.protocols.csc.complete'));
+                if (this.onTestComplete) {
+                    this.onTestComplete(this.testResults);
+                }
+                return this.testResults;
+            }
+            // 기타 표준 프로토콜들 (NUS, HRS, BMS, DIS)
+            if (allSupportedProtocols.includes(ProtocolType.NUS)) {
+                this.logInteraction('INFO - Test: NUS protocol detected but not tested (low priority).');
+                this.testResults.reasons.push(t('test.protocols.nus.detectedButNotTested'));
+                this.mergeFtmsManagerLogs();
+                this.testResults = finalizeTestReport(this.testResults);
+                this.updateProgress(100, t('test.protocols.nus.complete'));
+                if (this.onTestComplete) {
+                    this.onTestComplete(this.testResults);
+                }
+                return this.testResults;
+            }
+            if (allSupportedProtocols.includes(ProtocolType.HRS)) {
+                this.logInteraction('INFO - Test: HRS protocol detected but not tested (low priority).');
+                this.testResults.reasons.push(t('test.protocols.hrs.detectedButNotTested'));
+                this.mergeFtmsManagerLogs();
+                this.testResults = finalizeTestReport(this.testResults);
+                this.updateProgress(100, t('test.protocols.hrs.complete'));
+                if (this.onTestComplete) {
+                    this.onTestComplete(this.testResults);
+                }
+                return this.testResults;
+            }
+            if (allSupportedProtocols.includes(ProtocolType.BMS)) {
+                this.logInteraction('INFO - Test: BMS protocol detected but not tested (low priority).');
+                this.testResults.reasons.push(t('test.protocols.bms.detectedButNotTested'));
+                this.mergeFtmsManagerLogs();
+                this.testResults = finalizeTestReport(this.testResults);
+                this.updateProgress(100, t('test.protocols.bms.complete'));
+                if (this.onTestComplete) {
+                    this.onTestComplete(this.testResults);
+                }
+                return this.testResults;
+            }
+            if (allSupportedProtocols.includes(ProtocolType.DIS)) {
+                this.logInteraction('INFO - Test: DIS protocol detected but not tested (low priority).');
+                this.testResults.reasons.push(t('test.protocols.dis.detectedButNotTested'));
+                this.mergeFtmsManagerLogs();
+                this.testResults = finalizeTestReport(this.testResults);
+                this.updateProgress(100, t('test.protocols.dis.complete'));
+                if (this.onTestComplete) {
+                    this.onTestComplete(this.testResults);
+                }
+                return this.testResults;
+            }
+            // No supported protocols
+            this.testResults.reasons.push(t('test.protocols.noSupportedProtocols'));
+            this.mergeFtmsManagerLogs();
+            this.testResults = finalizeTestReport(this.testResults);
+            this.updateProgress(100, t('test.protocols.incompatibleProtocol'));
+            if (this.onTestComplete) {
+                this.onTestComplete(this.testResults);
+            }
+            return this.testResults;
+        } catch (error) {
+            console.error("Device test error:", error);
+            this.testResults.issuesFound.push(`${t('test.status.testError')}: ${error instanceof Error ? error.message : String(error)}`);
+            this.logInteraction(`ERROR - Test: Critical error during test: ${error instanceof Error ? error.message : String(error)}`);
+            this.mergeFtmsManagerLogs(); // Merge logs even in case of error
+            this.testResults = finalizeTestReport(this.testResults);
+            if (this.onTestComplete) {
+                this.onTestComplete(this.testResults);
+            }
+        }
+        this.isTestRunning = false;
+        if (this.testTimeoutId) {
+            clearTimeout(this.testTimeoutId);
+            this.testTimeoutId = undefined; // Clear the timeout ID
+        }            // Wait a bit before disconnecting to allow any pending responses to complete
+        this.logInteraction('INFO - Test: Waiting 3 seconds before disconnecting to allow pending operations to complete...');
+        await this.waitWithEarlyExit(3000);
+        // Disconnect the device
+        if (this.ftmsManager.getConnectedDevice()) {
+            this.logInteraction('INFO - Test: Attempting to disconnect from device post-test.');
+            try {
+                await this.ftmsManager.disconnectDevice();
+                // Logs from ftmsManager.disconnectDevice() will be captured if mergeFtmsManagerLogs was called again,
+                // but we've already merged. FtmsTester's own log is sufficient here.
+                this.logInteraction('INFO - Test: Device disconnected successfully post-test.');
+            } catch (disconnectError) {
+                const errorMessage = disconnectError instanceof Error ? disconnectError.message : String(disconnectError);
+                console.error("Error during post-test device disconnection:", disconnectError);
+                this.logInteraction(`ERROR - Test: Failed to disconnect device post-test: ${errorMessage}`);
+            }
+        }
         return this.testResults;
     }
 
