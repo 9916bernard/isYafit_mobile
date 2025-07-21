@@ -531,43 +531,6 @@ const TestScreen: React.FC<TestScreenProps> = ({ device, ftmsManager, onClose })
           showsVerticalScrollIndicator={false}
         >
           <View style={styles.container}>
-            {/* 프로토콜 드롭다운 UI */}
-            <View style={styles.protocolDropdownContainer}>
-              <TouchableOpacity
-                style={[styles.protocolDropdownButton, (isRunning || testCompleted) && styles.protocolDropdownButtonDisabled]}
-                onPress={handleProtocolDropdownToggle}
-                disabled={isRunning || testCompleted}
-                activeOpacity={0.8}
-              >
-                <Text style={styles.protocolDropdownButtonText}>
-                  {selectedProtocol || t('test.selectProtocol')}
-                </Text>
-                <MaterialCommunityIcons name={showProtocolDropdown ? 'chevron-up' : 'chevron-down'} size={18} color="#00c663" />
-              </TouchableOpacity>
-              {showProtocolDropdown && (
-                <View style={styles.protocolDropdownList}>
-                  {allProtocols && allProtocols.length > 0 ? (
-                    allProtocols.map((protocol) => (
-                      <TouchableOpacity
-                        key={protocol}
-                        style={styles.protocolDropdownItem}
-                        onPress={() => handleProtocolSelect(protocol)}
-                        disabled={protocol === selectedProtocol}
-                      >
-                        <Text style={[
-                          styles.protocolDropdownItemText,
-                          protocol === selectedProtocol && styles.protocolDropdownItemTextSelected
-                        ]}>
-                          {protocol}
-                        </Text>
-                      </TouchableOpacity>
-                    ))
-                  ) : (
-                    <Text style={styles.protocolDropdownItemText}>{t('test.noProtocols')}</Text>
-                  )}
-                </View>
-              )}
-            </View>
             <View style={styles.header}>
               <View style={styles.headerContent}>
                 <Text style={styles.title}>{t('test.title')}</Text>
@@ -584,6 +547,47 @@ const TestScreen: React.FC<TestScreenProps> = ({ device, ftmsManager, onClose })
                 <MaterialCommunityIcons name="test-tube" size={28} color="#ffffff" />
               </View>
             </View>
+            {/* 프로토콜 선택 드롭다운 UI */}
+            {!isRunning && !testCompleted && (
+              <View style={styles.protocolSelectionSection}>
+                <Text style={styles.sectionLabel}>{t('test.protocolSelection')}</Text>
+                <View style={styles.protocolDropdownContainer}>
+                  <TouchableOpacity
+                    style={styles.protocolDropdownButton}
+                    onPress={handleProtocolDropdownToggle}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={styles.protocolDropdownButtonText}>
+                      {selectedProtocol || t('test.selectProtocol')}
+                    </Text>
+                    <MaterialCommunityIcons name={showProtocolDropdown ? 'chevron-up' : 'chevron-down'} size={18} color="#00c663" />
+                  </TouchableOpacity>
+                  {showProtocolDropdown && (
+                    <View style={styles.protocolDropdownList}>
+                      {allProtocols && allProtocols.length > 0 ? (
+                        allProtocols.map((protocol) => (
+                          <TouchableOpacity
+                            key={protocol}
+                            style={styles.protocolDropdownItem}
+                            onPress={() => handleProtocolSelect(protocol)}
+                            disabled={protocol === selectedProtocol}
+                          >
+                            <Text style={[
+                              styles.protocolDropdownItemText,
+                              protocol === selectedProtocol && styles.protocolDropdownItemTextSelected
+                            ]}>
+                              {protocol}
+                            </Text>
+                          </TouchableOpacity>
+                        ))
+                      ) : (
+                        <Text style={styles.protocolDropdownItemText}>{t('test.noProtocols')}</Text>
+                      )}
+                    </View>
+                  )}
+                </View>
+              </View>
+            )}
               {/* Toggle Logs Button - Only show when test is running or not completed */}
             {(isRunning || !testCompleted) && (
               <TouchableOpacity 
@@ -894,9 +898,10 @@ const TestScreen: React.FC<TestScreenProps> = ({ device, ftmsManager, onClose })
               )}
             </View>
             <TouchableOpacity
-              style={styles.backButton}
+              style={[styles.backButton, isRunning && styles.backButtonDisabled]}
               onPress={handleBackPress}
               activeOpacity={0.8}
+              disabled={isRunning}
             >
               <Ionicons name="arrow-back" size={20} color="#ffffff" />
               <Text style={styles.backButtonText}>{t('test.back')}</Text>
@@ -1499,6 +1504,9 @@ const styles = StyleSheet.create({
     fontSize: 16,
     marginLeft: 12,
   },
+  backButtonDisabled: {
+    opacity: 0.5,
+  },
   logContainer: {
     backgroundColor: '#242c3b',
     borderRadius: 8,
@@ -1806,10 +1814,21 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     textAlign: 'left',
   },
-  protocolDropdownContainer: {
-    marginBottom: 16,
-    alignItems: 'center',
+  protocolSelectionSection: {
+    backgroundColor: '#242c3b',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
     zIndex: 20,
+  },
+  sectionLabel: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginBottom: 12,
+  },
+  protocolDropdownContainer: {
+    position: 'relative',
   },
   protocolDropdownButton: {
     flexDirection: 'row',
@@ -1820,7 +1839,8 @@ const styles = StyleSheet.create({
     borderColor: '#374151',
     paddingVertical: 8,
     paddingHorizontal: 16,
-    minWidth: 120,
+    minWidth: '100%',
+    justifyContent: 'space-between',
   },
   protocolDropdownButtonDisabled: {
     opacity: 0.5,
@@ -1833,7 +1853,7 @@ const styles = StyleSheet.create({
   },
   protocolDropdownList: {
     position: 'absolute',
-    top: 44,
+    top: 42,
     left: 0,
     right: 0,
     backgroundColor: '#232b38',
