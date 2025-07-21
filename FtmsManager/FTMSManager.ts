@@ -320,6 +320,30 @@ export class FTMSManager {
         return this.connectedDevice;
     }
 
+    /**
+     * 연결된 기기에서 선택한 프로토콜로 재연결합니다.
+     * @param protocol 사용자가 선택한 ProtocolType
+     */
+    public async reconnectWithProtocol(protocol: ProtocolType): Promise<boolean> {
+        if (!this.connectedDevice) {
+            this.logManager.logError("No device connected for protocol reconnection");
+            throw new Error("No device connected");
+        }
+        // 연결된 기기 id 저장
+        const deviceId = this.connectedDevice.id;
+        // 연결 해제
+        await this.disconnectDevice();
+        // 실제로 다시 연결
+        this.connectedDevice = await this.bluetoothManager.connectToDevice(deviceId);
+        // 프로토콜 강제 지정
+        this.detectedProtocol = protocol;
+        this.logManager.logInfo(`Reconnecting with protocol: ${protocol}`);
+        // 프로토콜 초기화
+        await this.initializeProtocol();
+        // 프로토콜별 연결 시퀀스 실행
+        return await this.connectSequence();
+    }
+
     getDetectedProtocol(): ProtocolType | null {
         return this.detectedProtocol;
     }

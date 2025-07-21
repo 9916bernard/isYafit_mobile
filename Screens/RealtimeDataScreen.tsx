@@ -21,8 +21,17 @@ const RealtimeDataScreen: React.FC<RealtimeDataScreenProps> = ({
   const [bikeData, setBikeData] = useState<any>(null);
   const [isConnected, setIsConnected] = useState(false);
   const [statusMessage, setStatusMessage] = useState(t('realtimeData.status.connecting'));
+  const [showProtocolDropdown, setShowProtocolDropdown] = useState(false);
+  const [selectedProtocol, setSelectedProtocol] = useState(ftmsManager.getDetectedProtocol());
+  const [allProtocols, setAllProtocols] = useState(ftmsManager.getAllDetectedProtocols());
   const safeAreaStyles = useSafeAreaStyles();
   const spinValue = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    setAllProtocols(ftmsManager.getAllDetectedProtocols());
+    setSelectedProtocol(ftmsManager.getDetectedProtocol());
+    console.log('[RealtimeDataScreen] allProtocols:', ftmsManager.getAllDetectedProtocols(), 'selectedProtocol:', ftmsManager.getDetectedProtocol());
+  }, [ftmsManager]);
 
   useEffect(() => {
     // Start the rotation animation
@@ -52,11 +61,13 @@ const RealtimeDataScreen: React.FC<RealtimeDataScreenProps> = ({
       try {
         if (!isMounted) return;
         setStatusMessage(t('realtimeData.status.connecting'));
+        console.log('[RealtimeDataScreen] Connecting to device:', device.id);
         
         await ftmsManager.connectToDevice(device.id);
         
         if (!isMounted) return;
         setStatusMessage(t('realtimeData.status.subscribing'));
+        console.log('[RealtimeDataScreen] Subscribing to notifications...');
         
         await ftmsManager.subscribeToNotifications(
           (cpResponse) => {
@@ -74,16 +85,19 @@ const RealtimeDataScreen: React.FC<RealtimeDataScreenProps> = ({
         
         if (!isMounted) return;
         setStatusMessage(t('realtimeData.status.runningSequence'));
+        console.log('[RealtimeDataScreen] Running connectSequence...');
         const success = await ftmsManager.connectSequence();
         if (success && isMounted) {
           setIsConnected(true);
           setStatusMessage(t('realtimeData.status.receiving'));
+          console.log('[RealtimeDataScreen] Connection sequence success!');
         } else if (isMounted) {
           setStatusMessage(t('realtimeData.status.sequenceFailed'));
+          console.log('[RealtimeDataScreen] Connection sequence failed.');
         }
       } catch (error) {
         if (isMounted) {
-          console.error("Connection error:", error);
+          console.error('[RealtimeDataScreen] Connection error:', error);
           setStatusMessage(`${t('common.error')}: ${error instanceof Error ? error.message : String(error)}`);
         }
       }
@@ -95,11 +109,62 @@ const RealtimeDataScreen: React.FC<RealtimeDataScreenProps> = ({
       isMounted = false;
       // Cleanup - disconnect device and stop all subscriptions
       ftmsManager.disconnectDevice().catch(console.error);
+      console.log('[RealtimeDataScreen] Cleanup: disconnectDevice called.');
     };
   }, [device.id, ftmsManager, t]); // device.id만 의존성으로 사용하여 불필요한 재연결 방지
   
   const handleBackPress = async () => {
     onBack();
+  };
+
+  // 프로토콜 드롭다운 토글
+  const handleDeviceNamePress = () => {
+    setShowProtocolDropdown((prev) => !prev);
+    console.log('[RealtimeDataScreen] Device name pressed. Dropdown toggled:', !showProtocolDropdown);
+  };
+
+  // 프로토콜 선택 및 재연결
+  const handleProtocolSelect = async (protocol: any) => {
+    setShowProtocolDropdown(false);
+    setStatusMessage(t('realtimeData.status.reconnecting'));
+    setIsConnected(false);
+    setBikeData(null);
+    console.log('[RealtimeDataScreen] Protocol selected:', protocol);
+    // --- 로딩 애니메이션 재시작 ---
+    spinValue.setValue(0);
+    Animated.loop(
+      Animated.timing(spinValue, {
+        toValue: 1,
+        duration: 1000,
+        useNativeDriver: true,
+      })
+    ).start();
+    // --------------------------
+    try {
+      console.log('[RealtimeDataScreen] Reconnecting with protocol:', protocol);
+      await ftmsManager.reconnectWithProtocol(protocol);
+      setSelectedProtocol(protocol);
+      setStatusMessage(t('realtimeData.status.subscribing'));
+      console.log('[RealtimeDataScreen] Subscribing to notifications after protocol change...');
+      await ftmsManager.subscribeToNotifications(
+        () => {},
+        (newBikeData) => setBikeData(newBikeData)
+      );
+      setStatusMessage(t('realtimeData.status.runningSequence'));
+      console.log('[RealtimeDataScreen] Running connectSequence after protocol change...');
+      const success = await ftmsManager.connectSequence();
+      if (success) {
+        setIsConnected(true);
+        setStatusMessage(t('realtimeData.status.receiving'));
+        console.log('[RealtimeDataScreen] Protocol reconnect sequence success!');
+      } else {
+        setStatusMessage(t('realtimeData.status.sequenceFailed'));
+        console.log('[RealtimeDataScreen] Protocol reconnect sequence failed.');
+      }
+    } catch (error) {
+      setStatusMessage(`${t('common.error')}: ${error instanceof Error ? error.message : String(error)}`);
+      console.error('[RealtimeDataScreen] Protocol reconnect error:', error);
+    }
   };
 
   const renderDataItem = (label: string, value: any, unit: string, icon: string, isGridItem?: boolean) => (
@@ -134,10 +199,34 @@ const RealtimeDataScreen: React.FC<RealtimeDataScreenProps> = ({
 
         <View style={styles.deviceInfo}>
           <Icon name="bluetooth" size={28} color="#00c663" />
-          <Text style={styles.deviceName}>{device.name || t('common.unknown')}</Text>
+          <TouchableOpacity onPress={handleDeviceNamePress} style={styles.deviceNameButton}>
+            <Text style={styles.deviceName}>{device.name || t('common.unknown')}</Text>
+            <Icon name={showProtocolDropdown ? 'chevron-up' : 'chevron-down'} size={18} color="#00c663" />
+          </TouchableOpacity>
           <Text style={styles.deviceId}>{device.id.substring(0, 8)}...</Text>
         </View>
-
+        {showProtocolDropdown && (
+          <View style={styles.protocolDropdown}>
+            {allProtocols && allProtocols.length > 0 ? (
+              allProtocols.map((protocol: any) => (
+                <TouchableOpacity
+                  key={protocol}
+                  style={styles.protocolDropdownItem}
+                  onPress={() => handleProtocolSelect(protocol)}
+                >
+                  <Text style={[
+                    styles.protocolDropdownText,
+                    protocol === selectedProtocol && styles.protocolDropdownTextSelected
+                  ]}>
+                    {protocol}
+                  </Text>
+                </TouchableOpacity>
+              ))
+            ) : (
+              <Text style={styles.protocolDropdownText}>{t('realtimeData.noProtocols')}</Text>
+            )}
+          </View>
+        )}
         <Text style={styles.statusMessage}>{statusMessage}</Text>
 
         {isConnected && bikeData ? (
@@ -332,6 +421,45 @@ const styles = StyleSheet.create({  safeArea: {
     fontSize: 16,
     color: '#aaa',
     marginTop: 16,
+  },
+  deviceNameButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginLeft: 10,
+    marginRight: 6,
+    paddingVertical: 2,
+    paddingHorizontal: 6,
+    borderRadius: 6,
+    backgroundColor: '#232b38',
+  },
+  protocolDropdown: {
+    position: 'absolute',
+    top: 110,
+    left: 40,
+    right: 40,
+    backgroundColor: '#232b38',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#374151',
+    zIndex: 10,
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+  },
+  protocolDropdownItem: {
+    paddingVertical: 8,
+    paddingHorizontal: 6,
+  },
+  protocolDropdownText: {
+    color: '#fff',
+    fontSize: 15,
+  },
+  protocolDropdownTextSelected: {
+    color: '#00c663',
+    fontWeight: 'bold',
   },
 });
 
