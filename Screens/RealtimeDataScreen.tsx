@@ -167,23 +167,34 @@ const RealtimeDataScreen: React.FC<RealtimeDataScreenProps> = ({
     }
   };
 
-  const renderDataItem = (label: string, value: any, unit: string, icon: string, isGridItem?: boolean) => (
-    <View style={[styles.dataItem, isGridItem && styles.gridDataItem]}>
-      <View style={[styles.dataIconContainer, isGridItem && styles.gridDataItemIconContainer]}>
-        <Icon name={icon} size={isGridItem ? 30 : 24} color="#00c663" />
-      </View>
-      <View style={styles.dataContent}>
-        <Text style={[styles.dataLabel, isGridItem && styles.gridDataItemLabel]}>{label}</Text>
-        <View style={styles.dataValueContainer}>
+  const renderDataItem = (label: string, value: any, unit: string, icon: string, isGridItem?: boolean) => {
+    let displayValue = value;
+    if (label === t('realtimeData.data.resistance')) {
+      if (typeof value === 'number') {
+        if (value >= 10) {
+          displayValue = Math.round(value);
+        } else {
+          displayValue = value.toFixed(1);
+        }
+      }
+    } else if (typeof value === 'number') {
+      displayValue = value.toFixed(1);
+    }
+    return (
+      <View style={[styles.dataItem, isGridItem && styles.gridDataItem]}>
+        <View style={[styles.dataIconContainer, isGridItem && styles.gridDataItemIconContainer]}>
+          <Icon name={icon} size={isGridItem ? 30 : 24} color="#00c663" />
+        </View>
+        <View style={styles.dataContent}>
+          <Text style={[styles.dataLabel, isGridItem && styles.gridDataItemLabel]}>{label}</Text>
           <Text style={[styles.dataValue, isGridItem && styles.gridDataItemValue]}>
-            {value !== null && value !== undefined ? 
-              (typeof value === 'number' ? value.toFixed(1) : value) : '--'}
+            {value !== null && value !== undefined ? displayValue : '--'}
           </Text>
           <Text style={[styles.dataUnit, isGridItem && styles.gridDataItemUnit]}>{unit}</Text>
         </View>
       </View>
-    </View>
-  );
+    );
+  };
   return (
     <View style={safeAreaStyles.safeContainerMinPadding}>
       <View style={styles.container}>

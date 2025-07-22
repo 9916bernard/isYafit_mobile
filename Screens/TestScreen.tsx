@@ -877,10 +877,12 @@ const TestScreen: React.FC<TestScreenProps> = ({ device, ftmsManager, onClose })
             )}
             
             <View style={styles.actionButtonContainer}>
-              {!isRunning && !testCompleted && (                <TouchableOpacity
-                  style={styles.startButton}
+              {!isRunning && !testCompleted && (
+                <TouchableOpacity
+                  style={[styles.startButton, message !== t('test.ready') && styles.startButtonDisabled]}
                   onPress={handleStartTest}
                   activeOpacity={0.8}
+                  disabled={message !== t('test.ready')}
                 >
                   <Icon name="play-arrow" size={24} color="#ffffff" />
                   <Text style={styles.startButtonText}>{t('test.startTest')}</Text>
@@ -1455,6 +1457,9 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     fontSize: 18,
     marginLeft: 12,
+  },
+  startButtonDisabled: {
+    opacity: 0.5,
   },
   stopButton: {
     backgroundColor: '#e53e3e',

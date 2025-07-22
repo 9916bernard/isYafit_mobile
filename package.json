@@ -16,6 +16,7 @@
     "expo": "^53.0.19",
     "expo-clipboard": "^7.1.5",
     "expo-device": "^7.1.4",
+    "expo-linear-gradient": "^14.1.5",
     "expo-status-bar": "~2.2.3",
     "i18next": "^23.16.8",
     "i18next-browser-languagedetector": "^7.2.0",

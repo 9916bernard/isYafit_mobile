@@ -14,10 +14,12 @@ import { Colors, ButtonStyles, CardStyles, Shadows } from '../styles/commonStyle
 import Toast from 'react-native-root-toast';
 import { useTranslation } from 'react-i18next';
 import { setLanguage, initializeLanguage } from '../utils/i18n';
+// 아래 import는 expo-linear-gradient가 설치되어 있어야 동작합니다.
+import { LinearGradient as ExpoLinearGradient } from 'expo-linear-gradient';
 
 
 // 0.8.0 FitShow 프로토콜 구현 개선 (FTMS indoor bike data 형식 사용)
-const APP_VERSION = 'v1.0.3';
+const APP_VERSION = 'v1.1.0';
 
 function App() {
   const { t, i18n } = useTranslation();
@@ -41,6 +43,9 @@ function App() {
   const screenWidth = Dimensions.get('window').width;
   const [isMenuVisible, setIsMenuVisible] = useState(false);
   const [showTermsOfService, setShowTermsOfService] = useState(false);
+  const [showPatchNotes, setShowPatchNotes] = useState(false);
+  const [easterEggCount, setEasterEggCount] = useState(0);
+  const [showEasterEgg, setShowEasterEgg] = useState(false);
 
   const languageOrder: ('ko' | 'en' | 'zh')[] = ['ko', 'en', 'zh'];
   const languageLabels = { ko: 'KO', en: 'EN', zh: '中' };
@@ -161,8 +166,8 @@ function App() {
   };
 
   const handlePatchNotes = () => {
-    // TODO: 패치 내역 기능 구현
-    setStatusMessage(t('app.status.patchNotesPreparing'));
+    setShowPatchNotes(true);
+    setIsMenuVisible(false);
   };
 
   const handleTermsOfService = () => {
@@ -461,6 +466,15 @@ function App() {
     setStatusMessage(t('app.status.ready'));
   };
   //#region Device List 
+  const handleTitlePress = () => {
+    setEasterEggCount((prev) => {
+      if (prev + 1 >= 15) {
+        setShowEasterEgg(true);
+        return 0;
+      }
+      return prev + 1;
+    });
+  };
   const renderListHeader = () => (
     <LinearGradient 
       colors={[Colors.background, Colors.cardBackground]} 
@@ -468,7 +482,9 @@ function App() {
     >
       <View style={styles.headerContainer}>
         <View style={styles.titleVersionColumn}>
-          <Text style={styles.title}>{t('app.title')}</Text>
+          <TouchableOpacity activeOpacity={1} onPress={handleTitlePress}>
+            <Text style={styles.title}>{t('app.title')}</Text>
+          </TouchableOpacity>
           <Text style={styles.versionPlain}>{APP_VERSION}</Text>
         </View>
         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
@@ -798,6 +814,23 @@ function App() {
           </View>
         </Animated.View>
       )}
+      {/* Easter Egg Modal */}
+      <Modal
+        visible={showEasterEgg}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowEasterEgg(false)}
+      >
+        <View style={styles.easterEggOverlay}>
+          <View style={styles.easterEggCard}>
+            <Text style={styles.easterEggMadeBy}>MADE BY</Text>
+            <Text style={styles.easterEggName}>Sungheon Bernard Lee</Text>
+            <TouchableOpacity style={styles.easterEggCloseButton} onPress={() => setShowEasterEgg(false)}>
+              <Text style={styles.easterEggCloseButtonText}>CLOSE</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
   //#region Menu
@@ -832,8 +865,7 @@ function App() {
                   </TouchableOpacity>
                   <TouchableOpacity style={styles.menuItem} onPress={handlePatchNotes}>
                     <Icon name="update" size={20} color={Colors.primary} />
-                    <Text style={styles.menuItemText}>{t('app.patchNotes')}</Text>
-                    <Text style={styles.menuItemSubtext}>{t('menu.preparing')}</Text>
+                    <Text style={styles.menuItemText}>{t('app.patchNotes.title')}</Text>
                   </TouchableOpacity>
                   <TouchableOpacity style={styles.menuItem} onPress={handleTermsOfService}>
                     <Icon name="file-document" size={20} color={Colors.primary} />
@@ -867,6 +899,34 @@ function App() {
                 onPress={() => setShowTermsOfService(false)}
               >
                 <Text style={styles.termsCloseButtonText}>{t('app.close')}</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
+        {/* Patch Notes Modal */}
+        <Modal
+          visible={showPatchNotes}
+          animationType="slide"
+          transparent={true}
+          onRequestClose={() => setShowPatchNotes(false)}
+        >
+          <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.5)' }}>
+            <View style={styles.termsModal}>
+              <View style={styles.termsHeader}>
+                <Text style={styles.termsTitle}>{t('app.patchNotes.title')}</Text>
+                <TouchableOpacity onPress={() => setShowPatchNotes(false)}>
+                  <Icon name="close" size={24} color={Colors.text} />
+                </TouchableOpacity>
+              </View>
+              <ScrollView style={styles.termsContent}>
+                <Text style={[styles.termsText, {textAlign: 'left'}]}>{t('app.patchNotes.v1_1_0')}</Text>
+                <Text style={[styles.termsText, {textAlign: 'left', marginTop: 8}]}>{t('app.patchNotes.v1_0_0')}</Text>
+              </ScrollView>
+              <TouchableOpacity 
+                style={styles.termsCloseButton}
+                onPress={() => setShowPatchNotes(false)}
+              >
+                <Text style={styles.termsCloseButtonText}>{t('app.patchNotes.close')}</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -907,8 +967,7 @@ function App() {
                   </TouchableOpacity>
                   <TouchableOpacity style={styles.menuItem} onPress={handlePatchNotes}>
                     <Icon name="update" size={20} color={Colors.primary} />
-                    <Text style={styles.menuItemText}>{t('app.patchNotes')}</Text>
-                    <Text style={styles.menuItemSubtext}>{t('menu.preparing')}</Text>
+                    <Text style={styles.menuItemText}>{t('app.patchNotes.title')}</Text>
                   </TouchableOpacity>
                   <TouchableOpacity style={styles.menuItem} onPress={handleTermsOfService}>
                     <Icon name="file-document" size={20} color={Colors.primary} />
@@ -942,6 +1001,34 @@ function App() {
                 onPress={() => setShowTermsOfService(false)}
               >
                 <Text style={styles.termsCloseButtonText}>{t('app.close')}</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
+        {/* Patch Notes Modal */}
+        <Modal
+          visible={showPatchNotes}
+          animationType="slide"
+          transparent={true}
+          onRequestClose={() => setShowPatchNotes(false)}
+        >
+          <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.5)' }}>
+            <View style={styles.termsModal}>
+              <View style={styles.termsHeader}>
+                <Text style={styles.termsTitle}>{t('app.patchNotes.title')}</Text>
+                <TouchableOpacity onPress={() => setShowPatchNotes(false)}>
+                  <Icon name="close" size={24} color={Colors.text} />
+                </TouchableOpacity>
+              </View>
+              <ScrollView style={styles.termsContent}>
+                <Text style={[styles.termsText, {textAlign: 'left'}]}>{t('app.patchNotes.v1_1_0')}</Text>
+                <Text style={[styles.termsText, {textAlign: 'left', marginTop: 8}]}>{t('app.patchNotes.v1_0_0')}</Text>
+              </ScrollView>
+              <TouchableOpacity 
+                style={styles.termsCloseButton}
+                onPress={() => setShowPatchNotes(false)}
+              >
+                <Text style={styles.termsCloseButtonText}>{t('app.patchNotes.close')}</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -1452,8 +1539,10 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.cardBackground,
     borderRadius: 16,
     margin: 20,
-    flex: 1,
-    maxHeight: '90%',
+    minWidth: 260,
+    maxWidth: 420,
+    minHeight: 120,
+    maxHeight: 420,
     ...Shadows.large,
   },
   termsHeader: {
@@ -1500,6 +1589,74 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
     marginTop: 20,
+  },
+  easterEggOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  easterEggCard: {
+    backgroundColor: 'rgba(30,34,44,0.92)',
+    borderRadius: 28,
+    paddingVertical: 40,
+    paddingHorizontal: 36,
+    alignItems: 'center',
+    shadowColor: '#00c663',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.25,
+    shadowRadius: 24,
+    elevation: 16,
+    minWidth: 240,
+    maxWidth: 340,
+    borderWidth: 1.5,
+    borderColor: '#00c66344',
+    overflow: 'hidden',
+  },
+  easterEggIcon: {
+    fontSize: 38,
+    marginBottom: 18,
+    textShadowColor: '#fff',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 8,
+  },
+  easterEggMadeBy: {
+    fontSize: 13,
+    color: '#aaa',
+    opacity: 0.6,
+    textAlign: 'center',
+    marginBottom: 8,
+    letterSpacing: 1.1,
+    fontWeight: '600',
+  },
+  easterEggName: {
+    fontSize: 20,
+    color: '#00c663',
+    fontWeight: 'bold',
+    textAlign: 'center',
+    letterSpacing: 1.2,
+    marginBottom: 24,
+  },
+  easterEggCloseButton: {
+    backgroundColor: '#222',
+    borderRadius: 20,
+    paddingVertical: 8,
+    paddingHorizontal: 28,
+    alignItems: 'center',
+    marginTop: 8,
+    borderWidth: 1,
+    borderColor: '#00c663',
+    shadowColor: '#00c663',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.18,
+    shadowRadius: 6,
+    elevation: 4,
+  },
+  easterEggCloseButtonText: {
+    color: '#00c663',
+    fontSize: 15,
+    fontWeight: 'bold',
+    letterSpacing: 1.1,
   },
 });
 
